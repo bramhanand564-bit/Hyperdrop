@@ -1,0 +1,14 @@
+{
+  "name": "hyperdrop",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/web", "apps/signaling"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace apps/signaling\" \"npm run dev --workspace apps/web\"",
+    "build": "npm run build --workspace apps/web && npm run build --workspace apps/signaling",
+    "start": "concurrently \"npm run start --workspace apps/signaling\" \"npm run start --workspace apps/web\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
