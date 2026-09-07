@@ -1,9 +1,7 @@
 name: Build Android App
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch: # YEH SABSE ZAROORI HAI: Isse app khud build nahi hoga, jab aap start karenge tabhi hoga.
 
 jobs:
   build-apk:
@@ -16,18 +14,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20' # Purani warning hatane ke liye version 20
 
-      - name: Install Java (For Android)
+      - name: Install Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin' # Zulu ki jagah Temurin use karenge jo jyada stable hai
           java-version: '17'
 
-      - name: Verify Java Version
-        run: java -version
-
-      - name: Build Web App
+      - name: Install Dependencies & Build Web App
         run: |
           cd frontend
           npm install
@@ -35,47 +30,27 @@ jobs:
           npm install -D @capacitor/cli
           npm run build
 
-      - name: Setup Android Project
+      - name: Setup Capacitor Android
         run: |
           cd frontend
           npx cap init HyperDrop com.hyperdrop.app --web-dir out || true
           npx cap add android || true
           npx cap sync android
 
-      - name: Direct Wrapper Upgrade & Cache Purge
+      - name: Fix Gradle Bug & Build APK
         run: |
           cd frontend/android
           
-          # 1. Force delete the corrupted jars-9 cache before touching Gradle
-          rm -rf ~/.gradle/caches/jars-9/
-          rm -rf ~/.gradle/caches/transforms-3/
-          
-          # 2. Delete local build remnants
+          # 1. Cloud server ki kharab cache (bcprov bug) ko jad se mitao
+          rm -rf ~/.gradle/caches/
           rm -rf .gradle
-          rm -rf build
-          rm -rf app/build
           
-          # 3. DIRECTLY edit the wrapper file to use Gradle 8.7 (bypasses the 8.2.1 bug)
-          sed -i 's/^distributionUrl=.*/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.7-bin.zip/' gradle/wrapper/gradle-wrapper.properties
+          # 2. Gradle ko zabardasti naye version (8.7) par shift karo jisme ye bug nahi hai
+          sed -i 's/distributionUrl=.*/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.7-bin.zip/' gradle/wrapper/gradle-wrapper.properties
           
-          # 4. Inject safe properties to prevent further locking
-          echo "" >> gradle.properties
-          echo "org.gradle.daemon=false" >> gradle.properties
-          echo "org.gradle.parallel=false" >> gradle.properties
-          echo "org.gradle.caching=false" >> gradle.properties
-          
+          # 3. Permissions do aur safe mode mein app build karo
           chmod +x gradlew
-
-      - name: Verify New Gradle Version
-        run: |
-          cd frontend/android
-          # This invokes the newly downloaded 8.7 wrapper directly
-          ./gradlew --version
-
-      - name: Build APK
-        run: |
-          cd frontend/android
-          ./gradlew assembleDebug --no-daemon --no-parallel --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK ZIP
         uses: actions/upload-artifact@v4
