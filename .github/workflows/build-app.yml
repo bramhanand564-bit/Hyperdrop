@@ -38,8 +38,10 @@ jobs:
           npx cap add android
           npx cap sync android
           cd android
+          # Force clear corrupted caches and disable parallel downloads
+          rm -rf ~/.gradle/caches/
           chmod +x gradlew
-          ./gradlew clean assembleDebug --no-daemon
+          ./gradlew clean assembleDebug --no-daemon --no-parallel
 
       - name: Upload APK ZIP
         uses: actions/upload-artifact@v4
