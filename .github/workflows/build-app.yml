@@ -1,7 +1,9 @@
 name: Build Android App
 
 on:
-  workflow_dispatch: # YEH SABSE ZAROORI HAI: Isse app khud build nahi hoga, jab aap start karenge tabhi hoga.
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-apk:
@@ -14,15 +16,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Purani warning hatane ke liye version 20
+          node-version: '20'
 
       - name: Install Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin' # Zulu ki jagah Temurin use karenge jo jyada stable hai
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Dependencies & Build Web App
+      - name: Build Web App
         run: |
           cd frontend
           npm install
@@ -41,15 +43,21 @@ jobs:
         run: |
           cd frontend/android
           
-          # 1. Cloud server ki kharab cache (bcprov bug) ko jad se mitao
+          # 1. Sabse pehle kharab cache ko jad se mitao bina Gradle ko touch kiye
           rm -rf ~/.gradle/caches/
           rm -rf .gradle
           
-          # 2. Gradle ko zabardasti naye version (8.7) par shift karo jisme ye bug nahi hai
+          # 2. Text replace karke Gradle ko direct 8.7 version par daalo (Bypass server bug)
           sed -i 's/distributionUrl=.*/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.7-bin.zip/' gradle/wrapper/gradle-wrapper.properties
           
-          # 3. Permissions do aur safe mode mein app build karo
+          # 3. Safe settings inject karo
+          echo "org.gradle.daemon=false" >> gradle.properties
+          echo "org.gradle.parallel=false" >> gradle.properties
+          echo "org.gradle.caching=false" >> gradle.properties
+          
           chmod +x gradlew
+          
+          # 4. Final Build
           ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK ZIP
