@@ -22,6 +22,7 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
+          cache: 'gradle' # Ye line missing files/jar errors ko rokegi
 
       - name: Build Web App
         run: |
@@ -39,7 +40,7 @@ jobs:
           npx cap sync android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew clean assembleDebug --no-daemon # Clean aur no-daemon lagaya hai stability ke liye
 
       - name: Upload APK ZIP
         uses: actions/upload-artifact@v4
