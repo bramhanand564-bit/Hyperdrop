@@ -24,6 +24,9 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Verify Java Version
+        run: java -version
+
       - name: Build Web App
         run: |
           cd frontend
@@ -39,26 +42,40 @@ jobs:
           npx cap add android || true
           npx cap sync android
 
-      - name: Clean Cache & Upgrade Gradle Wrapper
+      - name: Direct Wrapper Upgrade & Cache Purge
         run: |
           cd frontend/android
           
-          # 1. Stop any background daemons that might lock files
-          ./gradlew --stop || true
-          
-          # 2. Force remove the problematic Gradle caches to prevent corrupted state
+          # 1. Force delete the corrupted jars-9 cache before touching Gradle
           rm -rf ~/.gradle/caches/jars-9/
           rm -rf ~/.gradle/caches/transforms-3/
           
-          # 3. Upgrade Gradle to 8.7 to bypass the 8.2.1 BCProv instrumentation bug
-          ./gradlew wrapper --gradle-version 8.7
+          # 2. Delete local build remnants
+          rm -rf .gradle
+          rm -rf build
+          rm -rf app/build
+          
+          # 3. DIRECTLY edit the wrapper file to use Gradle 8.7 (bypasses the 8.2.1 bug)
+          sed -i 's/^distributionUrl=.*/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.7-bin.zip/' gradle/wrapper/gradle-wrapper.properties
+          
+          # 4. Inject safe properties to prevent further locking
+          echo "" >> gradle.properties
+          echo "org.gradle.daemon=false" >> gradle.properties
+          echo "org.gradle.parallel=false" >> gradle.properties
+          echo "org.gradle.caching=false" >> gradle.properties
+          
+          chmod +x gradlew
+
+      - name: Verify New Gradle Version
+        run: |
+          cd frontend/android
+          # This invokes the newly downloaded 8.7 wrapper directly
+          ./gradlew --version
 
       - name: Build APK
         run: |
           cd frontend/android
-          
-          # 4. Build safely with the upgraded wrapper
-          ./gradlew clean assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --no-parallel --stacktrace
 
       - name: Upload APK ZIP
         uses: actions/upload-artifact@v4
