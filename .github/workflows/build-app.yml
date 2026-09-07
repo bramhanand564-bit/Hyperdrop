@@ -21,7 +21,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          # Yahan cache hata diya hai, kyunki wahi sabse pehle error laa raha tha
 
       - name: Build Web App
         run: |
@@ -42,7 +41,6 @@ jobs:
         run: |
           cd frontend/android
           chmod +x gradlew
-          # Sirf basic commands: no-daemon (memory bachane ke liye) aur no-parallel (file lock rokne ke liye)
           ./gradlew assembleDebug --no-daemon --no-parallel
 
       - name: Upload APK
