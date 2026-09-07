@@ -18,15 +18,11 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Java
+      - name: Install Java (For Android)
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-
-      # Yeh official tool jar-locking aur cache corruption ko jad se rokta hai
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
 
       - name: Build Web App
         run: |
@@ -39,24 +35,30 @@ jobs:
       - name: Setup Android Project
         run: |
           cd frontend
-          npx cap init HyperDrop com.hyperdrop.app --web-dir out
-          npx cap add android
+          npx cap init HyperDrop com.hyperdrop.app --web-dir out || true
+          npx cap add android || true
           npx cap sync android
 
-      - name: Build APK (Ultra Safe Mode)
+      - name: Clean Cache & Upgrade Gradle Wrapper
         run: |
           cd frontend/android
           
-          # Android system ke andar zabardasti safe settings inject kar rahe hain
-          echo "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8" > gradle.properties
-          echo "org.gradle.parallel=false" >> gradle.properties
-          echo "org.gradle.daemon=false" >> gradle.properties
-          echo "org.gradle.caching=false" >> gradle.properties
+          # 1. Stop any background daemons that might lock files
+          ./gradlew --stop || true
           
-          chmod +x gradlew
+          # 2. Force remove the problematic Gradle caches to prevent corrupted state
+          rm -rf ~/.gradle/caches/jars-9/
+          rm -rf ~/.gradle/caches/transforms-3/
           
-          # Clean build without any background conflicts
-          ./gradlew clean assembleDebug
+          # 3. Upgrade Gradle to 8.7 to bypass the 8.2.1 BCProv instrumentation bug
+          ./gradlew wrapper --gradle-version 8.7
+
+      - name: Build APK
+        run: |
+          cd frontend/android
+          
+          # 4. Build safely with the upgraded wrapper
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK ZIP
         uses: actions/upload-artifact@v4
