@@ -1,188 +1,255 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
-const CHUNK_SIZE = 64 * 1024; // 64KB
+const CHUNK_SIZE = 64 * 1024;
+const MAX_BUFFERED_AMOUNT = CHUNK_SIZE * 8;
+const LOW_BUFFERED_AMOUNT = CHUNK_SIZE * 2;
+
+type IncomingFile = { name: string; size: number; mimeType: string };
 
 export const useWebRTC = (signalingUrl: string) => {
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const dataChannel = useRef<RTCDataChannel | null>(null);
   const ws = useRef<WebSocket | null>(null);
-  
-  // Receiver ke streaming variables
   const fileStream = useRef<FileSystemWritableFileStream | null>(null);
-  const receivedSize = useRef<number>(0);
-  const expectedSize = useRef<number>(0);
+  const receivedSize = useRef(0);
+  const expectedSize = useRef(0);
+  const senderFile = useRef<File | null>(null);
+  const senderOffset = useRef(0);
+  const sending = useRef(false);
+  const joinedRoom = useRef('');
+  const listenersReady = useRef(false);
 
-  const [status, setStatus] = useState<string>('disconnected');
-  const [progress, setProgress] = useState<number>(0);
-  const [roomCode, setRoomCode] = useState<string>('');
-  const [incomingFile, setIncomingFile] = useState<{name: string, size: number} | null>(null);
+  const [status, setStatus] = useState('disconnected');
+  const [progress, setProgress] = useState(0);
+  const [roomCode, setRoomCode] = useState('');
+  const [incomingFile, setIncomingFile] = useState<IncomingFile | null>(null);
 
-  const init = useCallback((roomToJoin?: string) => {
-    ws.current = new WebSocket(signalingUrl);
-    
-    peerConnection.current = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    });
+  const cleanup = useCallback(async () => {
+    try { await fileStream.current?.abort(); } catch {}
+    fileStream.current = null;
+    sending.current = false;
+    senderFile.current = null;
+    dataChannel.current?.close();
+    peerConnection.current?.close();
+    ws.current?.close();
+    dataChannel.current = null;
+    peerConnection.current = null;
+    ws.current = null;
+    joinedRoom.current = '';
+    receivedSize.current = 0;
+    expectedSize.current = 0;
+    senderOffset.current = 0;
+    listenersReady.current = false;
+  }, []);
 
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        ws.current?.send(JSON.stringify({ type: 'signal', room: roomCode || roomToJoin, payload: { candidate: event.candidate } }));
-      }
-    };
+  const sendNextChunk = useCallback(async () => {
+    const channel = dataChannel.current;
+    const file = senderFile.current;
+    if (!channel || !file || !sending.current || channel.readyState !== 'open') return;
 
-    ws.current.onmessage = async (message) => {
-      const data = JSON.parse(message.data);
-      
-      if (data.type === 'room_created') {
-        setRoomCode(data.room);
-        setStatus('waiting_for_receiver');
-      } else if (data.type === 'joined' || data.type === 'peer_joined') {
-        setStatus('connected');
-        if (data.type === 'peer_joined') createOffer(roomCode || roomToJoin!);
-      } else if (data.type === 'signal') {
-        if (data.payload.sdp) {
-          await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(data.payload.sdp));
-          if (data.payload.sdp.type === 'offer') {
-            const answer = await peerConnection.current?.createAnswer();
-            await peerConnection.current?.setLocalDescription(answer);
-            ws.current?.send(JSON.stringify({ type: 'signal', room: roomCode || roomToJoin, payload: { sdp: answer } }));
-          }
-        } else if (data.payload.candidate) {
-          await peerConnection.current?.addIceCandidate(new RTCIceCandidate(data.payload.candidate));
-        }
-      }
-    };
+    while (
+      sending.current &&
+      senderOffset.current < file.size &&
+      channel.readyState === 'open' &&
+      channel.bufferedAmount <= MAX_BUFFERED_AMOUNT
+    ) {
+      const start = senderOffset.current;
+      const chunk = await file.slice(start, start + CHUNK_SIZE).arrayBuffer();
+      if (!sending.current || channel.readyState !== 'open') return;
+      channel.send(chunk);
+      senderOffset.current += chunk.byteLength;
+      setProgress(Math.round((senderOffset.current / file.size) * 100));
+    }
 
-    ws.current.onopen = () => {
-      if (roomToJoin) {
-        setRoomCode(roomToJoin);
-        ws.current?.send(JSON.stringify({ type: 'join_room', room: roomToJoin }));
-      } else {
-        ws.current?.send(JSON.stringify({ type: 'create_room' }));
-      }
-    };
-  }, [roomCode, signalingUrl]);
+    if (senderOffset.current >= file.size && sending.current) {
+      sending.current = false;
+      channel.send(JSON.stringify({ type: 'transfer_complete' }));
+      setStatus('success');
+    }
+  }, []);
 
-  const createOffer = async (room: string) => {
-    dataChannel.current = peerConnection.current!.createDataChannel('hyperdrop-transfer', { ordered: true });
-    setupDataChannel();
-    const offer = await peerConnection.current?.createOffer();
-    await peerConnection.current?.setLocalDescription(offer);
-    ws.current?.send(JSON.stringify({ type: 'signal', room, payload: { sdp: offer } }));
-  };
+  const setupDataChannel = useCallback((channel: RTCDataChannel) => {
+    if (listenersReady.current && dataChannel.current === channel) return;
+    listenersReady.current = true;
+    dataChannel.current = channel;
+    channel.binaryType = 'arraybuffer';
+    channel.bufferedAmountLowThreshold = LOW_BUFFERED_AMOUNT;
 
-  peerConnection.current?.addEventListener('datachannel', (event) => {
-    dataChannel.current = event.channel;
-    setupDataChannel();
-  });
+    channel.onopen = () => setStatus('ready_to_transfer');
+    channel.onclose = () => { sending.current = false; setStatus('disconnected'); };
+    channel.onerror = () => setStatus('error');
+    channel.onbufferedamountlow = () => { void sendNextChunk(); };
 
-  const setupDataChannel = () => {
-    if (!dataChannel.current) return;
-    dataChannel.current.binaryType = 'arraybuffer';
-    
-    dataChannel.current.onopen = () => setStatus('ready_to_transfer');
-    dataChannel.current.onclose = () => setStatus('disconnected');
-    
-    dataChannel.current.onmessage = async (event) => {
-      // 1. Agar text data hai (Metadata ya commands)
+    channel.onmessage = async (event) => {
       if (typeof event.data === 'string') {
-        const data = JSON.parse(event.data);
+        let data: any;
+        try { data = JSON.parse(event.data); } catch { return; }
+
         if (data.type === 'metadata') {
-          setIncomingFile({ name: data.name, size: data.size });
-          expectedSize.current = data.size;
+          receivedSize.current = 0;
+          expectedSize.current = Number(data.size) || 0;
+          setIncomingFile({
+            name: String(data.name || 'download'),
+            size: expectedSize.current,
+            mimeType: String(data.mimeType || 'application/octet-stream'),
+          });
+          setProgress(0);
           setStatus('incoming_file');
         } else if (data.type === 'transfer_ready') {
-          // Sender ko pata chal gaya ki receiver ne 'Save' par click kar diya hai
           setStatus('transferring');
-        } else if (data.type === 'transfer_complete') {
-          await fileStream.current?.close();
-          setStatus('success');
-        }
-      } 
-      // 2. Agar binary data hai (File chunks)
-      else {
-        if (fileStream.current) {
-          await fileStream.current.write(event.data);
-          receivedSize.current += event.data.byteLength;
-          setProgress(Math.round((receivedSize.current / expectedSize.current) * 100));
-        }
-      }
-    };
-  };
-
-  // Receiver jab 'Save' click karega
-  const acceptDownload = async () => {
-    if (!incomingFile || !dataChannel.current) return;
-    
-    try {
-      // File save karne ke liye storage permission aur location mangna
-      const handle = await (window as any).showSaveFilePicker({
-        suggestedName: incomingFile.name
-      });
-      fileStream.current = await handle.createWritable();
-      
-      setStatus('transferring');
-      // Sender ko batao ki stream open ho gayi hai, file bhejajani shuru karo
-      dataChannel.current.send(JSON.stringify({ type: 'transfer_ready' }));
-    } catch (err) {
-      console.error("Download cancelled or failed", err);
-      setStatus('ready_to_transfer'); // Reset
-    }
-  };
-
-  const sendFile = async (file: File) => {
-    if (!dataChannel.current || dataChannel.current.readyState !== 'open') return;
-
-    // Pehle metadata bhejo
-    dataChannel.current.send(JSON.stringify({ type: 'metadata', name: file.name, size: file.size }));
-    setStatus('waiting_for_receiver_accept');
-
-    // Chunks bhejne ka function humne setupDataChannel me 'transfer_ready' aane par start karna hai
-    const startChunking = () => {
-      let offset = 0;
-      dataChannel.current!.bufferedAmountLowThreshold = CHUNK_SIZE * 2;
-
-      const readSlice = (o: number) => {
-        const slice = file.slice(offset, o + CHUNK_SIZE);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (dataChannel.current!.bufferedAmount > dataChannel.current!.bufferedAmountLowThreshold) {
-            dataChannel.current!.onbufferedamountlow = () => {
-              dataChannel.current!.onbufferedamountlow = null;
-              sendChunk(e.target!.result as ArrayBuffer);
-            };
-          } else {
-            sendChunk(e.target!.result as ArrayBuffer);
+          if (!sending.current) {
+            sending.current = true;
+            senderOffset.current = 0;
+            void sendNextChunk();
           }
-        };
-        reader.readAsArrayBuffer(slice);
+        } else if (data.type === 'transfer_complete') {
+          if (fileStream.current) {
+            try {
+              await fileStream.current.close();
+              fileStream.current = null;
+              setProgress(100);
+              setStatus('success');
+            } catch (error) {
+              console.error('Failed to finalize downloaded file', error);
+              setStatus('error');
+            }
+          }
+        }
+        return;
+      }
+
+      const chunk = event.data instanceof ArrayBuffer
+        ? event.data
+        : event.data instanceof Blob
+          ? await event.data.arrayBuffer()
+          : null;
+
+      if (!chunk || !fileStream.current || expectedSize.current <= 0) return;
+      try {
+        await fileStream.current.write(chunk);
+        receivedSize.current += chunk.byteLength;
+        setProgress(Math.min(100, Math.round((receivedSize.current / expectedSize.current) * 100)));
+      } catch (error) {
+        console.error('Failed to write received chunk', error);
+        setStatus('error');
+        try { await fileStream.current.abort(); } catch {}
+        fileStream.current = null;
+      }
+    };
+  }, [sendNextChunk]);
+
+  const createOffer = useCallback(async (room: string) => {
+    const pc = peerConnection.current;
+    if (!pc) return;
+    const channel = pc.createDataChannel('hyperdrop-transfer', { ordered: true });
+    setupDataChannel(channel);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    ws.current?.send(JSON.stringify({ type: 'signal', room, payload: { sdp: pc.localDescription } }));
+  }, [setupDataChannel]);
+
+  const init = useCallback((roomToJoin?: string) => {
+    void (async () => {
+      await cleanup();
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      const socket = new WebSocket(signalingUrl);
+      peerConnection.current = pc;
+      ws.current = socket;
+      joinedRoom.current = roomToJoin || '';
+
+      pc.onicecandidate = (event) => {
+        if (!event.candidate || socket.readyState !== WebSocket.OPEN) return;
+        const room = joinedRoom.current;
+        if (room) socket.send(JSON.stringify({ type: 'signal', room, payload: { candidate: event.candidate } }));
       };
+      pc.ondatachannel = (event) => setupDataChannel(event.channel);
 
-      const sendChunk = (buffer: ArrayBuffer) => {
-        dataChannel.current!.send(buffer);
-        offset += buffer.byteLength;
-        setProgress(Math.round((offset / file.size) * 100));
-
-        if (offset < file.size) {
-          readSlice(offset);
+      socket.onopen = () => {
+        if (roomToJoin) {
+          setRoomCode(roomToJoin);
+          socket.send(JSON.stringify({ type: 'join_room', room: roomToJoin }));
         } else {
-          dataChannel.current!.send(JSON.stringify({ type: 'transfer_complete' }));
-          setStatus('success');
+          socket.send(JSON.stringify({ type: 'create_room' }));
         }
       };
 
-      readSlice(0);
-    };
+      socket.onmessage = async (message) => {
+        let data: any;
+        try { data = JSON.parse(message.data); } catch { return; }
+        if (data.type === 'room_created') {
+          joinedRoom.current = data.room;
+          setRoomCode(data.room);
+          setStatus('waiting_for_receiver');
+        } else if (data.type === 'joined') {
+          setStatus('connected');
+        } else if (data.type === 'peer_joined') {
+          setStatus('connected');
+          await createOffer(joinedRoom.current);
+        } else if (data.type === 'peer_left') {
+          setStatus('disconnected');
+        } else if (data.type === 'error') {
+          console.error(data.message);
+          setStatus('error');
+        } else if (data.type === 'signal') {
+          const payload = data.payload;
+          if (payload?.sdp) {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            if (payload.sdp.type === 'offer') {
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              socket.send(JSON.stringify({ type: 'signal', room: joinedRoom.current, payload: { sdp: pc.localDescription } }));
+            }
+          } else if (payload?.candidate) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (error) { console.error('Failed to add ICE candidate', error); }
+          }
+        }
+      };
 
-    // Listen for receiver ready
-    const handleReceiverReady = (event: MessageEvent) => {
-      if (typeof event.data === 'string' && JSON.parse(event.data).type === 'transfer_ready') {
-        startChunking();
-        dataChannel.current?.removeEventListener('message', handleReceiverReady as any);
+      socket.onerror = () => setStatus('error');
+      socket.onclose = () => { if (status !== 'success') setStatus('disconnected'); };
+    })();
+  }, [cleanup, createOffer, signalingUrl, setupDataChannel, status]);
+
+  useEffect(() => () => { void cleanup(); }, [cleanup]);
+
+  const acceptDownload = useCallback(async () => {
+    const file = incomingFile;
+    const channel = dataChannel.current;
+    if (!file || !channel || channel.readyState !== 'open') return;
+
+    try {
+      if ('showSaveFilePicker' in window) {
+        const extension = file.name.includes('.') ? `.${file.name.split('.').pop()}` : '';
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: file.name,
+          types: [{ description: 'File', accept: { [file.mimeType || 'application/octet-stream']: extension ? [extension] : [] } }],
+        });
+        fileStream.current = await handle.createWritable();
+      } else {
+        throw new Error('This browser does not support direct file saving.');
       }
-    };
-    dataChannel.current.addEventListener('message', handleReceiverReady as any);
-  };
+
+      receivedSize.current = 0;
+      expectedSize.current = file.size;
+      setProgress(0);
+      setStatus('transferring');
+      channel.send(JSON.stringify({ type: 'transfer_ready' }));
+    } catch (error) {
+      console.error('Download cancelled or failed', error);
+      setStatus('ready_to_transfer');
+    }
+  }, [incomingFile]);
+
+  const sendFile = useCallback((file: File) => {
+    const channel = dataChannel.current;
+    if (!channel || channel.readyState !== 'open' || !file) return;
+    senderFile.current = file;
+    senderOffset.current = 0;
+    sending.current = false;
+    setProgress(0);
+    setStatus('waiting_for_receiver_accept');
+    channel.send(JSON.stringify({ type: 'metadata', name: file.name, size: file.size, mimeType: file.type || 'application/octet-stream' }));
+  }, []);
 
   return { init, sendFile, acceptDownload, status, progress, roomCode, incomingFile };
 };
