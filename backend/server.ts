@@ -6,75 +6,102 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// Room codes aur unke connected devices ko store karne ke liye
 const rooms = new Map<string, Set<WebSocket>>();
 
-const generateRoomCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+function generateRoomCode(): string {
+  let code = '';
+  do {
+    code = Math.floor(100000 + Math.random() * 900000).toString();
+  } while (rooms.has(code));
+  return code;
+}
 
-wss.on('connection', (ws) => {
+function broadcastToOthers(sender: WebSocket, room: string, message: unknown): void {
+  const peers = rooms.get(room);
+  if (!peers) return;
+
+  const serialized = JSON.stringify(message);
+  for (const peer of peers) {
+    if (peer !== sender && peer.readyState === WebSocket.OPEN) {
+      peer.send(serialized);
+    }
+  }
+}
+
+wss.on('connection', (ws: WebSocket) => {
   let currentRoom: string | null = null;
 
   ws.on('message', (message) => {
     try {
-      const data = JSON.parse(message.toString());
-      const { type, room, payload } = data;
+      const data = JSON.parse(message.toString()) as {
+        type?: string;
+        room?: unknown;
+        payload?: unknown;
+      };
 
-      switch (type) {
-        case 'create_room':
-          const newRoom = generateRoomCode();
-          rooms.set(newRoom, new Set([ws]));
-          currentRoom = newRoom;
-          ws.send(JSON.stringify({ type: 'room_created', room: newRoom }));
+      switch (data.type) {
+        case 'create_room': {
+          const room = generateRoomCode();
+          rooms.set(room, new Set([ws]));
+          currentRoom = room;
+          ws.send(JSON.stringify({ type: 'room_created', room }));
           break;
+        }
 
-        case 'join_room':
-          if (rooms.has(room) && rooms.get(room)!.size < 2) {
-            rooms.get(room)!.add(ws);
-            currentRoom = room;
-            ws.send(JSON.stringify({ type: 'joined' }));
-            // Sender ko batana ki receiver aa gaya hai
-            broadcastToOthers(ws, currentRoom, { type: 'peer_joined' });
-          } else {
+        case 'join_room': {
+          const room = typeof data.room === 'string' ? data.room : '';
+          const peers = rooms.get(room);
+
+          if (!peers || peers.size >= 2) {
             ws.send(JSON.stringify({ type: 'error', message: 'Room full ya invalid hai' }));
+            break;
           }
-          break;
 
-        case 'signal': // WebRTC connection (Offer, Answer, ICE Candidates)
+          peers.add(ws);
+          currentRoom = room;
+          ws.send(JSON.stringify({ type: 'joined' }));
+          broadcastToOthers(ws, room, { type: 'peer_joined' });
+          break;
+        }
+
+        case 'signal': {
           if (currentRoom) {
-            broadcastToOthers(ws, currentRoom, { type: 'signal', payload });
+            broadcastToOthers(ws, currentRoom, {
+              type: 'signal',
+              payload: data.payload,
+            });
           }
           break;
+        }
       }
-    } catch (e) {
-      console.error('Invalid message');
+    } catch (error) {
+      console.error('Invalid WebSocket message', error);
+      ws.send(JSON.stringify({ type: 'error', message: 'Invalid message' }));
     }
   });
 
   ws.on('close', () => {
-    if (currentRoom && rooms.has(currentRoom)) {
-      rooms.get(currentRoom)!.delete(ws);
-      broadcastToOthers(ws, currentRoom, { type: 'peer_left' });
-      if (rooms.get(currentRoom)!.size === 0) {
-        rooms.delete(currentRoom); // Agar dono chale gaye toh room delete kar do
-      }
+    const room = currentRoom;
+    if (!room) return;
+
+    const peers = rooms.get(room);
+    if (!peers) return;
+
+    peers.delete(ws);
+    broadcastToOthers(ws, room, { type: 'peer_left' });
+
+    if (peers.size === 0) {
+      rooms.delete(room);
     }
+    currentRoom = null;
   });
 });
 
-function broadcastToOthers(sender: WebSocket, room: string, message: any) {
-  const peers = rooms.get(room);
-  if (peers) {
-    peers.forEach(peer => {
-      if (peer !== sender && peer.readyState === WebSocket.OPEN) {
-        peer.send(JSON.stringify(message));
-      }
-    });
-  }
-}
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', service: 'HyperDrop signaling server' });
+});
 
-app.get('/health', (req, res) => res.status(200).send('HyperDrop Signaling Server is Running!'));
-
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => console.log(`Signaling server running on port ${PORT}`));
+const PORT = Number(process.env.PORT) || 8080;
+server.listen(PORT, () => {
+  console.log(`Signaling server running on port ${PORT}`);
+});
