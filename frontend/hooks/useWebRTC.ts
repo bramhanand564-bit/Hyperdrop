@@ -10,9 +10,7 @@ type TransferStats = { speed: number; eta: number; transferred: number; total: n
 const formatIceServers = (): RTCIceServer[] => {
   const servers: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
   const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
-  const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
-  const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
-  if (turnUrl) servers.push({ urls: turnUrl, username: turnUsername, credential: turnCredential });
+  if (turnUrl) servers.push({ urls: turnUrl, username: process.env.NEXT_PUBLIC_TURN_USERNAME, credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL });
   return servers;
 };
 
@@ -30,7 +28,6 @@ export const useWebRTC = (signalingUrl: string) => {
   const listenersReady = useRef(false);
   const transferStartedAt = useRef(0);
   const transferStartedBytes = useRef(0);
-
   const [status, setStatus] = useState('disconnected');
   const [progress, setProgress] = useState(0);
   const [roomCode, setRoomCode] = useState('');
@@ -59,6 +56,8 @@ export const useWebRTC = (signalingUrl: string) => {
     expectedSize.current = 0;
     senderOffset.current = 0;
     listenersReady.current = false;
+    setIncomingFile(null);
+    setProgress(0);
     resetStats();
   }, [resetStats]);
 
@@ -67,7 +66,7 @@ export const useWebRTC = (signalingUrl: string) => {
     sending.current = false;
     senderFile.current = null;
     try { channel?.send(JSON.stringify({ type: 'transfer_cancelled' })); } catch {}
-    try { fileStream.current?.abort(); } catch {}
+    try { void fileStream.current?.abort(); } catch {}
     fileStream.current = null;
     setIncomingFile(null);
     setProgress(0);
@@ -82,25 +81,21 @@ export const useWebRTC = (signalingUrl: string) => {
     }
     const elapsed = Math.max((performance.now() - transferStartedAt.current) / 1000, 0.001);
     const speed = Math.max(0, (transferred - transferStartedBytes.current) / elapsed);
-    const remaining = Math.max(0, total - transferred);
-    setStats({ speed, eta: speed > 0 ? remaining / speed : 0, transferred, total });
+    setStats({ speed, transferred, total, eta: speed > 0 ? Math.max(0, (total - transferred) / speed) : 0 });
   }, []);
 
   const sendNextChunk = useCallback(async () => {
     const channel = dataChannel.current;
     const file = senderFile.current;
     if (!channel || !file || !sending.current || channel.readyState !== 'open') return;
-
     while (sending.current && senderOffset.current < file.size && channel.readyState === 'open' && channel.bufferedAmount <= MAX_BUFFERED_AMOUNT) {
-      const start = senderOffset.current;
-      const chunk = await file.slice(start, start + CHUNK_SIZE).arrayBuffer();
+      const chunk = await file.slice(senderOffset.current, senderOffset.current + CHUNK_SIZE).arrayBuffer();
       if (!sending.current || channel.readyState !== 'open') return;
       channel.send(chunk);
       senderOffset.current += chunk.byteLength;
       setProgress(Math.round((senderOffset.current / file.size) * 100));
       updateStats(senderOffset.current, file.size);
     }
-
     if (senderOffset.current >= file.size && sending.current) {
       sending.current = false;
       channel.send(JSON.stringify({ type: 'transfer_complete' }));
@@ -110,8 +105,6 @@ export const useWebRTC = (signalingUrl: string) => {
   }, [updateStats]);
 
   const setupDataChannel = useCallback((channel: RTCDataChannel) => {
-    if (listenersReady.current && dataChannel.current === channel) return;
-    listenersReady.current = true;
     dataChannel.current = channel;
     channel.binaryType = 'arraybuffer';
     channel.bufferedAmountLowThreshold = LOW_BUFFERED_AMOUNT;
@@ -119,7 +112,6 @@ export const useWebRTC = (signalingUrl: string) => {
     channel.onclose = () => { sending.current = false; setStatus('disconnected'); };
     channel.onerror = () => setStatus('error');
     channel.onbufferedamountlow = () => { void sendNextChunk(); };
-
     channel.onmessage = async (event) => {
       if (typeof event.data === 'string') {
         let data: any;
@@ -143,24 +135,18 @@ export const useWebRTC = (signalingUrl: string) => {
         } else if (data.type === 'transfer_cancelled') {
           sending.current = false;
           senderFile.current = null;
+          try { await fileStream.current?.abort(); } catch {}
+          fileStream.current = null;
           setIncomingFile(null);
+          setProgress(0);
           resetStats();
           setStatus('ready_to_transfer');
         } else if (data.type === 'transfer_complete' && fileStream.current) {
-          try {
-            await fileStream.current.close();
-            fileStream.current = null;
-            setProgress(100);
-            updateStats(expectedSize.current, expectedSize.current);
-            setStatus('success');
-          } catch (error) {
-            console.error('Failed to finalize downloaded file', error);
-            setStatus('error');
-          }
+          try { await fileStream.current.close(); fileStream.current = null; setProgress(100); updateStats(expectedSize.current, expectedSize.current); setStatus('success'); }
+          catch (error) { console.error('Failed to finalize downloaded file', error); setStatus('error'); }
         }
         return;
       }
-
       const chunk = event.data instanceof ArrayBuffer ? event.data : event.data instanceof Blob ? await event.data.arrayBuffer() : null;
       if (!chunk || !fileStream.current || expectedSize.current <= 0) return;
       try {
@@ -201,10 +187,7 @@ export const useWebRTC = (signalingUrl: string) => {
         if (room) socket.send(JSON.stringify({ type: 'signal', room, payload: { candidate: event.candidate } }));
       };
       pc.ondatachannel = (event) => setupDataChannel(event.channel);
-      socket.onopen = () => {
-        if (roomToJoin) { setRoomCode(roomToJoin); socket.send(JSON.stringify({ type: 'join_room', room: roomToJoin })); }
-        else socket.send(JSON.stringify({ type: 'create_room' }));
-      };
+      socket.onopen = () => { if (roomToJoin) { setRoomCode(roomToJoin); socket.send(JSON.stringify({ type: 'join_room', room: roomToJoin })); } else socket.send(JSON.stringify({ type: 'create_room' })); };
       socket.onmessage = async (message) => {
         let data: any;
         try { data = JSON.parse(message.data); } catch { return; }
@@ -217,20 +200,16 @@ export const useWebRTC = (signalingUrl: string) => {
           const payload = data.payload;
           if (payload?.sdp) {
             await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-            if (payload.sdp.type === 'offer') {
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-              socket.send(JSON.stringify({ type: 'signal', room: joinedRoom.current, payload: { sdp: pc.localDescription } }));
-            }
-          } else if (payload?.candidate) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (error) { console.error('Failed to add ICE candidate', error); }
-          }
+            if (payload.sdp.type === 'offer') { const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); socket.send(JSON.stringify({ type: 'signal', room: joinedRoom.current, payload: { sdp: pc.localDescription } })); }
+          } else if (payload?.candidate) { try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (error) { console.error('Failed to add ICE candidate', error); } }
         }
       };
       socket.onerror = () => setStatus('error');
       socket.onclose = () => setStatus('disconnected');
     })();
   }, [cleanup, createOffer, signalingUrl, setupDataChannel]);
+
+  useEffect(() => () => { void cleanup(); }, [cleanup]);
 
   const acceptDownload = useCallback(async () => {
     const file = incomingFile;
@@ -247,10 +226,7 @@ export const useWebRTC = (signalingUrl: string) => {
       setProgress(0);
       setStatus('transferring');
       channel.send(JSON.stringify({ type: 'transfer_ready' }));
-    } catch (error) {
-      console.error('Download cancelled or failed', error);
-      setStatus('ready_to_transfer');
-    }
+    } catch (error) { console.error('Download cancelled or failed', error); setStatus('ready_to_transfer'); }
   }, [incomingFile, resetStats]);
 
   const sendFile = useCallback((file: File) => {
