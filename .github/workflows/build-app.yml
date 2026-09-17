@@ -14,19 +14,12 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
 
       - name: Build Web App
         working-directory: frontend
@@ -35,6 +28,13 @@ jobs:
           npm install --no-save @capacitor/core@6.1.2 @capacitor/android@6.1.2
           npm install --no-save -D @capacitor/cli@6.1.2
           npm run build
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
 
       - name: Generate Android Project
         working-directory: frontend
