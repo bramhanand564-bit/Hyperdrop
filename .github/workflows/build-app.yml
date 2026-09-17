@@ -38,8 +38,9 @@ jobs:
       - name: Generate Android Project
         working-directory: frontend
         run: |
-          npx cap init HyperDrop com.hyperdrop.app --web-dir out
-          npx cap add android
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
           npx cap sync android
 
       - name: Build Android Debug APK
