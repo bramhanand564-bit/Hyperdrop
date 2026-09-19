@@ -7,6 +7,7 @@ class ToolCall:
     tool: str
     arguments: dict[str, Any] = field(default_factory=dict)
     task_id: str = ""
+    confirmed: bool = False
 
 @dataclass(frozen=True)
 class ToolOutcome:
