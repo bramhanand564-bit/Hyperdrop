@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application android:theme="@style/AppTheme" android:label="Hyperdrop">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
@@ -7,5 +8,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-    <service android:name=".HyperdropForegroundService" android:exported="false" />\n    </application>
+        <service android:name=".HyperdropForegroundService" android:exported="false" />
+    </application>
 </manifest>
