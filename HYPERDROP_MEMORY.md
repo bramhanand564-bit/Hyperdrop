@@ -74,7 +74,7 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Next: compose the real provider, LiveOrchestrator, ExecutionEngine and JobQueue into one runtime; then add Android implementation/build wiring and stronger memory retrieval. User-facing design rule: research is internal; return the useful result directly when possible.
+V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger retrieval, richer tools, browser/computer hands, and production-grade long-running workers. User-facing design rule: research is internal; return the useful result directly when possible.
 
 ## REPO STRUCTURE CREATED
 - README.md
@@ -109,3 +109,4 @@ Next: compose the real provider, LiveOrchestrator, ExecutionEngine and JobQueue 
 - 2026-09-19: Added ToolRegistry, default-deny PermissionStore, checkpointed TaskRunner, runtime lifecycle/config, HyperdropRuntime composition, Android runtime architecture docs.
 - 2026-09-19: Added permission-aware ExecutionEngine, provider factory/config, fast knowledge gate, runtime health snapshot, and unified LiveOrchestrator with end-to-end test.
 - 2026-09-19: Added retry/handoff recovery policy, memory decay/archive policy, background Job/JobQueue primitives, and Android bridge command/event contract.
+- 2026-09-19: Completed V0.1 end-to-end runtime wiring and acceptance suite. V0.1 is now marked COMPLETE; V0.2 begins with Android implementation and stronger tool/retrieval layers.
