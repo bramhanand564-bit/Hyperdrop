@@ -15,7 +15,7 @@ class TaskStore(context: Context) {
     fun save(state: TaskState) {
         prefs.edit()
             .putString(state.taskId + ".state", state.state)
-            .putFloat(state.taskId + ".progress", state.progress)
+            .putFloat(state.taskId + ".progress", state.progress.coerceIn(0f, 1f))
             .putString(state.taskId + ".message", state.message)
             .apply()
     }
@@ -29,5 +29,15 @@ class TaskStore(context: Context) {
             prefs.getFloat(taskId + ".progress", 0f),
             prefs.getString(taskId + ".message", "") ?: ""
         )
+    }
+
+    fun update(taskId: String, state: String, progress: Float, message: String): TaskState {
+        val next = (load(taskId) ?: TaskState(taskId, state, 0f)).copy(
+            state = state,
+            progress = progress.coerceIn(0f, 1f),
+            message = message
+        )
+        save(next)
+        return next
     }
 }
