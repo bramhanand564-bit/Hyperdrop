@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: EMPTY (no files yet)
+- Current repo state: Initial V0.1 structure created.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -22,7 +22,7 @@ Build a persistent, human-inspired "Living AGI" agent:
 - Human cognition is design inspiration, not a claim of literal brain/consciousness replication.
 
 ## COGNITIVE MODEL
-Inspired (conceptually) by Hindu philosophical psychology:
+Inspired conceptually by Hindu philosophical psychology:
 - Manas: perception, possibilities, doubt, curiosity.
 - Buddhi: discrimination, reasoning, decision.
 - Ahamkara: self/identity/goals.
@@ -54,10 +54,10 @@ Memory policy:
 3. Research engine: search → read → compare → verify → answer
 4. Memory + compression/forgetting
 5. Planner + tool system
-6. Browser/computer-use "hands": open, navigate, click, type, scroll, upload/download, forms.
-7. Long-running task manager: checkpoints + resume for multi-hour tasks.
-8. Learn from successful/failed actions.
-9. Android APK.
+6. Browser/computer-use "hands"
+7. Long-running task manager: checkpoints + resume
+8. Learn from successful/failed actions
+9. Android APK
 10. Later: model fine-tuning/training from curated experiences.
 
 ## SAFETY
@@ -74,7 +74,19 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Create the initial Hyperdrop project structure and minimal V0.1 architecture in the empty repository. Keep changes small and testable.
+Implement the first small V0.1 contracts: task state, evidence record, confidence, and memory record. Then build the knowledge-gap/research decision loop around them.
+
+## REPO STRUCTURE CREATED
+- README.md
+- docs/ARCHITECTURE.md
+- core/mind/README.md
+- core/memory/README.md
+- core/research/README.md
+- core/verification/README.md
+- core/planner/README.md
+- core/agent/README.md
+- core/learning/README.md
+- android/README.md
 
 ## CHANGE LOG
 - 2026-09-19: Project vision and architecture discussed.
@@ -82,4 +94,5 @@ Create the initial Hyperdrop project structure and minimal V0.1 architecture in 
 - 2026-09-19: Confirmed GitHub + Android phone are the initial development setup.
 - 2026-09-19: Confirmed adaptive memory/forgetting is a core requirement.
 - 2026-09-19: Confirmed browser/computer-use and long-running task execution as future core capabilities.
-- 2026-09-19: Created this handoff memory file.
+- 2026-09-19: Created persistent handoff memory file.
+- 2026-09-19: Created initial V0.1 repository structure and architecture docs.
