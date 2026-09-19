@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: V0.1 structure, core contracts, decision policy, executable HyperMind decision primitive, knowledge states, conversational behavior profile, Task routing, research planning, evidence, basic verification, and provider-independent research engine created.
+- Current repo state: V0.1 structure, core contracts, decision policy, executable HyperMind decision primitive, knowledge states, Baymax-inspired conversational behavior, Task routing, research planning, evidence, basic verification, provider-independent research engine, and fast conversation-to-research loop created.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -74,7 +74,7 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Next: connect a real web search provider, turn results into Evidence records, then generate the natural conversational response and memory write.
+Next: connect a real web search provider and page reader, turn results into Evidence records, verify provenance/contradictions, then add the final-answer + memory-write path. User-facing design rule: do not make the user wait with 'I will find out'; perform tool research internally and return the answer in the same turn when possible.
 
 ## REPO STRUCTURE CREATED
 - README.md
@@ -102,3 +102,4 @@ Next: connect a real web search provider, turn results into Evidence records, th
 - 2026-09-19: Added Task contract and HyperMind task router connecting knowledge-gap decisions to task state.
 - 2026-09-19: Added research-plan, Evidence contract, basic evidence verification, and tests.
 - 2026-09-19: Added provider-independent ResearchEngine and SearchProvider interface with tests.
+- 2026-09-19: Added ConversationLoop and ResponsePolicy so unknown questions trigger internal research without a mandatory user-facing waiting message; task resumes in ANSWERING state.
