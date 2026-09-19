@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: V0.1 structure, cognitive/task contracts, knowledge-state routing, Baymax-inspired behavior, research planning, real web-search adapter, bounded page reader, Evidence conversion, provenance verification, contradiction detection, verified research pipeline, compact answer builder, and compressed Lesson preparation, persistent MemoryStore/MemoryManager, LiveController, checkpoints, reflection, memory relevance/forgetting policy, ToolRegistry, permissions, TaskRunner, runtime lifecycle/configuration, and Android runtime architecture.
+- Current repo state: V0.1 structure, cognitive/task contracts, knowledge-state routing, Baymax-inspired behavior, research planning, real web-search adapter, bounded page reader, Evidence conversion, provenance verification, contradiction detection, verified research pipeline, compact answer builder, and compressed Lesson preparation, persistent MemoryStore/MemoryManager, LiveController, checkpoints, reflection, memory relevance/forgetting policy, ToolRegistry, permissions, TaskRunner, runtime lifecycle/configuration, ExecutionEngine, provider factory, knowledge gate, health snapshot, LiveOrchestrator, and Android runtime architecture.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -74,7 +74,7 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Next: connect LiveController to checkpointed TaskRunner and ToolRegistry, add a real provider-backed integration path, then package the Android shell. User-facing design rule: research is internal; return the useful result directly when possible.
+Next: connect the provider-backed search and ExecutionEngine into a single runtime composition, add Android background/task APIs, then harden memory retrieval and long-running recovery. User-facing design rule: research is internal; return the useful result directly when possible.
 
 ## REPO STRUCTURE CREATED
 - README.md
@@ -106,4 +106,5 @@ Next: connect LiveController to checkpointed TaskRunner and ToolRegistry, add a 
 - 2026-09-19: Added Brave Search adapter, bounded page reader, search-result-to-Evidence conversion, provenance-aware verification, VerifiedResearchEngine, and compact verified AnswerDraft builder.
 - 2026-09-19: Added contradiction detection, compressed Lesson representation, and end-to-end ResearchAnswerPipeline that refuses to turn conflicting evidence into a confident fact and prepares useful verified lessons for memory.
 - 2026-09-19: Added persistent JSON MemoryStore, MemoryManager confidence gate, LiveController, long-running CheckpointStore, Reflection records, and relevance/forgetting policy.
-- 2026-09-19: Added ToolRegistry, default-deny PermissionStore, checkpointed TaskRunner, runtime lifecycle/config, HyperdropRuntime composition, and Android runtime architecture docs.
+- 2026-09-19: Added ToolRegistry, default-deny PermissionStore, checkpointed TaskRunner, runtime lifecycle/config, HyperdropRuntime composition, Android runtime architecture docs.
+- 2026-09-19: Added permission-aware ExecutionEngine, provider factory/config, fast knowledge gate, runtime health snapshot, and unified LiveOrchestrator with end-to-end test.
