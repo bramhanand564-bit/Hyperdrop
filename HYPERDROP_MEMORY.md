@@ -95,6 +95,8 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 
 - 2026-09-20: V0.3 next batch: Android task state now persists locally across activity/process lifecycle via TaskStore; TaskController uses task IDs consistently for start/pause/resume/stop. Latest commit was checked for CI/APK status; GitHub returned no observable workflow runs/statuses, so build success remains unverified.
 
+- 2026-09-20: V0.3 runtime persistence batch: Android foreground service now writes start/pause/resume/stop/kill transitions into TaskStore, notifications expose persisted task progress/state, TaskStore clamps progress and provides an update helper, and TaskController uses the same persistence path. This keeps Android task state aligned across service/activity process boundaries; real APK CI remains unverified until an observable GitHub Actions run/status exists.
+
 ## CHANGE LOG
 - 2026-09-19: Project vision and architecture discussed.
 - 2026-09-19: Confirmed target repo is Hyperdrop, not Hyperdropv2.
