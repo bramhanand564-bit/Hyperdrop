@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class RuntimeConfig:
+    provider: str = "brave"
     memory_path: str = "data/memory.json"
     checkpoint_path: str = "data/checkpoints.json"
     max_research_results: int = 5
