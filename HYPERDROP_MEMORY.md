@@ -91,6 +91,8 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 
 - 2026-09-19: V0.2 completion push: browser layer now has observable action results and validated dry-run execution; runtime composition now exposes audited ToolRuntime. Remaining gap is provider-specific real browser automation and externally observed CI/APK runs.
 
+- 2026-09-20: V0.3 started: Android foreground runtime now accepts start/pause/resume/stop/kill commands, exposes a basic start/kill UI, and declares Android 14 foreground-service data-sync + notification permissions. APK CI now verifies the debug APK exists and records its SHA-256 before artifact upload. Real CI execution still must be observed from GitHub.
+
 ## CHANGE LOG
 - 2026-09-19: Project vision and architecture discussed.
 - 2026-09-19: Confirmed target repo is Hyperdrop, not Hyperdropv2.
