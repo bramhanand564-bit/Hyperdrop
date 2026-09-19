@@ -1,6 +1,8 @@
 # HyperMind
 
-Placeholder for the V0.1 cognitive controller.
+V0.1 now contains an executable knowledge-gap decision primitive in `decision.py`.
+
+Decision outputs are `answer` or `research`.
 
 Responsibilities:
 - understand goals
