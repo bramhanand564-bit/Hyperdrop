@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-
 from core.agent.persistent_queue import DurableJob, SQLiteJobStore
 from core.agent.task_planner import TaskPlanner
 from core.agent.tool_runtime import ToolRuntime
@@ -12,25 +11,23 @@ class LoopResult:
     completed_steps: int
 
 class AgentLoop:
-    """Plan -> permissioned execution -> durable checkpoint between steps."""
-
+    """Plan -> permissioned execution -> durable progress between steps."""
     def __init__(self, queue: SQLiteJobStore, runtime: ToolRuntime):
-        self.queue = queue
-        self.runtime = runtime
-        self.planner = TaskPlanner()
+        self.queue, self.runtime, self.planner = queue, runtime, TaskPlanner()
 
-    def run(self, task: Task, *, research: bool = False) -> LoopResult:
+    def run(self, task: Task, *, research=False) -> LoopResult:
         plan = self.planner.plan(task, research=research)
         job = self.queue.next()
         if job is None:
-            job = DurableJob(task.id, task.id, {"steps": len(plan.steps)})
-            self.queue.put(job)
+            self.queue.put(DurableJob(task.id, task.id, {"steps": len(plan.steps)}))
             job = self.queue.next()
         done = 0
-        for step in plan.steps:
-            if step.tool_name:
-                self.runtime.execute(step.tool_name, step.args, task.id)
+        for call in self.planner.to_tool_calls(plan, task.id):
+            outcome = self.runtime.call(call)
+            if not outcome.success:
+                self.queue.update(DurableJob(job.id, job.task_id, {"steps": len(plan.steps), "done": done}, "paused", done/max(1,len(plan.steps))))
+                return LoopResult(task.id, "paused", done)
             done += 1
-            self.queue.update(DurableJob(job.id, job.task_id, {"steps": len(plan.steps), "done": done}, "paused", done/len(plan.steps)))
+            self.queue.update(DurableJob(job.id, job.task_id, {"steps": len(plan.steps), "done": done}, "paused", done/max(1,len(plan.steps))))
         self.queue.complete(job.id)
-        return LoopResult(task.id, "completed", done)
+        return LoopResult(task.id, "completed", len(plan.steps))
