@@ -28,6 +28,13 @@ class SQLiteJobStore:
                        (job.id, job.task_id, json.dumps(job.payload), job.status, job.progress))
             db.commit()
 
+    def get(self, job_id: str) -> DurableJob | None:
+        with sqlite3.connect(self.path) as db:
+            row = db.execute("SELECT id,task_id,payload,status,progress FROM jobs WHERE id=?", (job_id,)).fetchone()
+        if not row:
+            return None
+        return DurableJob(row[0], row[1], json.loads(row[2]), row[3], row[4])
+
     def next(self) -> DurableJob | None:
         with sqlite3.connect(self.path) as db:
             row = db.execute(
