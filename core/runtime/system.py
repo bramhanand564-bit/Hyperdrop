@@ -1,4 +1,4 @@
-"""Compose and run the complete V0.1 Hyperdrop runtime."""
+"""Compose and run the complete Hyperdrop runtime."""
 from core.agent.checkpoint import CheckpointStore
 from core.agent.executor import ExecutionEngine
 from core.agent.permissions import PermissionStore
@@ -6,20 +6,21 @@ from core.agent.task_runner import TaskRunner
 from core.agent.tool_registry import ToolRegistry
 from core.contracts.task import Task, TaskStatus
 from core.memory.memory_manager import MemoryManager
-from core.memory.store import MemoryStore\nfrom core.memory.sqlite_store import SQLiteMemoryStore
+from core.memory.store import MemoryStore
+from core.memory.sqlite_store import SQLiteMemoryStore
 from core.mind.live_controller import LiveController, LiveResult
 from core.research.engine import ResearchEngine
 from core.research.provider_factory import create_search_provider
 from core.runtime.config import RuntimeConfig
 from core.runtime.lifecycle import Lifecycle
 
-
 class HyperdropRuntime:
     def __init__(self, config: RuntimeConfig | None = None):
         self.config = config or RuntimeConfig()
         self.lifecycle = Lifecycle()
         self.permissions = PermissionStore()
-        memory_store = SQLiteMemoryStore(self.config.memory_path) if self.config.memory_backend == "sqlite" else MemoryStore(self.config.memory_path)\n        self.memory = MemoryManager(memory_store)
+        memory_store = SQLiteMemoryStore(self.config.memory_path) if self.config.memory_backend == "sqlite" else MemoryStore(self.config.memory_path)
+        self.memory = MemoryManager(memory_store)
         self.checkpoints = CheckpointStore(self.config.checkpoint_path)
         self.tasks = TaskRunner(self.checkpoints)
         self.tools = ToolRegistry()
