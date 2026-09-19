@@ -7,8 +7,7 @@ class TaskController(context: Context) {
     private val store = TaskStore(context)
 
     fun start(taskId: String, goal: String): TaskState {
-        val state = TaskState(taskId, "queued", 0f, goal)
-        store.save(state)
+        val state = store.update(taskId, "queued", 0f, goal)
         bridge.startTask(taskId)
         return state
     }
