@@ -21,8 +21,11 @@ class HyperdropForegroundService : Service() {
         private const val NOTIFICATION_ID = 1001
     }
 
+    private lateinit var taskStore: TaskStore
+
     override fun onCreate() {
         super.onCreate()
+        taskStore = TaskStore(this)
         createChannel()
         startForeground(NOTIFICATION_ID, notification("Runtime active"))
     }
@@ -30,17 +33,34 @@ class HyperdropForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val taskId = intent?.getStringExtra(EXTRA_TASK_ID).orEmpty()
         when (intent?.action) {
-            ACTION_START -> RuntimeState.start(taskId)
-            ACTION_PAUSE -> RuntimeState.pause(taskId)
-            ACTION_RESUME -> RuntimeState.resume(taskId)
-            ACTION_STOP -> RuntimeState.stop(taskId)
-            ACTION_KILL -> { RuntimeState.kill(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
+            ACTION_START -> updateTask(taskId, "running", 0f, "Runtime started")
+            ACTION_PAUSE -> updateTask(taskId, "paused", currentProgress(taskId), "Runtime paused")
+            ACTION_RESUME -> updateTask(taskId, "running", currentProgress(taskId), "Runtime resumed")
+            ACTION_STOP -> updateTask(taskId, "stopped", currentProgress(taskId), "Runtime stopped")
+            ACTION_KILL -> {
+                if (taskId.isNotBlank()) updateTask(taskId, "killed", currentProgress(taskId), "Runtime killed")
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
         if (intent?.action != ACTION_KILL) {
-            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(RuntimeState.summary()))
+            val stored = if (taskId.isBlank()) null else taskStore.load(taskId)
+            val summary = stored?.let {
+                "${it.state}: ${it.taskId} (${(it.progress * 100).toInt()}%)"
+            } ?: RuntimeState.summary()
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(summary))
         }
         return START_STICKY
     }
+
+    private fun updateTask(taskId: String, state: String, progress: Float, message: String) {
+        if (taskId.isBlank()) return
+        taskStore.update(taskId, state, progress, message)
+        RuntimeState.set(taskId, state)
+    }
+
+    private fun currentProgress(taskId: String): Float = taskStore.load(taskId)?.progress ?: 0f
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -69,10 +89,11 @@ class HyperdropForegroundService : Service() {
 private object RuntimeState {
     private var state = "idle"
     private var taskId = ""
-    fun start(id: String) { taskId=id; state="running" }
-    fun pause(id: String) { taskId=id; state="paused" }
-    fun resume(id: String) { taskId=id; state="running" }
-    fun stop(id: String) { taskId=id; state="stopped" }
-    fun kill() { taskId=""; state="killed" }
-    fun summary(): String = if (taskId.isBlank()) "Runtime " + state else state + ": " + taskId
+
+    fun set(id: String, nextState: String) {
+        taskId = id
+        state = nextState
+    }
+
+    fun summary(): String = if (taskId.isBlank()) "Runtime $state" else "$state: $taskId"
 }
