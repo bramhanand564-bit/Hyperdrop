@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: V0.1 structure, core contracts, decision policy, knowledge states, Baymax-inspired behavior, Task routing, research planning, evidence, provenance verification, provider-independent research engine, real web search adapter, page reader, verified research pipeline, and compact answer builder created.
+- Current repo state: V0.1 structure, cognitive/task contracts, knowledge-state routing, Baymax-inspired behavior, research planning, real web-search adapter, bounded page reader, Evidence conversion, provenance verification, contradiction detection, verified research pipeline, compact answer builder, and compressed Lesson preparation.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -74,7 +74,7 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Next: connect a real web search provider and page reader, turn results into Evidence records, verify provenance/contradictions, then add the final-answer + memory-write path. User-facing design rule: do not make the user wait with 'I will find out'; perform tool research internally and return the answer in the same turn when possible.
+Next: make memory persistence/storage real, then connect the end-to-end pipeline to the Task/ConversationLoop and add a provider-backed integration test. User-facing design rule: research is internal; return the useful result directly when possible.
 
 ## REPO STRUCTURE CREATED
 - README.md
@@ -104,3 +104,4 @@ Next: connect a real web search provider and page reader, turn results into Evid
 - 2026-09-19: Added provider-independent ResearchEngine and SearchProvider interface with tests.
 - 2026-09-19: Added ConversationLoop and ResponsePolicy so unknown questions trigger internal research without a mandatory user-facing waiting message; task resumes in ANSWERING state.
 - 2026-09-19: Added Brave Search adapter, bounded page reader, search-result-to-Evidence conversion, provenance-aware verification, VerifiedResearchEngine, and compact verified AnswerDraft builder.
+- 2026-09-19: Added contradiction detection, compressed Lesson representation, and end-to-end ResearchAnswerPipeline that refuses to turn conflicting evidence into a confident fact and prepares useful verified lessons for memory.
