@@ -1,8 +1,4 @@
-"""Provider-neutral browser/computer-use hand contract.
-
-This layer describes actions; it does not perform real browser automation yet.
-Sensitive operations remain confirmation-gated.
-"""
+"""Provider-neutral browser/computer-use hand contract with observable results."""
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -27,3 +23,12 @@ def validate_plan(plan: BrowserPlan)->None:
     for step in plan.steps:
         if step.action in {BrowserAction.LOGIN,BrowserAction.UPLOAD,BrowserAction.DOWNLOAD} and not step.sensitive:
             raise ValueError("sensitive browser actions must be marked sensitive")
+
+@dataclass(frozen=True)
+class BrowserObservation:
+    action: BrowserAction
+    success: bool
+    message: str = ""
+    url: str = ""
+    text: str = ""
+    data: dict = field(default_factory=dict)
