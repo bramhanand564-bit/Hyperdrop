@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: Initial V0.1 structure created.
+- Current repo state: Initial V0.1 structure plus core contracts and HyperMind decision policy created.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -74,7 +74,7 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Implement the first small V0.1 contracts: task state, evidence record, confidence, and memory record. Then build the knowledge-gap/research decision loop around them.
+Next: implement executable V0.1 logic for task creation and the knowledge-gap/research decision loop, with tests.
 
 ## REPO STRUCTURE CREATED
 - README.md
@@ -96,3 +96,4 @@ Implement the first small V0.1 contracts: task state, evidence record, confidenc
 - 2026-09-19: Confirmed browser/computer-use and long-running task execution as future core capabilities.
 - 2026-09-19: Created persistent handoff memory file.
 - 2026-09-19: Created initial V0.1 repository structure and architecture docs.
+- 2026-09-19: Added Task, Evidence, Memory contracts and an explicit HyperMind research decision policy.
