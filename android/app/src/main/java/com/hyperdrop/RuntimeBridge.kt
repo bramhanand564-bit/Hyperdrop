@@ -5,13 +5,13 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 
 class RuntimeBridge(private val context: Context? = null) {
-    fun startTask(goal: String): String = command(HyperdropForegroundService.ACTION_START, goal)
+    fun startTask(taskId: String): String = command(HyperdropForegroundService.ACTION_START, taskId)
     fun pauseTask(taskId: String): String = command(HyperdropForegroundService.ACTION_PAUSE, taskId)
     fun resumeTask(taskId: String): String = command(HyperdropForegroundService.ACTION_RESUME, taskId)
     fun stopTask(taskId: String): String = command(HyperdropForegroundService.ACTION_STOP, taskId)
     fun status(taskId: String): String = "get_task_status:" + taskId
     fun killRuntime(): String {
-        context?.let { it.startService(Intent(it, HyperdropForegroundService::class.java).setAction(HyperdropForegroundService.ACTION_KILL)) }
+        context?.startService(Intent(context, HyperdropForegroundService::class.java).setAction(HyperdropForegroundService.ACTION_KILL))
         return "kill_runtime"
     }
     private fun command(action: String, id: String): String {
