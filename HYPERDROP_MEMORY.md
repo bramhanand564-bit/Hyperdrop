@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: V0.1 structure, cognitive/task contracts, knowledge-state routing, Baymax-inspired behavior, research planning, real web-search adapter, bounded page reader, Evidence conversion, provenance verification, contradiction detection, verified research pipeline, compact answer builder, and compressed Lesson preparation, persistent MemoryStore/MemoryManager, LiveController, checkpoints, reflection, memory relevance/forgetting policy, ToolRegistry, permissions, TaskRunner, runtime lifecycle/configuration, ExecutionEngine, provider factory, knowledge gate, health snapshot, LiveOrchestrator, recovery policy, memory decay, background Job/Queue, and Android bridge contract.
+- Current repo state: V0.2 foundation started: SQLite-backed memory, durable background worker, tool-call/audit contracts, and Android app shell added on top of the V0.1 runtime. V0.1 structure, cognitive/task contracts, knowledge-state routing, Baymax-inspired behavior, research planning, real web-search adapter, bounded page reader, Evidence conversion, provenance verification, contradiction detection, verified research pipeline, compact answer builder, and compressed Lesson preparation, persistent MemoryStore/MemoryManager, LiveController, checkpoints, reflection, memory relevance/forgetting policy, ToolRegistry, permissions, TaskRunner, runtime lifecycle/configuration, ExecutionEngine, provider factory, knowledge gate, health snapshot, LiveOrchestrator, recovery policy, memory decay, background Job/Queue, and Android bridge contract.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -109,4 +109,4 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 - 2026-09-19: Added ToolRegistry, default-deny PermissionStore, checkpointed TaskRunner, runtime lifecycle/config, HyperdropRuntime composition, Android runtime architecture docs.
 - 2026-09-19: Added permission-aware ExecutionEngine, provider factory/config, fast knowledge gate, runtime health snapshot, and unified LiveOrchestrator with end-to-end test.
 - 2026-09-19: Added retry/handoff recovery policy, memory decay/archive policy, background Job/JobQueue primitives, and Android bridge command/event contract.
-- 2026-09-19: Completed V0.1 end-to-end runtime wiring and acceptance suite. V0.1 is now marked COMPLETE; V0.2 begins with Android implementation and stronger tool/retrieval layers.
+- 2026-09-19: Completed V0.1 end-to-end runtime wiring and acceptance suite. V0.1 is marked COMPLETE; V0.2 foundation started with SQLite memory, durable JobWorker, ToolCall/ToolOutcome contracts, JSONL audit logging, and an Android app shell. Added focused tests for the new components.
