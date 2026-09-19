@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: V0.1 structure, core contracts, decision policy, executable HyperMind decision primitive, knowledge states, conversational behavior profile, Task routing, research planning, evidence, and basic verification created.
+- Current repo state: V0.1 structure, core contracts, decision policy, executable HyperMind decision primitive, knowledge states, conversational behavior profile, Task routing, research planning, evidence, basic verification, and provider-independent research engine created.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -74,7 +74,7 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Next: connect the research planner to a real search provider, collect evidence, verify it, then generate the natural conversational response and memory write.
+Next: connect a real web search provider, turn results into Evidence records, then generate the natural conversational response and memory write.
 
 ## REPO STRUCTURE CREATED
 - README.md
@@ -101,3 +101,4 @@ Next: connect the research planner to a real search provider, collect evidence, 
 - 2026-09-19: Added Baymax-inspired calm/helpful/honest conversational behavior profile and explicit KNOWN/UNKNOWN/UNCERTAIN/CONFLICTING/LEARNED knowledge states.
 - 2026-09-19: Added Task contract and HyperMind task router connecting knowledge-gap decisions to task state.
 - 2026-09-19: Added research-plan, Evidence contract, basic evidence verification, and tests.
+- 2026-09-19: Added provider-independent ResearchEngine and SearchProvider interface with tests.
