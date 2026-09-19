@@ -4,6 +4,8 @@ from core.agent.executor import ExecutionEngine
 from core.agent.permissions import PermissionStore
 from core.agent.task_runner import TaskRunner
 from core.agent.tool_registry import ToolRegistry
+from core.agent.tool_runtime import ToolRuntime
+from core.agent.audit import AuditLog
 from core.contracts.task import Task, TaskStatus
 from core.memory.memory_manager import MemoryManager
 from core.memory.store import MemoryStore
@@ -24,6 +26,8 @@ class HyperdropRuntime:
         self.checkpoints = CheckpointStore(self.config.checkpoint_path)
         self.tasks = TaskRunner(self.checkpoints)
         self.tools = ToolRegistry()
+        self.audit = AuditLog()
+        self.tool_runtime = ToolRuntime(self.tools, self.permissions, self.audit)
         self.executor = ExecutionEngine(self.tools, self.permissions, self.tasks)
         self.research_engine = ResearchEngine(create_search_provider(self.config.provider))
         self.controller = LiveController(self.research_engine, self.memory)
