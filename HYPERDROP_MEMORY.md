@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: V0.1 structure, cognitive/task contracts, knowledge-state routing, Baymax-inspired behavior, research planning, real web-search adapter, bounded page reader, Evidence conversion, provenance verification, contradiction detection, verified research pipeline, compact answer builder, and compressed Lesson preparation.
+- Current repo state: V0.1 structure, cognitive/task contracts, knowledge-state routing, Baymax-inspired behavior, research planning, real web-search adapter, bounded page reader, Evidence conversion, provenance verification, contradiction detection, verified research pipeline, compact answer builder, and compressed Lesson preparation, persistent MemoryStore/MemoryManager, LiveController, checkpoints, reflection, and memory relevance/forgetting policy.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -74,7 +74,7 @@ Memory policy:
 - Do not assume consciousness.
 
 ## CURRENT NEXT ACTION
-Next: make memory persistence/storage real, then connect the end-to-end pipeline to the Task/ConversationLoop and add a provider-backed integration test. User-facing design rule: research is internal; return the useful result directly when possible.
+Next: wire long-running checkpoints into LiveController, add richer memory search/decay, then build the Android/runtime shell. User-facing design rule: research is internal; return the useful result directly when possible.
 
 ## REPO STRUCTURE CREATED
 - README.md
@@ -105,3 +105,4 @@ Next: make memory persistence/storage real, then connect the end-to-end pipeline
 - 2026-09-19: Added ConversationLoop and ResponsePolicy so unknown questions trigger internal research without a mandatory user-facing waiting message; task resumes in ANSWERING state.
 - 2026-09-19: Added Brave Search adapter, bounded page reader, search-result-to-Evidence conversion, provenance-aware verification, VerifiedResearchEngine, and compact verified AnswerDraft builder.
 - 2026-09-19: Added contradiction detection, compressed Lesson representation, and end-to-end ResearchAnswerPipeline that refuses to turn conflicting evidence into a confident fact and prepares useful verified lessons for memory.
+- 2026-09-19: Added persistent JSON MemoryStore, MemoryManager confidence gate, LiveController, long-running CheckpointStore, Reflection records, and relevance/forgetting policy.
