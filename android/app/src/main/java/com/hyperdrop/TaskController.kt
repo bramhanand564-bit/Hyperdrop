@@ -1,15 +1,27 @@
 package com.hyperdrop
 
-class TaskController(private val bridge: RuntimeBridge = RuntimeBridge()) {
-    fun start(taskId: String, goal: String): TaskState =
-        TaskState(taskId, "queued", 0f, bridge.startTask(goal))
+import android.content.Context
 
-    fun pause(taskId: String): TaskState =
-        TaskState(taskId, "paused", 0f, bridge.pauseTask(taskId))
+class TaskController(context: Context) {
+    private val bridge = RuntimeBridge(context)
+    private val store = TaskStore(context)
 
-    fun resume(taskId: String): TaskState =
-        TaskState(taskId, "running", 0f, bridge.resumeTask(taskId))
+    fun start(taskId: String, goal: String): TaskState {
+        val state = TaskState(taskId, "queued", 0f, goal)
+        store.save(state)
+        bridge.startTask(taskId)
+        return state
+    }
 
-    fun stop(taskId: String): TaskState =
-        TaskState(taskId, "stopped", 0f, bridge.stopTask(taskId))
+    fun pause(taskId: String): TaskState = transition(taskId, "paused") { bridge.pauseTask(taskId) }
+    fun resume(taskId: String): TaskState = transition(taskId, "running") { bridge.resumeTask(taskId) }
+    fun stop(taskId: String): TaskState = transition(taskId, "stopped") { bridge.stopTask(taskId) }
+    fun load(taskId: String): TaskState? = store.load(taskId)
+
+    private fun transition(taskId: String, state: String, command: () -> String): TaskState {
+        val current = store.load(taskId) ?: TaskState(taskId, state, 0f)
+        val next = current.copy(state = state, message = command())
+        store.save(next)
+        return next
+    }
 }
