@@ -1,6 +1,6 @@
 """Task resume policy built on durable job state."""
 from dataclasses import dataclass
-from core.agent.persistent_queue import SQLiteJobStore, DurableJob
+from core.agent.persistent_queue import SQLiteJobStore
 
 @dataclass(frozen=True)
 class ResumeDecision:
@@ -9,14 +9,20 @@ class ResumeDecision:
 
 class ResumeManager:
     def __init__(self, store: SQLiteJobStore):
-        self.store=store
+        self.store = store
 
     def inspect(self, job_id: str) -> ResumeDecision:
-        # Store is intentionally small; resume is permitted for non-completed jobs.
-        job=self.store.next()
+        job = self.store.get(job_id)
         if job is None:
-            return ResumeDecision(False,"no unfinished job")
-        if job.id != job_id:
-            self.store.update(job)
-            return ResumeDecision(False,"requested job not next")
-        return ResumeDecision(job.status in {"running","paused","pending"},"unfinished durable job")
+            return ResumeDecision(False, "job not found")
+        if job.status == "completed":
+            return ResumeDecision(False, "job already completed")
+        if job.status not in {"running", "paused", "pending"}:
+            return ResumeDecision(False, f"job is {job.status}")
+        return ResumeDecision(True, "unfinished durable job")
+
+    def load(self, job_id: str):
+        decision = self.inspect(job_id)
+        if not decision.resumable:
+            return None
+        return self.store.get(job_id)
