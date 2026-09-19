@@ -89,6 +89,8 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 
 - 2026-09-19: V0.2 execution/resume hardening: SQLiteJobStore gained direct non-consuming job lookup; ResumeManager now inspects and loads a specific durable job without disturbing queue order; added stronger resume tests. Added explicit HandoffRequest/HandoffReason contract for login/OTP/ambiguous/sensitive/confirmation user-controlled steps. ToolCall now carries explicit confirmation state, and ToolRuntime now enforces the centralized credential/permission/confirmation policy before handlers execute, with audit events for denials and confirmation requirements. CI verification was checked on the latest known commit; the commit-scoped workflow-run endpoint returned no runs, so APK/Python success is not claimed until an observable run/status exists.
 
+- 2026-09-19: V0.2 completion push: browser layer now has observable action results and validated dry-run execution; runtime composition now exposes audited ToolRuntime. Remaining gap is provider-specific real browser automation and externally observed CI/APK runs.
+
 ## CHANGE LOG
 - 2026-09-19: Project vision and architecture discussed.
 - 2026-09-19: Confirmed target repo is Hyperdrop, not Hyperdropv2.
