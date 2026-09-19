@@ -93,6 +93,8 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 
 - 2026-09-20: V0.3 started: Android foreground runtime now accepts start/pause/resume/stop/kill commands, exposes a basic start/kill UI, and declares Android 14 foreground-service data-sync + notification permissions. APK CI now verifies the debug APK exists and records its SHA-256 before artifact upload. Real CI execution still must be observed from GitHub.
 
+- 2026-09-20: V0.3 next batch: Android task state now persists locally across activity/process lifecycle via TaskStore; TaskController uses task IDs consistently for start/pause/resume/stop. Latest commit was checked for CI/APK status; GitHub returned no observable workflow runs/statuses, so build success remains unverified.
+
 ## CHANGE LOG
 - 2026-09-19: Project vision and architecture discussed.
 - 2026-09-19: Confirmed target repo is Hyperdrop, not Hyperdropv2.
