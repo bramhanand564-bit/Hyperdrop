@@ -5,7 +5,7 @@
 ## STATUS
 - Repo: bramhanand564-bit/Hyperdrop
 - Branch: main
-- Current repo state: V0.1 structure, core contracts, decision policy, executable HyperMind decision primitive, knowledge states, Baymax-inspired conversational behavior, Task routing, research planning, evidence, basic verification, provider-independent research engine, and fast conversation-to-research loop created.
+- Current repo state: V0.1 structure, core contracts, decision policy, knowledge states, Baymax-inspired behavior, Task routing, research planning, evidence, provenance verification, provider-independent research engine, real web search adapter, page reader, verified research pipeline, and compact answer builder created.
 - Development target: Android phone + GitHub; no PC assumed.
 - Phone target: Vivo Y75 5G, Android 14, Dimensity 700, 8 GB physical RAM + 8 GB extended RAM, 128 GB storage.
 
@@ -103,3 +103,4 @@ Next: connect a real web search provider and page reader, turn results into Evid
 - 2026-09-19: Added research-plan, Evidence contract, basic evidence verification, and tests.
 - 2026-09-19: Added provider-independent ResearchEngine and SearchProvider interface with tests.
 - 2026-09-19: Added ConversationLoop and ResponsePolicy so unknown questions trigger internal research without a mandatory user-facing waiting message; task resumes in ANSWERING state.
+- 2026-09-19: Added Brave Search adapter, bounded page reader, search-result-to-Evidence conversion, provenance-aware verification, VerifiedResearchEngine, and compact verified AnswerDraft builder.
