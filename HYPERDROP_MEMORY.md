@@ -134,3 +134,5 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 - 2026-09-20: Cognitive extraction V0.5 batch 2: added deterministic trajectory quality scoring and rejection of incomplete/generic teacher outputs. Extracted JSONL now carries only the cognitive schema plus quality_score, keeping factual/code-heavy teacher payload out of the distilled dataset. Tests were strengthened for filtering and bounded serialization.
 
 - 2026-09-20: Cognitive Core V0.5 batch 3: added CognitiveProbe generator covering intent, knowledge gaps, decision, verification, compression, and self-correction; deterministic JSONL writing; and a lightweight near-duplicate filter using normalized token fingerprints. Added tests for category coverage, determinism, JSONL output, and deduplication.
+
+- 2026-09-20: Cognitive Core V0.5 batch 4: added teacher batch runner for OpenAI-compatible endpoints, difficulty curriculum grouping/coverage metrics, and reproducible dataset manifest with SHA-256/version/teacher/probe/acceptance metadata. Added pipeline tests.
