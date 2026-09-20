@@ -97,6 +97,8 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 
 - 2026-09-20: V0.3 runtime persistence batch: Android foreground service now writes start/pause/resume/stop/kill transitions into TaskStore, notifications expose persisted task progress/state, TaskStore clamps progress and provides an update helper, and TaskController uses the same persistence path. This keeps Android task state aligned across service/activity process boundaries; real APK CI remains unverified until an observable GitHub Actions run/status exists.
 
+- 2026-09-20: CI/APK verification was explicitly completed and fixed. Commit 5287175 had Android APK failure from duplicate AppTheme resources and Python CI had 6 test failures (browser observation compatibility, memory source_ids JSON tuple handling, and memory retrieval threshold/topic matching). Commit 351c1e fixed those; Python CI passed. APK then exposed JVM target mismatch (Java 1.8 vs Kotlin 17); commit f5ce9b2 fixed Android compileOptions/JVM toolchain. Latest GitHub Actions run for f5ce9b2: Hyperdrop CI SUCCESS and Hyperdrop Android APK SUCCESS; debug APK exists, verified, and uploaded as artifact hyperdrop-debug-apk. APK SHA-256: ebc23019d374381d838e8d83c884cd49b9606767715f7ab5f2753428f3ca1efe.
+
 ## CHANGE LOG
 - 2026-09-19: Project vision and architecture discussed.
 - 2026-09-19: Confirmed target repo is Hyperdrop, not Hyperdropv2.
