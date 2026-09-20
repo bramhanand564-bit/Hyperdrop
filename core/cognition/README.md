@@ -1,39 +1,42 @@
-# Cognitive Extraction Tool
+# Cognitive Core
 
-Cognitive Extraction is a teacher-model distillation utility for Hyperdrop's Buddhi/Core work.
+Hyperdrop's Cognitive Core (Buddhi) is a behavioral-distillation pipeline. It does not claim that reasoning neurons or a clean intelligence layer can be physically separated from an LLM. Instead, an open-source teacher generates reusable cognitive trajectories that are filtered, evaluated, deduplicated, split, and exported for later training.
 
-It does **not** claim to physically separate reasoning neurons from an LLM. Instead it extracts structured cognitive trajectories from an open-source teacher model through an OpenAI-compatible chat endpoint.
+## Target capability
 
-Target signals:
-- intent understanding
-- context interpretation
-- knowledge-gap detection
-- next-action selection
-- evidence requirements
-- information selection
-- compression/synthesis
-- self-correction
-- response strategy
+The core is trained around the reusable sequence:
 
-It deliberately supports payload filtering so factual/code-heavy answer content can be excluded from the training dataset.
+Understand intent/context → detect knowledge gap → choose next action → gather/compare evidence → select relevant information → compress/summarize → self-correct → respond with calibrated uncertainty.
 
-## CLI
+The dataset intentionally avoids copying long factual answers, coding solutions, credentials, or unrelated teacher knowledge into the cognitive target.
 
-```bash
-python -m core.cognition.cognitive_extractor --input examples.jsonl --output cognitive.jsonl
-```
+## Pipeline
 
-For a live teacher endpoint:
+probes → teacher batch → extraction/quality gate → trajectory evaluation → best-of-N selection → deduplication → train/eval split → leakage guard → SFT/LoRA export → held-out benchmark → manifest
 
-```bash
-python -m core.cognition.cognitive_extractor \
-  --input examples.jsonl \
-  --output cognitive.jsonl \
-  --endpoint http://localhost:11434/v1/chat/completions \
-  --model <model-name>
-```
+## Current modules
 
-The tool emits one JSON object per accepted trajectory and never stores API keys in the dataset.
+- cognitive_extractor.py: structured teacher trajectory extraction and deterministic quality filtering.
+- probe_engine.py: six-category probe curriculum.
+- teacher_batch.py: OpenAI-compatible teacher batching.
+- trajectory_evaluator.py: coverage, probe alignment, action, correction and compression scoring.
+- teacher_selector.py: best-of-N selection per probe.
+- deduplicator.py: deterministic near-duplicate removal.
+- dataset_split.py: deterministic train/eval partitioning.
+- dataset_guard.py: exact train/eval leakage check.
+- training_export.py: cognitive-only SFT-style JSONL.
+- train_config.py: reproducible SFT/LoRA configuration contract.
+- train_launcher.py + hf_train.py: optional Hugging Face training backend.
+- benchmark.py: held-out cognitive benchmark runner.
+- benchmark_compare.py: baseline-vs-distilled metric comparison without hard-coding a winner.
+- dataset_manifest.py: SHA-256 and reproducibility metadata.
 
-## Quality filtering
-Each trajectory receives a deterministic quality score. Records with missing core cognition or generic non-answers are rejected. The emitted JSONL contains only the cognitive schema plus `quality_score`, so factual/code-heavy teacher payload fields are discarded.
+## Training
+
+The core repository remains dependency-light. The optional training backend requires transformers, datasets, peft, and accelerate in the execution environment. No model weights or API keys are stored in GitHub by this pipeline.
+
+Example configuration fields:
+
+base_model, train_path, eval_path, output_dir, method, epochs, learning_rate, batch_size, max_length, seed.
+
+A real training run is considered complete only after the model/adaptor artifact is produced and the held-out benchmark is executed.
