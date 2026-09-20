@@ -34,3 +34,6 @@ python -m core.cognition.cognitive_extractor \
 ```
 
 The tool emits one JSON object per accepted trajectory and never stores API keys in the dataset.
+
+## Quality filtering
+Each trajectory receives a deterministic quality score. Records with missing core cognition or generic non-answers are rejected. The emitted JSONL contains only the cognitive schema plus `quality_score`, so factual/code-heavy teacher payload fields are discarded.
