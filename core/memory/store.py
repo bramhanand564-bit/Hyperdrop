@@ -1,8 +1,4 @@
-"""Lightweight persistent semantic/procedural memory store.
-
-V0.1 uses JSON so the prototype stays phone-friendly. The interface can later
-be backed by SQLite/vector search without changing callers.
-"""
+"""Lightweight persistent semantic/procedural memory store."""
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -18,21 +14,28 @@ class MemoryStore:
         if not self.path.exists():
             return []
         data = json.loads(self.path.read_text(encoding="utf-8"))
-        return [Lesson(**item) for item in data]
+        return [
+            Lesson(**{**item, "source_ids": tuple(item.get("source_ids", ()))})
+            for item in data
+        ]
 
     def _save(self, lessons: list[Lesson]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps([asdict(x) for x in lessons], ensure_ascii=False, indent=2), encoding="utf-8")
+        self.path.write_text(
+            json.dumps([asdict(x) for x in lessons], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     def remember(self, lesson: Lesson) -> Lesson:
         lessons = self._load()
+        lesson = lesson.__class__(**{**asdict(lesson), "source_ids": tuple(lesson.source_ids)})
         for i, old in enumerate(lessons):
             if old.topic.casefold() == lesson.topic.casefold():
                 merged = Lesson(
                     topic=old.topic,
                     summary=lesson.summary,
                     confidence=max(old.confidence, lesson.confidence),
-                    source_ids=tuple(dict.fromkeys(old.source_ids + lesson.source_ids)),
+                    source_ids=tuple(dict.fromkeys(tuple(old.source_ids) + tuple(lesson.source_ids))),
                     use_count=old.use_count + 1,
                 )
                 lessons[i] = merged
@@ -43,11 +46,17 @@ class MemoryStore:
         return lesson
 
     def recall(self, query: str, limit: int = 5) -> list[Lesson]:
+        query_cf = query.casefold().strip()
         terms = {x.casefold() for x in query.split() if len(x) > 2}
         scored = []
         for lesson in self._load():
             haystack = f"{lesson.topic} {lesson.summary}".casefold()
-            score = sum(term in haystack for term in terms)
+            if not terms:
+                score = 1 if query_cf == lesson.topic.casefold() else 0
+            else:
+                score = sum(term in haystack for term in terms)
+                if lesson.topic.casefold() in query_cf:
+                    score += len(terms)
             if score:
                 scored.append((score, lesson))
         scored.sort(key=lambda item: (item[0], item[1].confidence, item[1].use_count), reverse=True)
