@@ -99,6 +99,8 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 
 - 2026-09-20: CI/APK verification was explicitly completed and fixed. Commit 5287175 had Android APK failure from duplicate AppTheme resources and Python CI had 6 test failures (browser observation compatibility, memory source_ids JSON tuple handling, and memory retrieval threshold/topic matching). Commit 351c1e fixed those; Python CI passed. APK then exposed JVM target mismatch (Java 1.8 vs Kotlin 17); commit f5ce9b2 fixed Android compileOptions/JVM toolchain. Latest GitHub Actions run for f5ce9b2: Hyperdrop CI SUCCESS and Hyperdrop Android APK SUCCESS; debug APK exists, verified, and uploaded as artifact hyperdrop-debug-apk. APK SHA-256: ebc23019d374381d838e8d83c884cd49b9606767715f7ab5f2753428f3ca1efe.
 
+- 2026-09-20: V0.4 Android cognition UI was added. APK initially failed due to malformed Kotlin string escaping in CognitiveEngine; the failure was read from GitHub Actions logs and fixed in commit c97dd0059a076463ca8fd5598582246124ee2841. Latest Hyperdrop CI and Android APK workflows are SUCCESS; APK build, existence verification, and artifact upload all passed. Artifact: hyperdrop-debug-apk (2,291,212 bytes). The APK now visibly exposes goal input, THINK & ANSWER, cognition steps, source, local memory reuse, deterministic calculation, and public Wikipedia lookup. This is an Android-side cognitive prototype, not yet the full Python core/LLM runtime.
+
 ## CHANGE LOG
 - 2026-09-19: Project vision and architecture discussed.
 - 2026-09-19: Confirmed target repo is Hyperdrop, not Hyperdropv2.
