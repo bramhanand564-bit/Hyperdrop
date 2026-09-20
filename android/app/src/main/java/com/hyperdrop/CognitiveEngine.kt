@@ -9,17 +9,22 @@ import java.util.Locale
 import kotlin.math.abs
 
 class CognitiveEngine(context: Context) {
-    private val prefs = context.getSharedPreferences("hyperdrop_brain", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("hyperdrop_brain_v2", Context.MODE_PRIVATE)
 
     fun think(input: String): CognitiveResult {
         val goal = input.trim()
         if (goal.isBlank()) return CognitiveResult("बताओ भाई, क्या करना है?", listOf("Understand: empty goal"))
         val steps = mutableListOf("Understand: goal received")
+        val intent = IntentRouter.classify(goal)
+        steps += "Intent: $intent"
+        if (intent == "GREETING") return CognitiveResult("नमस्ते भाई 👋 मैं Hyperdrop हूँ। अपना सवाल या goal दो।", steps + "Knowledge: conversation intent recognized", "local cognition")
+        if (intent == "IDENTITY") return CognitiveResult("मैं Hyperdrop हूँ — persistent AI runtime का prototype। मेरा target है समझना, research करना, verify करना, सीखना और फिर act करना।", steps + "Knowledge: identity intent recognized", "local cognition")
+        if (intent == "CAPABILITIES") return CognitiveResult("अभी मैं conversation, basic reasoning, calculation, public-web research और local memory कर सकता हूँ। आगे planning, tools, browser/computer actions और long-running learning loop जुड़ रहे हैं।", steps + "Knowledge: capability intent recognized", "local cognition")
         val key = normalize(goal)
         val remembered = prefs.getString("memory:" + key, null)
         if (!remembered.isNullOrBlank()) {
-            steps += "Memory: matching lesson found"
-            steps += "Verify: reused stored result"
+            steps += "Memory: exact previous query found"
+            steps += "Verify: exact-match reuse only"
             return CognitiveResult(remembered, steps, "local memory", true)
         }
 
