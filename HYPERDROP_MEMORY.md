@@ -130,3 +130,5 @@ V0.1 COMPLETE. Next milestone is V0.2: Android implementation/build, stronger re
 
 
 - 2026-09-20: Started Cognitive Core V0.5. Added `core/cognition/cognitive_extractor.py` and tests. The extractor treats an open-source LLM as a cognitive teacher and distills structured Buddhi-style behavior (intent, context, knowledge gap, next action, evidence requirements, relevance, compression, self-correction, response strategy) rather than pretending reasoning neurons can be cleanly separated from mixed LLM weights. It can process teacher JSONL or query an OpenAI-compatible chat endpoint. Factual/code-heavy payload fields are not part of the emitted schema.
+
+- 2026-09-20: Cognitive extraction V0.5 batch 2: added deterministic trajectory quality scoring and rejection of incomplete/generic teacher outputs. Extracted JSONL now carries only the cognitive schema plus quality_score, keeping factual/code-heavy teacher payload out of the distilled dataset. Tests were strengthened for filtering and bounded serialization.
