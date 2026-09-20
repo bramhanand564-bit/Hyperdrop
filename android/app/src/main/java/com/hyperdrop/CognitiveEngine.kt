@@ -105,7 +105,7 @@ class CognitiveEngine(context: Context) {
 
     private fun stripHtml(text: String): String {
         return text.replace(Regex("<[^>]*>"), "")
-            .replace("&quot;", """)
+            .replace("&quot;", "\"")
             .replace("&#39;", "'")
             .replace("&amp;", "&")
             .trim()
