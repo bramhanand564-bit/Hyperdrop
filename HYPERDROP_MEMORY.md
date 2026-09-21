@@ -39,3 +39,6 @@ Research and teacher inference are internal. The user should receive the useful 
 
 ## CONTROL
 Sensitive actions require confirmation/handoff; credentials never go in tool arguments; OTP/2FA stays user-controlled; kill switch/checkpoints/audit trail remain required.
+
+
+- 2026-09-21: User chose to drop the local-model dependency for the Cognitive Core training path. Added a curated 24-example cognitive seed dataset, OpenAI chat-format exporter, OpenAI fine-tuning launcher, and manual GitHub Actions workflow. The current design uses an OpenAI model as the training/teacher path; API keys are never committed. Actual fine-tuning still requires a connected OpenAI API secret and a supported fine-tunable base model, so no trained model artifact is claimed yet.
