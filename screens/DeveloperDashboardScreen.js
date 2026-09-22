@@ -49,19 +49,9 @@ export default function DeveloperDashboardScreen({ navigation }) {
         revenue += (data.revenueGenerated || 0);
       });
 
-      // If DB is empty, use Mock Data for UI testing
-      if (appsData.length === 0) {
-        setMyApps([
-          { id: '1', name: 'Nax Ludo Multi', type: 'app', views: 12500, revenueGenerated: 450, status: 'Active' },
-          { id: '2', name: 'Travel Bot AI', type: 'bot', views: 3400, revenueGenerated: 120, status: 'Active' }
-        ]);
-        setTotalViews(15900);
-        setTotalRevenue(570);
-      } else {
-        setMyApps(appsData);
-        setTotalViews(views);
-        setTotalRevenue(revenue);
-      }
+      setMyApps(appsData);
+      setTotalViews(views);
+      setTotalRevenue(revenue);
       
       setLoading(false);
     });
