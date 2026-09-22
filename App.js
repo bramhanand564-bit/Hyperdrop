@@ -28,6 +28,8 @@ import PortalsScreen from './screens/PortalsScreen';
 import QRHubScreen from './screens/QRHubScreen';
 import SecurityPermissionsScreen from './screens/SecurityPermissionsScreen';
 import WalletScreen from './screens/WalletScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import AISettingsScreen from './screens/AISettingsScreen';
 import DeveloperDashboardScreen from './screens/DeveloperDashboardScreen';
 import WebPortalScreen from './screens/WebPortalScreen';
 
@@ -103,6 +105,8 @@ function AppNavigator() {
             <Stack.Screen name="Portals" component={PortalsScreen} />
             <Stack.Screen name="QRHub" component={QRHubScreen} />
             <Stack.Screen name="SecurityPermissions" component={SecurityPermissionsScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="AISettings" component={AISettingsScreen} />
             <Stack.Screen name="Wallet" component={WalletScreen} />
             <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
             <Stack.Screen name="WebPortal" component={WebPortalScreen} />

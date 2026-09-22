@@ -4,8 +4,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { URLValidator } from '../security/BotValidator';
+import AIService from '../ai/AIService';
 
-function buildAppConfig(prompt) {
+function buildAppConfig(prompt, aiMeta = {}) {
   const safePrompt = String(prompt || '').trim().slice(0, 2000);
   const isBot = /\b(bot|assistant|agent)\b/i.test(safePrompt);
   if (isBot) return {
@@ -15,6 +16,8 @@ function buildAppConfig(prompt) {
     originalPrompt: safePrompt,
     version: 1,
     visibility: 'private',
+    aiConnectionId: aiMeta.connectionId || null,
+    aiModel: aiMeta.model || null,
     commands: [{ name: 'start', description: 'Start the bot', response: 'Hello! I am your Nax AI bot.', responseType: 'text', enabled: true }],
     buttons: [],
     permissions: [],
@@ -30,6 +33,8 @@ function buildAppConfig(prompt) {
     icon: 'apps',
     color: '#AF52DE',
     permissions: [],
+    aiConnectionId: aiMeta.connectionId || null,
+    aiModel: aiMeta.model || null,
     components: [
       { type: 'header', text: 'Nax Generated App' },
       { type: 'text', text: safePrompt || 'Generated from Nax Studio.' },
@@ -37,6 +42,14 @@ function buildAppConfig(prompt) {
       { type: 'button', label: 'Continue', action: 'continue' }
     ]
   };
+}
+
+function parseAIConfig(text) {
+  const raw = String(text || '').trim().replace(/^\`\`\`json\s*/i, '').replace(/^\`\`\`\s*/i, '').replace(/\s*\`\`\`$/, '');
+  const first = raw.indexOf('{');
+  const last = raw.lastIndexOf('}');
+  if (first < 0 || last <= first) return null;
+  try { return JSON.parse(raw.slice(first, last + 1)); } catch { return null; }
 }
 
 function validateAppConfig(config) {
@@ -56,6 +69,7 @@ export default function StudioGenerator() {
   const [step, setStep] = useState('generating');
   const [appConfig, setAppConfig] = useState(null);
   const [error, setError] = useState('');
+  const [aiSource, setAiSource] = useState('fallback');
 
   const bg = isDark ? '#050A10' : '#F3F7FA';
   const cardBg = isDark ? '#1A222C' : '#FFFFFF';
@@ -69,7 +83,32 @@ export default function StudioGenerator() {
       try {
         setStep('generating');
         await new Promise(resolve => setTimeout(resolve, 400));
-        const config = buildAppConfig(prompt);
+        const connection = await AIService.getActiveConnection().catch(() => null);
+        let config = null;
+        if (connection) {
+          setStep('ai');
+          const aiText = await AIService.generateText({
+            connectionId: connection.id,
+            model: connection.model,
+            messages: [{
+              role: 'user',
+              content: `Build a Nax Studio configuration from this request. Return ONLY JSON. Use kind "bot" for a bot request, otherwise "miniapp". Mini-app components allowed: header,text,input,button. Bot commands need name,description,response,enabled. Keep the result under 7000 characters. Request: ${prompt}`,
+            }],
+            maxTokens: 900,
+            temperature: 0.2,
+          }).catch(() => '');
+          config = parseAIConfig(aiText);
+          if (config) {
+            config.originalPrompt = String(prompt || '').trim().slice(0, 2000);
+            config.aiConnectionId = connection.id;
+            config.aiModel = connection.model;
+            setAiSource('configured');
+          }
+        }
+        if (!config) {
+          config = buildAppConfig(prompt, connection ? { connectionId: connection.id, model: connection.model } : {});
+          setAiSource('fallback');
+        }
         if (!mounted) return;
         setStep('validating');
         const validation = config.kind === 'bot' ? { valid: !!config.name && !!config.originalPrompt, errors: [] } : validateAppConfig(config);
@@ -108,9 +147,10 @@ export default function StudioGenerator() {
         {step !== 'ready' && step !== 'error' && <ActivityIndicator size="large" color={accent} />}
         <Text style={[styles.progressText, { color: textMain }]}>
           {step === 'generating' && 'Generating structured app configuration...'}
+          {step === 'ai' && 'Generating with your connected AI model...'}
           {step === 'validating' && 'Validating app configuration...'}
           {step === 'security' && 'Running security scan...'}
-          {step === 'ready' && `${appConfig?.kind === 'bot' ? 'Bot' : 'App'} security scan passed. Ready for preview.`}
+          {step === 'ready' && `${appConfig?.kind === 'bot' ? 'Bot' : 'App'} security scan passed. ${aiSource === 'configured' ? `Generated with ${appConfig?.aiModel || 'connected model'}.` : 'Ready using safe local template generation.'}`}
           {step === 'error' && error}
         </Text>
       </View>

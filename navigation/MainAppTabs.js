@@ -16,7 +16,8 @@ import AutoRestorePopup from '../components/modals/AutoRestorePopup';
 import ChatsScreen from '../screens/ChatsScreen';
 import PortalHome from '../portal/PortalHome';
 import MomentsScreen from '../screens/MomentsScreen';
-import WalletScreen from '../screens/WalletScreen'; 
+import WalletScreen from '../screens/WalletScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 // TAB CONFIGURATION
 const TABS = [
@@ -55,7 +56,7 @@ export default function MainAppTabs({ navigation }) {
       case 'Chats': return <ChatsScreen navigation={navigation} />;
       case 'Portals': return <PortalHome navigation={navigation} />;
       case 'Moments': return <MomentsScreen navigation={navigation} />;
-      case 'Settings': return <WalletScreen navigation={navigation} />; // 🚀 FIXED HERE
+      case 'Settings': return <SettingsScreen navigation={navigation} />;
       default: return <ChatsScreen navigation={navigation} />;
     }
   };

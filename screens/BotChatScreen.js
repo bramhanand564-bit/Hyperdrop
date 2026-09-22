@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import BotAPI from '../api/BotAPI';
+import AIService from '../ai/AIService';
 
 export default function BotChatScreen({ route, navigation }) {
   const { isDark } = useTheme();
@@ -47,6 +48,7 @@ export default function BotChatScreen({ route, navigation }) {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [activeAI, setActiveAI] = useState(null);
   const scrollViewRef = useRef();
 
   // Super Glassy, No-Neon, Futuristic Palette
@@ -63,6 +65,10 @@ export default function BotChatScreen({ route, navigation }) {
   const inputBg = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
   const sendBtnBg = isDark ? '#FFFFFF' : '#1C1C1E';
   const sendBtnIcon = isDark ? '#000000' : '#FFFFFF';
+
+  useEffect(() => {
+    AIService.getActiveConnection().then(setActiveAI).catch(() => setActiveAI(null));
+  }, []);
 
   const botAvatar = `https://ui-avatars.com/api/?name=${botName?.replace(' ', '+')}&background=random&color=fff`;
 
@@ -89,60 +95,16 @@ export default function BotChatScreen({ route, navigation }) {
         replyText = matchedRule ? matchedRule.reply : "I'm still learning! I didn't understand that command. 🤔";
         await new Promise(res => setTimeout(res, 800)); // Short delay for old bots
       } 
-      // 🚀 REAL AI ENGINE (Cloud / Localhost)
+      // 🚀 UNIVERSAL AI ENGINE: use the user's active Settings connection.
       else {
-        const { mode, provider, apiKey, endpoint } = engine;
-        
-        if (mode === 'local' && provider !== 'custom') {
-          // Asli Local AI inference ke liye llama.rn use hota hai.
-          // Yahan hum simulated wait de rahe hain jab tak native module add na ho.
-          await new Promise(res => setTimeout(res, 2000));
-          replyText = `(Local Offline) I received: "${userText}". Integrate Llama.rn for native processing!`;
-        } 
-        else {
-          // CLOUD / CUSTOM LOCALHOST APIs
-          if (provider === 'gemini') {
-            if (!apiKey) throw new Error("API Key is missing for this bot.");
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: `System: ${systemPrompt}\n\nUser: ${userText}\n\nAI:` }] }] })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || "Gemini API Failed");
-            replyText = data.candidates[0].content.parts[0].text;
-          } 
-          else if (provider === 'openai') {
-            if (!apiKey) throw new Error("API Key is missing for this bot.");
-            const res = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-              body: JSON.stringify({ 
-                model: 'gpt-4o-mini', 
-                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }] 
-              })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || "OpenAI API Failed");
-            replyText = data.choices[0].message.content;
-          }
-          else if (provider === 'custom' || endpoint) {
-            // Termux / Ollama Localhost
-            const res = await fetch(endpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(apiKey && { 'Authorization': `Bearer ${apiKey}` }) },
-              body: JSON.stringify({ 
-                model: 'custom', 
-                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }] 
-              })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error("Localhost server failed to respond.");
-            replyText = data.choices ? data.choices[0].message.content : data.response;
-          }
-        }
+        replyText = await AIService.generateText({
+          connectionId: botData.aiConnectionId || undefined,
+          model: botData.aiModel || undefined,
+          systemPrompt,
+          messages: [{ role: 'user', content: userText }],
+          maxTokens: 800,
+        });
       }
-
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: replyText.trim(), sender: 'bot' }]);
 
     } catch (error) {
@@ -193,7 +155,7 @@ export default function BotChatScreen({ route, navigation }) {
                 <>
                   <View style={[styles.onlineDot, { backgroundColor: engine?.mode === 'local' ? '#34C759' : '#087EFF' }]} />
                   <Text style={[styles.headerStatus, { color: textSub }]}>
-                    {botRules.length > 0 && !systemPrompt ? 'Rule Bot' : (engine?.mode === 'local' ? 'Local Engine' : 'Cloud AI')}
+                    {botRules.length > 0 && !systemPrompt ? 'Rule Bot' : (activeAI ? `${activeAI.type} • ${activeAI.model}` : 'Connect AI in Settings')}
                   </Text>
                 </>
               )}

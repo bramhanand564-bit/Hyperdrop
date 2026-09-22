@@ -61,7 +61,8 @@ export default function StudioPublisher({ route, navigation }) {
           visibility: 'public',
           commands: appConfig.commands || [],
           buttons: appConfig.buttons || [],
-          permissions: appConfig.permissions || []
+          permissions: appConfig.permissions || [],
+          aiModel: appConfig.aiModel || null
         });
         Alert.alert('🎉 Bot Published', `${bot.name} is now available in the canonical bots collection.`, [{ text: 'Open Portal', onPress: () => navigation.navigate('PortalHome') }]);
       } else {
