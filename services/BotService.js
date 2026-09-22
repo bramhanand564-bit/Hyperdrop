@@ -3,6 +3,8 @@
  * All Firestore access flows through api/BotAPI.js.
  */
 import BotAPI from '../api/BotAPI';
+import EventBus from '../event-bus/EventBus';
+import { EventTypes } from '../event-bus/EventTypes';
 
 class BotService {
   getDiscoverableBots() {
@@ -22,7 +24,7 @@ class BotService {
   }
 
   createBot(userId, botData) {
-    return BotAPI.createValidatedBot(userId, botData);
+    return BotAPI.createValidatedBot(userId, botData).then(bot => { EventBus.emit(EventTypes.BOT_CREATED, { botId: bot.id, userId }); return bot; });
   }
 
   updateBot(botId, updates) {
@@ -34,7 +36,7 @@ class BotService {
   }
 
   recordBotUsage(botId) {
-    return BotAPI.recordBotUsage(botId);
+    return BotAPI.recordBotUsage(botId).then(result => { EventBus.emit(EventTypes.BOT_STARTED, { botId }); return result; });
   }
 }
 
