@@ -30,7 +30,7 @@ export default function PortalsScreen({ navigation }) {
 
   const handleItemPress = (item) => {
     if (item.type === 'bot' || item.isBot) {
-      navigation.navigate('BotChatScreen', { botData: item });
+      navigation.navigate('BotChat', { botData: item });
     } else {
       navigation.navigate('WebPortalScreen', { 
         title: item.name || 'Generated App', 
