@@ -173,6 +173,20 @@ export default function AISettingsScreen({ navigation }) {
           </View>
         </View>
 
+        <TouchableOpacity
+          onPress={() => navigation.navigate('OnDeviceAISettings')}
+          style={[styles.offlineCard, { backgroundColor: card, borderColor: purple + '55' }]}
+        >
+          <View style={[styles.providerIcon, { backgroundColor: purple + '18' }]}>
+            <Ionicons name="phone-portrait-outline" size={22} color={purple} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.connectionName, { color: text }]}>📱 Offline AI / On-Device</Text>
+            <Text style={[styles.connectionMeta, { color: sub }]}>Scan RAM + storage + CPU, then download a GGUF model that fits this phone.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={purple} />
+        </TouchableOpacity>
+
         <Text style={[styles.section, { color: sub }]}>CONNECTED MODELS</Text>
 
         {connections.map(connection => {
@@ -291,6 +305,7 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 13, lineHeight: 19 },
   section: { fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 10 },
   connection: { borderRadius: 18, borderWidth: 1, padding: 14, marginBottom: 12 },
+  offlineCard: { borderRadius: 18, borderWidth: 1, padding: 14, marginBottom: 22, flexDirection: 'row', alignItems: 'center' },
   connectionMain: { flexDirection: 'row', alignItems: 'center' },
   providerIcon: { width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   connectionName: { fontSize: 15, fontWeight: '800' },
