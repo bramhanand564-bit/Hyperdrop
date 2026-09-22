@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, Vibration, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../firebaseConfig';
+import QRRouter from '../qr/QRRouter';
 
 const { width } = Dimensions.get('window');
 
@@ -28,34 +29,20 @@ export default function QRHubScreen({ navigation }) {
     if (!permission?.granted) requestPermission();
   }, []);
 
-  // 🚀 SMART QR ROUTER (Handles Apps, Bots, Profiles, and Payments)
-  const handleBarCodeScanned = ({ type, data }) => {
+  // Canonical QR router: one parser/route implementation for the whole app.
+  const handleBarCodeScanned = async ({ data }) => {
     setScanned(true);
-    Vibration.vibrate(50); // Haptic feedback on scan
+    Vibration.vibrate(50);
 
     try {
-      // Example payload: nax://app/NaxLudo
-      if (data.startsWith('nax://app/')) {
-        const appName = data.split('nax://app/')[1];
-        navigation.navigate('WebPortalScreen', { title: appName, url: 'https://html5games.com' });
-      } 
-      else if (data.startsWith('nax://bot/')) {
-        const botName = data.split('nax://bot/')[1];
-        navigation.navigate('BotChatScreen', { botData: { botName: botName, engine: { mode: 'api', provider: 'gemini' } } });
-      }
-      else if (data.startsWith('nax://pay/')) {
-        const userId = data.split('nax://pay/')[1];
-        Alert.alert("Send Tokens", `Transfer Nax Tokens to user: ${userId}?`, [
-          { text: "Cancel", onPress: () => setScanned(false) },
-          { text: "Send", onPress: () => { Alert.alert("Success", "Tokens Sent!"); setScanned(false); } }
-        ]);
-      }
-      else {
-        // External URLs or Text
-        Alert.alert("Scanned QR", data, [{ text: "OK", onPress: () => setScanned(false) }]);
-      }
+      const target = QRRouter.resolve(data);
+      await QRRouter.navigate(navigation, target);
     } catch (error) {
-      Alert.alert("Invalid QR", "This QR code is not recognized by the Nax Ecosystem.", [{ text: "OK", onPress: () => setScanned(false) }]);
+      Alert.alert(
+        'Invalid QR',
+        error?.message || 'This QR code is not recognized by the Nax Ecosystem.',
+        [{ text: 'OK', onPress: () => setScanned(false) }]
+      );
     }
   };
 
@@ -140,7 +127,10 @@ export default function QRHubScreen({ navigation }) {
           </View>
 
           <View style={styles.actionRow}>
-            <TouchableOpacity style={[styles.shareBtn, { backgroundColor: naxBlue }]}>
+            <TouchableOpacity
+              style={[styles.shareBtn, { backgroundColor: naxBlue }]}
+              onPress={() => Share.share({ message: myNaxUri })}
+            >
               <Ionicons name="share-social" size={20} color="#FFF" style={{ marginRight: 8 }} />
               <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Share Code</Text>
             </TouchableOpacity>
