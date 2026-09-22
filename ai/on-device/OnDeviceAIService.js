@@ -27,7 +27,7 @@ const OnDeviceAIService = {
     if (activeContext) await this.unload();
     const { initLlama } = getLlama();
     const path = await ModelDownloadService.pathFor(model);
-    activeContext = await initLlama({ model: path, n_ctx: model.context || 2048, n_gpu_layers: 99, use_mlock: false });
+    activeContext = await initLlama({ model: path, n_ctx: model.context || 2048, n_gpu_layers: 0, use_mlock: false });
     activeModelId = model.id;
     return activeContext;
   },
