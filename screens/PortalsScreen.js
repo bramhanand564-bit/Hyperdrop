@@ -70,7 +70,7 @@ export default function PortalsScreen({ navigation }) {
         {/* Nax Studio Banner */}
         <TouchableOpacity 
           style={[styles.studioBanner, { backgroundColor: isDark ? '#141416' : '#1C1C1E' }]}
-          onPress={() => navigation.navigate('NaxStudioScreen')}
+          onPress={() => navigation.navigate('NaxStudio')}
           activeOpacity={0.9}
         >
           <Text style={styles.studioTitle}>Nax Studio</Text>
