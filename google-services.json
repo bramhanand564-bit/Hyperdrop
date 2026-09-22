@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "138730719673",
+    "project_id": "naxchat-27309",
+    "storage_bucket": "naxchat-27309.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:138730719673:android:504706dcad2251e0164e68",
+        "android_client_info": {
+          "package_name": "com.nax.chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "138730719673-bmt7drpfhk8t55hu0lkte589vv6tf4c9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nax.chat",
+            "certificate_hash": "e58d0855a6ad5e068ddc22be3163e1b15e90ad65"
+          }
+        },
+        {
+          "client_id": "138730719673-po2bcvkg04ds9c038uauehc5a7ev8p4i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nax.chat",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "138730719673-5vn0agd7hibmqd87b5a82l2q66dqnij9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC62BTggWK-M7-FImn3v4YRVHSdWSgRTZE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "138730719673-5vn0agd7hibmqd87b5a82l2q66dqnij9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
