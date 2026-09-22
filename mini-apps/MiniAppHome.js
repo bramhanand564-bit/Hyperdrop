@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,31 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-
-// --- MOCK MINI-APPS DATA (Phase C Base) ---
-// Later we will fetch this from Firebase (MiniAppRegistry)
-const MINI_APPS = [
-  { 
-    id: '1', name: '2048 Game', desc: 'Join the numbers and get to the 2048 tile!', 
-    category: 'Games', creator: 'Gabriele Cirulli', icon: 'game-controller', color: '#FF9500', 
-    url: 'https://play2048.co/' 
-  },
-  { 
-    id: '2', name: 'Scientific Calculator', desc: 'Advanced fast math calculations.', 
-    category: 'Tools', creator: 'Desmos', icon: 'calculator', color: '#34C759', 
-    url: 'https://www.desmos.com/scientific' 
-  },
-  { 
-    id: '3', name: 'Web Translator', desc: 'Translate any text to different languages instantly.', 
-    category: 'Productivity', creator: 'Web Tools', icon: 'language', color: '#087EFF', 
-    url: 'https://translate.google.com/?ui=tob' 
-  },
-  { 
-    id: '4', name: 'Weather Radar', desc: 'Check accurate live weather updates.', 
-    category: 'Tools', creator: 'Weather.com', icon: 'partly-sunny', color: '#32ADE6', 
-    url: 'https://weather.com/' 
-  },
-];
+import { MiniAppAPI } from '../api/MiniAppAPI';
 
 const CATEGORIES = ['All', 'Games', 'Tools', 'Productivity'];
 
@@ -45,6 +21,21 @@ export default function MiniAppHome({ navigation }) {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await MiniAppAPI.getPublicMiniApps();
+        if (mounted) setApps(Array.isArray(data) ? data : []);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // --- COLORS ---
   const bg = isDark ? '#050A10' : '#F3F7FA';
@@ -57,8 +48,8 @@ export default function MiniAppHome({ navigation }) {
   const blue = '#087EFF';
 
   // --- FILTER APPS ---
-  const filteredApps = MINI_APPS.filter(app => {
-    const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredApps = apps.filter(app => {
+    const matchesSearch = (app.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === 'All' || app.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
@@ -87,7 +78,7 @@ export default function MiniAppHome({ navigation }) {
       <View style={styles.appInfo}>
         <Text style={[styles.appName, { color: textMain }]} numberOfLines={1}>{item.name}</Text>
         <Text style={[styles.appCreator, { color: textSub }]}>by {item.creator}</Text>
-        <Text style={[styles.appDesc, { color: textSub }]} numberOfLines={2}>{item.desc}</Text>
+        <Text style={[styles.appDesc, { color: textSub }]} numberOfLines={2}>{item.description || item.desc || ''}</Text>
       </View>
 
       <TouchableOpacity 
