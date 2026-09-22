@@ -32,7 +32,7 @@ export default function PortalsScreen({ navigation }) {
     if (item.type === 'bot' || item.isBot) {
       navigation.navigate('BotChat', { botData: item });
     } else {
-      navigation.navigate('WebPortalScreen', { 
+      navigation.navigate('WebPortal', { 
         title: item.name || 'Generated App', 
         url: item.url || 'https://html5games.com/' 
       });
