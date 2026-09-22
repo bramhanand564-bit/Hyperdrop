@@ -49,15 +49,49 @@ const OnDeviceModelCatalog = {
     await AsyncStorage.setItem(CATALOG_CACHE, JSON.stringify(models));
     return models;
   },
-  async discover(query = 'SmolLM2 GGUF Instruct') {
-    const response = await fetch(`${HF}/api/models?search=${encodeURIComponent(query)}&limit=20`);
+  async discover(query = 'Instruct GGUF') {
+    const response = await fetch(`${HF}/api/models?search=${encodeURIComponent(query)}&limit=12`);
     if (!response.ok) throw new Error('Model catalog request failed.');
     const repos = await response.json();
-    return Array.isArray(repos) ? repos.map(repo => ({
-      id: `hf:${repo.id}`, name: repo.id.split('/').pop(), family: repo.id.split('/').pop(),
-      repo: repo.id, source: 'huggingface', dynamic: true,
-      description: repo.pipeline_tag || 'GGUF repository',
-    })) : [];
+    const discovered = [];
+    for (const repo of Array.isArray(repos) ? repos.slice(0, 12) : []) {
+      try {
+        const detailResponse = await fetch(`${HF}/api/models/${repo.id}`);
+        if (!detailResponse.ok) continue;
+        const detail = await detailResponse.json();
+        const files = Array.isArray(detail?.siblings) ? detail.siblings : [];
+        files.filter(file => /\\.gguf$/i.test(file?.rfilename || ''))
+          .slice(0, 8)
+          .forEach(file => {
+            const filename = file.rfilename;
+            const sizeBytes = Number(file.size || file.lfs?.size || file.pointer_size || 0);
+            const sizeMB = Math.round(sizeBytes / 1024 / 1024);
+            if (!sizeMB || sizeMB > 2048) return;
+            const quant = (filename.match(/(Q\\d(?:_K)?(?:_[A-Z]+)?|IQ\\d(?:_[A-Z]+)?|F16|F32)/i) || [ 'GGUF' ])[1];
+            discovered.push({
+              id: `hf:${repo.id}:${filename}`,
+              name: repo.id.split('/').pop(),
+              family: repo.id.split('/').pop(),
+              parametersB: Number(repo?.config?.num_parameters || repo?.safetensors?.total || 0) / 1e9 || null,
+              quantization: quant.toUpperCase(),
+              format: 'GGUF',
+              sizeMB,
+              estimatedRamMB: Math.round(sizeMB * 2.4),
+              context: 2048,
+              architectures: ['arm64-v8a', 'arm64 v8', 'x86_64'],
+              runtime: 'llama.rn',
+              offline: true,
+              repo: repo.id,
+              file: filename,
+              url: `${HF}/${repo.id}/resolve/main/${encodeURIComponent(filename).replace(/%2F/g, '/') }?download=true`,
+              license: detail?.cardData?.license || detail?.license || 'See model card',
+              source: 'huggingface',
+              dynamic: true,
+            });
+          });
+      } catch (_) {}
+    }
+    return discovered;
   },
   async refresh(query) {
     const discovered = await this.discover(query);
