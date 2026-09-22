@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { createBotRuntime } from '../bot-runtime/BotRuntime';
 
 export default function StudioTester({ route, navigation }) {
   const { isDark } = useTheme();
@@ -22,6 +23,7 @@ export default function StudioTester({ route, navigation }) {
 
   // Store local state for test inputs
   const [testInputs, setTestInputs] = useState({});
+  const [botResult, setBotResult] = useState(null);
 
   // --- COLORS ---
   const bg = isDark ? '#050A10' : '#F3F7FA';
@@ -45,7 +47,14 @@ export default function StudioTester({ route, navigation }) {
     );
   }
 
-  // --- MOCK ACTION HANDLER ---
+  const runBotCommand = (commandName) => {
+    const runtime = createBotRuntime({ bot: appConfig });
+    runtime.start();
+    const result = runtime.handleCommand(commandName, []);
+    setBotResult(result?.response?.text || result?.response?.content || 'Command processed.');
+  };
+
+  // --- SANDBOX ACTION HANDLER ---
   const handleTestButton = (btnConfig) => {
     Alert.alert(
       "Test Mode", 
@@ -120,8 +129,17 @@ export default function StudioTester({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           
           <View style={[styles.appFrame, { backgroundColor: testBg, borderColor: border }]}>
-            {/* Render the interactive components */}
-            {appConfig.components && appConfig.components.length > 0 ? (
+            {appConfig.kind === 'bot' ? (
+              <View>
+                <Text style={[styles.compHeader, { color: textMain }]}>Bot Runtime Test</Text>
+                {(appConfig.commands || []).map(command => (
+                  <TouchableOpacity key={command.name} style={[styles.compButton, { backgroundColor: appConfig.color || blue }]} onPress={() => runBotCommand(command.name)}>
+                    <Text style={styles.compButtonText}>/{command.name}</Text>
+                  </TouchableOpacity>
+                ))}
+                {botResult ? <Text style={[styles.compText, { color: textSub }]}>{botResult}</Text> : null}
+              </View>
+            ) : appConfig.components && appConfig.components.length > 0 ? (
               appConfig.components.map((comp, index) => renderInteractiveComponent(comp, index))
             ) : (
               <Text style={{ color: textSub, textAlign: 'center' }}>No components to test.</Text>
