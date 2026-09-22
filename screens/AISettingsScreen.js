@@ -264,7 +264,7 @@ export default function AISettingsScreen({ navigation }) {
               onPress={async () => {
                 try {
                   setDiscoveringModels(true);
-                  const found = await AIService.listRemoteModels(editingId);
+                  const found = await AIService.listRemoteModels({ connectionId: editingId || undefined, type, baseUrl, apiKey });
                   if (!found.length) throw new Error('No models were returned by this provider.');
                   setModelsText(found.join(', '));
                   if (!model) setModel(found[0]);
