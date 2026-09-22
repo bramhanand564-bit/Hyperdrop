@@ -11,12 +11,14 @@ import { useTheme } from '../context/ThemeContext';
 
 // 🔥 IMPORT THE REAL API
 import { MiniAppAPI } from '../api/MiniAppAPI';
+import { URLValidator } from '../security/BotValidator';
+import AuditLogger from '../security/AuditLogger';
 
 const CATEGORIES = ['Games', 'Productivity', 'Tools', 'AI Bots', 'Finance', 'Media'];
 
 export default function StudioPublisher({ route, navigation }) {
   const { isDark } = useTheme();
-  const { appConfig } = route.params || {};
+  const { appConfig, tested = false } = route.params || {};
 
   const [appName, setAppName] = useState(appConfig?.name || '');
   const [appDesc, setAppDesc] = useState('');
@@ -41,10 +43,13 @@ export default function StudioPublisher({ route, navigation }) {
       return;
     }
 
+    if (!tested) { Alert.alert('Test Required', 'Run the sandbox test before publishing.'); return; }
+    if (appConfig?.url && !URLValidator.scanMiniAppUrl(appConfig.url).isSafe) { Alert.alert('Security Blocked', 'The app URL failed security validation.'); return; }
     setIsPublishing(true);
 
     try {
       // Call the API Layer
+      await AuditLogger.log('studio.publish', { appName: appName.trim(), category: selectedCategory });
       await MiniAppAPI.publishMiniApp(appConfig, appName.trim(), appDesc.trim(), selectedCategory);
       
       Alert.alert(
