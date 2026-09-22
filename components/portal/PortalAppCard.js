@@ -28,7 +28,7 @@ export default function PortalAppCard({ item, navigation }) {
   const handlePress = () => {
     if (isBot) {
       // Send to our 100% Real AI Chat Screen
-      navigation.navigate('BotChatScreen', { botData: item });
+      navigation.navigate('BotChat', { botData: item });
     } else {
       // Send to our Secure Sandbox Renderer
       navigation.navigate('WebPortalScreen', {
