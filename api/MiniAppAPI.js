@@ -3,7 +3,7 @@
 // ==========================================
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
-import { doc, setDoc, serverTimestamp, increment, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs } from 'firebase/firestore';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
 
@@ -99,5 +99,25 @@ export const MiniAppAPI = {
       console.log("Install Error:", error);
       throw error;
     }
-  }
+  },
+  getInstalledApps: async () => {
+    const user = auth.currentUser;
+    if (!user?.uid) return [];
+    const snap = await getDocs(collection(db, 'users', user.uid, 'installed_apps'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  setFavorite: async (appId, favorite = true) => {
+    const user = auth.currentUser;
+    if (!user?.uid || !appId) throw new Error('Authentication and app id are required.');
+    await setDoc(doc(db, 'users', user.uid, 'installed_apps', appId), { favorite, updatedAt: serverTimestamp() }, { merge: true });
+    return favorite;
+  },
+
+  updateMiniApp: async (appId, patch) => {
+    if (!appId) throw new Error('App id is required.');
+    await updateDoc(doc(db, 'mini_apps', appId), { ...patch, updatedAt: serverTimestamp(), version: increment(1) });
+    EventBus.emit(EventTypes.MINIAPP_UPDATED, { appId, patch });
+    return true;
+  },
 };
