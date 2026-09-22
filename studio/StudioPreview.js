@@ -64,12 +64,16 @@ export default function StudioPreview({ route, navigation }) {
         <View style={[styles.previewFrame, { backgroundColor: previewBg, borderColor: border }]}>
           
           {/* 🔥 SHARED DECLARATIVE RENDERER 🔥 */}
-          {appConfig.components && appConfig.components.length > 0 ? (
-            <DeclarativeMiniAppRenderer 
-              components={appConfig.components} 
-              themeColor={appConfig.color || purple}
-              isTestMode={true} 
-            />
+          {appConfig.kind === 'bot' ? (
+            <View style={{ padding: 20 }}>
+              <Ionicons name="hardware-chip" size={42} color={purple} />
+              <Text style={{ color: textMain, fontSize: 22, fontWeight: '800', marginTop: 12 }}>{appConfig.name}</Text>
+              <Text style={{ color: textSub, marginTop: 8 }}>{appConfig.description}</Text>
+              <Text style={{ color: textSub, marginTop: 16, fontWeight: '700' }}>Commands</Text>
+              {(appConfig.commands || []).map(command => <Text key={command.name} style={{ color: textMain, marginTop: 6 }}>/{command.name} — {command.description || 'Command'}</Text>)}
+            </View>
+          ) : appConfig.components && appConfig.components.length > 0 ? (
+            <DeclarativeMiniAppRenderer components={appConfig.components} themeColor={appConfig.color || purple} isTestMode={true} />
           ) : (
             <Text style={{ color: textSub, textAlign: 'center', marginTop: 20 }}>No components generated.</Text>
           )}
