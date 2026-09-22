@@ -7,7 +7,21 @@ import { URLValidator } from '../security/BotValidator';
 
 function buildAppConfig(prompt) {
   const safePrompt = String(prompt || '').trim().slice(0, 2000);
+  const isBot = /\b(bot|assistant|agent)\b/i.test(safePrompt);
+  if (isBot) return {
+    kind: 'bot',
+    name: 'Nax AI Bot',
+    description: safePrompt,
+    originalPrompt: safePrompt,
+    version: 1,
+    visibility: 'private',
+    commands: [{ name: 'start', description: 'Start the bot', response: 'Hello! I am your Nax AI bot.', responseType: 'text', enabled: true }],
+    buttons: [],
+    permissions: [],
+  };
+
   return {
+    kind: 'miniapp',
     name: 'Nax Generated App',
     description: safePrompt,
     originalPrompt: safePrompt,
@@ -58,7 +72,7 @@ export default function StudioGenerator() {
         const config = buildAppConfig(prompt);
         if (!mounted) return;
         setStep('validating');
-        const validation = validateAppConfig(config);
+        const validation = config.kind === 'bot' ? { valid: !!config.name && !!config.originalPrompt, errors: [] } : validateAppConfig(config);
         if (!validation.valid) throw new Error(validation.errors.join(' '));
         setAppConfig(config);
 
@@ -96,7 +110,7 @@ export default function StudioGenerator() {
           {step === 'generating' && 'Generating structured app configuration...'}
           {step === 'validating' && 'Validating app configuration...'}
           {step === 'security' && 'Running security scan...'}
-          {step === 'ready' && 'Security scan passed. App is ready for preview.'}
+          {step === 'ready' && `${appConfig?.kind === 'bot' ? 'Bot' : 'App'} security scan passed. Ready for preview.`}
           {step === 'error' && error}
         </Text>
       </View>
