@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 
 const GB = 1024 ** 3;
 const MB = 1024 ** 2;
