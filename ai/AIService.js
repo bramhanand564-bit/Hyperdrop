@@ -18,30 +18,29 @@ const AIService = {
   async saveConnection(input) { return AISettingsService.saveConnection(input); },
   async deleteConnection(id) { return AISettingsService.deleteConnection(id); },
   async setActiveConnection(id) { return AISettingsService.setActiveConnection(id); },
-  async listRemoteModels(connectionId) {
-    const connection = connectionId
-      ? await AISettingsService.getConnection(connectionId, { includeSecret: true })
-      : await AISettingsService.getActiveConnection();
-    if (!connection) throw new Error('AI connection not found.');
+  async listRemoteModels(input = null) {
+    const connection = typeof input === 'string'
+      ? await AISettingsService.getConnection(input, { includeSecret: true })
+      : input?.connectionId
+        ? await AISettingsService.getConnection(input.connectionId, { includeSecret: true })
+        : input;
+    if (!connection) throw new Error('AI connection details are required.');
     if (connection.type === AI_CONNECTION_TYPES.ON_DEVICE) return [];
+    const baseUrl = normalizeBaseUrl(connection.baseUrl);
+    if (!baseUrl) throw new Error('API base URL is required.');
     if (connection.type === AI_CONNECTION_TYPES.GEMINI) {
-      const url = `${normalizeBaseUrl(connection.baseUrl)}/models?key=${encodeURIComponent(connection.apiKey || '')}`;
+      const url = baseUrl + '/models?key=' + encodeURIComponent(connection.apiKey || '');
       const response = await fetch(url);
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error?.message || `Model discovery failed (${response.status}).`);
-      return (data.models || [])
-        .map(item => String(item.name || '').replace(/^models\\//, ''))
-        .filter(Boolean);
+      if (!response.ok) throw new Error(data?.error?.message || 'Model discovery failed (' + response.status + ').');
+      return (data.models || []).map(item => String(item.name || '').replace(/^models\\//, '')).filter(Boolean);
     }
-    const url = `${normalizeBaseUrl(connection.baseUrl)}/models`;
-    const headers = {};
-    if (connection.apiKey) headers.Authorization = `Bearer ${connection.apiKey}`;
-    const response = await fetch(url, { headers });
+    const response = await fetch(baseUrl + '/models', {
+      headers: connection.apiKey ? { Authorization: 'Bearer ' + connection.apiKey } : {},
+    });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error?.message || `Model discovery failed (${response.status}).`);
-    return (data.data || data.models || [])
-      .map(item => String(item.id || item.name || '').trim())
-      .filter(Boolean);
+    if (!response.ok) throw new Error(data?.error?.message || 'Model discovery failed (' + response.status + ').');
+    return (data.data || data.models || []).map(item => String(item.id || item.name || '').trim()).filter(Boolean);
   },
   async testConnection(connectionId) {
     const connection = await AISettingsService.getConnection(connectionId, { includeSecret: false });
