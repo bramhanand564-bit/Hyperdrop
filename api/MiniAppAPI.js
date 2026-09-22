@@ -3,7 +3,7 @@
 // ==========================================
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
-import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc } from 'firebase/firestore';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
 
@@ -46,9 +46,8 @@ export const MiniAppAPI = {
   getMiniApp: async (appId) => {
     if (!appId) return null;
     try {
-      const snap = await getDocs(collection(db, 'mini_apps'));
-      const found = snap.docs.find(d => d.id === appId);
-      return found ? { id: found.id, ...found.data() } : null;
+      const snap = await getDoc(doc(db, 'mini_apps', appId));
+      return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     } catch (error) {
       console.error('MiniAppAPI.getMiniApp:', error);
       return null;
