@@ -9,6 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import DeclarativeMiniAppRenderer from '../components/mini-app/DeclarativeMiniAppRenderer';
+import { URLValidator } from '../security/BotValidator';
+import RateLimiter from '../security/RateLimiter';
+import AuditLogger from '../security/AuditLogger';
 
 export default function MiniAppViewer({ route, navigation }) {
   const { isDark } = useTheme();
@@ -27,10 +30,7 @@ export default function MiniAppViewer({ route, navigation }) {
   const blue = '#087EFF';
 
   // Security Check for WebView (Block unsafe schemes)
-  const isSafeUrl = (testUrl) => {
-    if (!testUrl) return false;
-    return testUrl.startsWith('https://'); 
-  };
+  const isSafeUrl = (testUrl) => !!testUrl && URLValidator.scanMiniAppUrl(testUrl).isSafe;
 
   const getDomain = (urlStr) => {
     try { return urlStr.split('/')[2] || 'Nax Mini App'; } catch (e) { return 'Nax Mini App'; }
@@ -77,6 +77,13 @@ export default function MiniAppViewer({ route, navigation }) {
               onLoadEnd={() => setLoading(false)}
               javaScriptEnabled={true}
               domStorageEnabled={true}
+              originWhitelist={['https://*']}
+              onShouldStartLoadWithRequest={request => {
+                if (!RateLimiter.allow(`webview:${title || 'app'}`)) return false;
+                const check = URLValidator.scanMiniAppUrl(request.url);
+                if (!check.isSafe) { AuditLogger.log('miniapp.navigation_blocked',{url:request.url,reason:check.message}); return false; }
+                return true;
+              }}
             />
           </>
         ) : entryType === 'web' && url && !isSafeUrl(url) ? (
