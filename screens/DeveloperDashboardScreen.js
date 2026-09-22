@@ -160,7 +160,7 @@ export default function DeveloperDashboardScreen({ navigation }) {
           {/* 🚀 Create New Button */}
           <TouchableOpacity 
             style={[styles.createBtn, { backgroundColor: textMain }]}
-            onPress={() => navigation.navigate('NaxStudioScreen')}
+            onPress={() => navigation.navigate('NaxStudio')}
             activeOpacity={0.8}
           >
             <Ionicons name="add" size={24} color={isDark ? '#000' : '#FFF'} />
