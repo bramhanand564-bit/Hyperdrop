@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../firebaseConfig';
-import { BotService } from '../services/BotService';
+import BotService from '../services/BotService';
 
 export default function BotCreateScreen({ navigation }) {
   const { isDark } = useTheme();
