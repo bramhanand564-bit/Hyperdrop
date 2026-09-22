@@ -2,10 +2,17 @@ export const AI_CONNECTION_TYPES = {
   OPENAI_COMPATIBLE: 'openai-compatible',
   GEMINI: 'gemini',
   LOCAL_HTTP: 'local-http',
+  ON_DEVICE: 'on-device',
 };
 
 export const AIConnectionRegistry = {
   presets: [
+    {
+      type: AI_CONNECTION_TYPES.ON_DEVICE,
+      label: '📱 Offline AI',
+      description: 'GGUF model downloaded to the phone and executed locally with llama.cpp. No internet is required after download.',
+      baseUrl: '',
+    },
     {
       type: AI_CONNECTION_TYPES.OPENAI_COMPATIBLE,
       label: 'OpenAI-compatible',
@@ -20,7 +27,7 @@ export const AIConnectionRegistry = {
     },
     {
       type: AI_CONNECTION_TYPES.LOCAL_HTTP,
-      label: 'Local / Open Source',
+      label: 'Local HTTP',
       description: 'Connect Ollama, llama.cpp, or another local OpenAI-compatible server.',
       baseUrl: 'http://127.0.0.1:8080/v1',
     },
@@ -31,12 +38,8 @@ export const AIConnectionRegistry = {
   },
 
   normalizeModels(models, fallbackModel = '') {
-    const source = Array.isArray(models)
-      ? models
-      : String(models || '').split(',');
-    const values = source
-      .map(model => String(model || '').trim())
-      .filter(Boolean);
+    const source = Array.isArray(models) ? models : String(models || '').split(',');
+    const values = source.map(model => String(model || '').trim()).filter(Boolean);
     if (fallbackModel && !values.includes(fallbackModel)) values.unshift(fallbackModel);
     return [...new Set(values)].slice(0, 100);
   },
