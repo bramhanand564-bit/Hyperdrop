@@ -43,6 +43,18 @@ export const MiniAppAPI = {
     return await MiniAppFirebase.getPublicMiniApps();
   },
 
+  getMiniApp: async (appId) => {
+    if (!appId) return null;
+    try {
+      const snap = await getDocs(collection(db, 'mini_apps'));
+      const found = snap.docs.find(d => d.id === appId);
+      return found ? { id: found.id, ...found.data() } : null;
+    } catch (error) {
+      console.error('MiniAppAPI.getMiniApp:', error);
+      return null;
+    }
+  },
+
   // 3. SEARCH (For PortalSearch)
   searchMiniApps: async (searchQuery) => {
     const apps = await MiniAppFirebase.getPublicMiniApps();
