@@ -31,7 +31,7 @@ export default function PortalAppCard({ item, navigation }) {
       navigation.navigate('BotChat', { botData: item });
     } else {
       // Send to our Secure Sandbox Renderer
-      navigation.navigate('WebPortalScreen', {
+      navigation.navigate('WebPortal', {
         title: itemName,
         url: item.url,
         htmlCode: item.code, // Nax Studio (AI Generated) code goes here
