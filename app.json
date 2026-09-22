@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
     "splash": {
       "backgroundColor": "#ffffff"
     },
@@ -63,6 +64,7 @@
           }
         }
       ],
+      "llama.rn",
       "@react-native-google-signin/google-signin"
     ],
     "extra": {
