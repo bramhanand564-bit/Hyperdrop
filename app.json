@@ -64,7 +64,6 @@
           }
         }
       ],
-      "llama.rn",
       "@react-native-google-signin/google-signin"
     ],
     "extra": {
