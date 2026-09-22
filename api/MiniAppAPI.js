@@ -4,6 +4,8 @@
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
 import { doc, setDoc, serverTimestamp, increment, updateDoc } from 'firebase/firestore';
+import EventBus from '../event-bus/EventBus';
+import { EventTypes } from '../event-bus/EventTypes';
 
 export const MiniAppAPI = {
   
@@ -31,7 +33,9 @@ export const MiniAppAPI = {
       rating: 0
     };
 
-    return await MiniAppFirebase.createMiniApp(newAppSchema);
+    const created = await MiniAppFirebase.createMiniApp(newAppSchema);
+    EventBus.emit(EventTypes.MINIAPP_CREATED, { appId: created?.id, userId: user.uid });
+    return created;
   },
 
   // 2. GET (For PortalHome)
@@ -89,6 +93,7 @@ export const MiniAppAPI = {
         installs: increment(1)
       }).catch(e => console.log("Silent error updating global install count:", e));
 
+      EventBus.emit(EventTypes.MINIAPP_INSTALLED, { appId: app.id, userId: user.uid });
       return true;
     } catch (error) {
       console.log("Install Error:", error);
