@@ -18,6 +18,31 @@ const AIService = {
   async saveConnection(input) { return AISettingsService.saveConnection(input); },
   async deleteConnection(id) { return AISettingsService.deleteConnection(id); },
   async setActiveConnection(id) { return AISettingsService.setActiveConnection(id); },
+  async listRemoteModels(connectionId) {
+    const connection = connectionId
+      ? await AISettingsService.getConnection(connectionId, { includeSecret: true })
+      : await AISettingsService.getActiveConnection();
+    if (!connection) throw new Error('AI connection not found.');
+    if (connection.type === AI_CONNECTION_TYPES.ON_DEVICE) return [];
+    if (connection.type === AI_CONNECTION_TYPES.GEMINI) {
+      const url = `${normalizeBaseUrl(connection.baseUrl)}/models?key=${encodeURIComponent(connection.apiKey || '')}`;
+      const response = await fetch(url);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error?.message || `Model discovery failed (${response.status}).`);
+      return (data.models || [])
+        .map(item => String(item.name || '').replace(/^models\\//, ''))
+        .filter(Boolean);
+    }
+    const url = `${normalizeBaseUrl(connection.baseUrl)}/models`;
+    const headers = {};
+    if (connection.apiKey) headers.Authorization = `Bearer ${connection.apiKey}`;
+    const response = await fetch(url, { headers });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.message || `Model discovery failed (${response.status}).`);
+    return (data.data || data.models || [])
+      .map(item => String(item.id || item.name || '').trim())
+      .filter(Boolean);
+  },
   async testConnection(connectionId) {
     const connection = await AISettingsService.getConnection(connectionId, { includeSecret: false });
     if (connection?.type === AI_CONNECTION_TYPES.ON_DEVICE) {
