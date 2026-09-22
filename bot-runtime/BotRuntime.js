@@ -7,6 +7,8 @@ import {
 } from "../security/BotValidator";
 
 import { normalizePermissions } from "../security/PermissionManager";
+import EventBus from "../event-bus/EventBus";
+import { EventTypes } from "../event-bus/EventTypes";
 
 import {
   validateURL,
@@ -596,6 +598,15 @@ class BotRuntime {
         // Runtime event listeners must never break bot execution.
       }
     });
+
+    const mapped = {
+      [RUNTIME_EVENTS.START]: EventTypes.BOT_STARTED,
+      [RUNTIME_EVENTS.MESSAGE]: EventTypes.BOT_MESSAGE,
+      [RUNTIME_EVENTS.COMMAND]: EventTypes.BOT_COMMAND,
+      [RUNTIME_EVENTS.BUTTON]: EventTypes.BOT_BUTTON_CLICKED,
+    }[event];
+
+    if (mapped) EventBus.emit(mapped, { botId: this.bot?.id || null, runtimeId: this.id, ...payload });
   }
 
   setBot(bot) {
