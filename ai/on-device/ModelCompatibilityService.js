@@ -19,7 +19,9 @@ const ModelCompatibilityService = {
     return { status: 'supported', label: score >= 80 ? 'Recommended' : 'Supported', score, reason: 'Fits the current device profile with a conservative memory budget.' };
   },
   rank(models, device) {
-    return models.map(model => ({ ...model, compatibility: this.evaluate(model, device) }))
+    return models
+      .filter(model => model && Number.isFinite(Number(model.sizeMB)) && model.url)
+      .map(model => ({ ...model, compatibility: this.evaluate(model, device) }))
       .sort((a, b) => (b.compatibility.score || 0) - (a.compatibility.score || 0) || a.sizeMB - b.sizeMB);
   },
 };
