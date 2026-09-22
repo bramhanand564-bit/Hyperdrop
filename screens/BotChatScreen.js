@@ -5,13 +5,34 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import BotAPI from '../api/BotAPI';
 
 export default function BotChatScreen({ route, navigation }) {
   const { isDark } = useTheme();
   
-  // 🧠 1. FETCH REAL BOT DATA FROM DB (Via Route Params)
-  const botData = route.params?.botData || route.params || {};
-  const botName = botData.botName || 'AI Assistant';
+  // 🧠 Load the canonical bot record when a botId is supplied.
+  const routeBot = route.params?.botData || route.params || {};
+  const [botData, setBotData] = useState(routeBot);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    if (!routeBot.botId) return () => { active = false; };
+
+    BotAPI.getBot(routeBot.botId)
+      .then(bot => {
+        if (!active) return;
+        if (bot) setBotData(bot);
+        else setLoadError('Bot could not be found.');
+      })
+      .catch(() => {
+        if (active) setLoadError('Unable to load this bot.');
+      });
+
+    return () => { active = false; };
+  }, [routeBot.botId]);
+
+  const botName = botData.botName || botData.name || 'AI Assistant';
   const creatorName = botData.creatorName || 'Developer';
   
   // Naye AI Bots ke liye System Prompt & Engine
@@ -48,6 +69,10 @@ export default function BotChatScreen({ route, navigation }) {
   // 🔥 2. 100% REAL AI CHAT LOGIC (NO FAKES)
   const sendMessage = async () => {
     if (!inputText.trim()) return;
+    if (loadError) {
+      setMessages(prev => [...prev, { id: Date.now().toString(), text: loadError, sender: 'bot' }]);
+      return;
+    }
     const userText = inputText.trim();
     setInputText('');
 
