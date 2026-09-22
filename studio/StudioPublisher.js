@@ -69,16 +69,6 @@ export default function StudioPublisher({ route, navigation }) {
         Alert.alert('🎉 Published Successfully!', `"${appName}" is now live on the Nax Portal!`, [{ text: 'View in Portal', onPress: () => navigation.navigate('PortalHome') }]);
       }
       
-      Alert.alert(
-        "🎉 Published Successfully!", 
-        `"${appName}" is now live on the Nax Portal!`,
-        [
-          { 
-            text: "View in Portal", 
-            onPress: () => navigation.navigate('PortalHome') // Route to Portal
-          }
-        ]
-      );
     } catch (error) {
       console.log("Publish Error:", error);
       Alert.alert("Publish Failed", error.message || "Something went wrong.");
