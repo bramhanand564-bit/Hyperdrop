@@ -35,6 +35,7 @@ export default function AISettingsScreen({ navigation }) {
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
   const [modelsText, setModelsText] = useState('');
+  const [discoveringModels, setDiscoveringModels] = useState(false);
 
   const bg = isDark ? '#050A10' : '#F3F7FA';
   const card = isDark ? '#101A26' : '#FFFFFF';
@@ -256,14 +257,38 @@ export default function AISettingsScreen({ navigation }) {
           <Text style={[styles.label, { color: sub }]}>PRIMARY MODEL</Text>
           <TextInput value={model} onChangeText={setModel} autoCapitalize="none" placeholder="e.g. llama-3.2-1b-instruct" placeholderTextColor={sub} style={[styles.input, { color: text, borderColor: border, backgroundColor: bg }]} />
 
-          <Text style={[styles.label, { color: sub }]}>OTHER MODELS (comma separated)</Text>
+          <View style={styles.labelRow}>
+            <Text style={[styles.label, { color: sub }]}>OTHER MODELS</Text>
+            <TouchableOpacity
+              disabled={discoveringModels || type === AI_CONNECTION_TYPES.ON_DEVICE}
+              onPress={async () => {
+                try {
+                  setDiscoveringModels(true);
+                  const found = await AIService.listRemoteModels(editingId);
+                  if (!found.length) throw new Error('No models were returned by this provider.');
+                  setModelsText(found.join(', '));
+                  if (!model) setModel(found[0]);
+                  Alert.alert('Models found', `${found.length} model(s) detected.`);
+                } catch (error) {
+                  Alert.alert('Model discovery failed', error?.message || 'Could not list models from this endpoint.');
+                } finally {
+                  setDiscoveringModels(false);
+                }
+              }}
+              style={styles.detectBtn}
+            >
+              <Text style={[styles.detectText, { color: type === AI_CONNECTION_TYPES.ON_DEVICE ? sub : blue }]}>
+                {discoveringModels ? 'Detecting…' : 'Detect models'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           <TextInput value={modelsText} onChangeText={setModelsText} autoCapitalize="none" placeholder="model-a, model-b, model-c" placeholderTextColor={sub} style={[styles.input, { color: text, borderColor: border, backgroundColor: bg }]} />
 
           {type === AI_CONNECTION_TYPES.LOCAL_HTTP && (
             <View style={[styles.localNote, { backgroundColor: `${green}12`, borderColor: `${green}30` }]}>
               <Ionicons name="hardware-chip-outline" size={20} color={green} />
               <Text style={[styles.helper, { color: text, flex: 1, marginLeft: 8 }]}>
-                Local/open-source mode is model-agnostic. Use a local OpenAI-compatible server (for example Ollama or llama.cpp) and choose a small model that fits the phone.
+                Local HTTP mode connects to a server, not the phone's offline runtime. On Android, a PC server should use its LAN IP (for example 192.168.x.x), not 127.0.0.1. Ollama/llama.cpp must expose an OpenAI-compatible /v1 endpoint.
               </Text>
             </View>
           )}
@@ -315,6 +340,9 @@ const styles = StyleSheet.create({
   smallBtnText: { fontSize: 12, fontWeight: '800' },
   form: { padding: 16, borderRadius: 18, borderWidth: 1 },
   label: { fontSize: 11, fontWeight: '900', letterSpacing: 0.8, marginBottom: 7, marginTop: 8 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  detectBtn: { paddingVertical: 8, paddingHorizontal: 8 },
+  detectText: { fontSize: 11, fontWeight: '900' },
   helper: { fontSize: 12, lineHeight: 18 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   typePill: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 14, borderWidth: 1 },
