@@ -116,10 +116,7 @@ export default function QRHubScreen({ navigation }) {
                 value={myNaxUri} 
                 size={220} 
                 color="#000" 
-                backgroundColor="#FFF" 
-                logo={require('../assets/icon.png')} // Tumhara app icon yahan dalega
-                logoSize={40}
-                logoBackgroundColor="#FFF"
+                backgroundColor="#FFF"
               />
             </View>
 
