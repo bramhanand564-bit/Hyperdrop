@@ -4,13 +4,18 @@ import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 // Firebase auth इम्पोर्ट कर रहे हैं ताकि मिनी-ऐप को यूज़र की डिटेल दे सकें
-import { auth } from '../firebaseConfig'; 
+import { auth } from '../firebaseConfig';
+import { URLValidator } from '../security/BotValidator';
+import RateLimiter from '../security/RateLimiter';
+import AuditLogger from '../security/AuditLogger'; 
 
 export default function WebPortalScreen({ route, navigation }) {
   // 📥 Nax Studio से AI जनरेटेड `htmlCode` आएगा, या फिर नॉर्मल `url`
   const { title = 'Mini-App', url, htmlCode, isPremium = false } = route.params || {};
   const { isDark } = useTheme();
   const user = auth?.currentUser;
+  const urlCheck = url ? URLValidator.scanMiniAppUrl(url) : { isSafe: !!htmlCode };
+  const [blocked, setBlocked] = useState(false);
   
   const [isLoading, setIsLoading] = useState(true);
 
@@ -44,6 +49,7 @@ export default function WebPortalScreen({ route, navigation }) {
 
   // 🔥 ACTION RECEIVER (Tokens, Watch Party, AI Settings)
   const handleMessage = (event) => {
+    if (!RateLimiter.allow(`miniapp:${user?.uid || 'guest'}`)) return;
     try {
       const message = JSON.parse(event.nativeEvent.data);
       console.log("Mini-App Action Received:", message);
@@ -62,6 +68,11 @@ export default function WebPortalScreen({ route, navigation }) {
       console.error("Bridge Error:", e);
     }
   };
+
+  if (!urlCheck.isSafe && !htmlCode) {
+    if (!blocked) { setBlocked(true); AuditLogger.log('miniapp.blocked', { url, reason: urlCheck.message }); }
+    return <SafeAreaView style={[styles.container, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}><Ionicons name="shield-checkmark" size={48} color="#FF3B30" /><Text style={{ color: textMain, marginTop: 12, fontWeight: '700' }}>App blocked by security policy</Text><Text style={{ color: textSub, marginTop: 6 }}>{urlCheck.message}</Text></SafeAreaView>;
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
@@ -95,7 +106,7 @@ export default function WebPortalScreen({ route, navigation }) {
           style={{ flex: 1, backgroundColor: isDark ? '#000' : '#FFF' }}
           javaScriptEnabled={true}
           domStorageEnabled={true}
-          originWhitelist={['*']}
+          originWhitelist={['https://*']}
           onLoadStart={() => setIsLoading(true)}
           onLoadEnd={() => setIsLoading(false)}
           injectedJavaScriptBeforeContentLoaded={injectedCode}
