@@ -136,7 +136,7 @@ export default function StudioTester({ route, navigation }) {
         <Text style={[styles.statusText, { color: textSub }]}>App is working properly?</Text>
         <TouchableOpacity 
           style={[styles.publishBtn, { backgroundColor: purple }]}
-          onPress={() => navigation.navigate('StudioPublisher', { appConfig })}
+          onPress={() => navigation.navigate('StudioPublisher', { appConfig, tested: true })}
         >
           <Text style={styles.publishBtnText}>Yes, Proceed to Publish</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 6 }} />
