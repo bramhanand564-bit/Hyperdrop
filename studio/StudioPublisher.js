@@ -10,7 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
 // 🔥 IMPORT THE REAL API
+import { auth } from '../firebaseConfig';
 import { MiniAppAPI } from '../api/MiniAppAPI';
+import BotAPI from '../api/BotAPI';
 import { URLValidator } from '../security/BotValidator';
 import AuditLogger from '../security/AuditLogger';
 
@@ -49,8 +51,23 @@ export default function StudioPublisher({ route, navigation }) {
 
     try {
       // Call the API Layer
-      await AuditLogger.log('studio.publish', { appName: appName.trim(), category: selectedCategory });
-      await MiniAppAPI.publishMiniApp(appConfig, appName.trim(), appDesc.trim(), selectedCategory);
+      await AuditLogger.log('studio.publish', { appName: appName.trim(), category: selectedCategory, kind: appConfig.kind || 'miniapp' });
+      if (appConfig.kind === 'bot') {
+        const bot = await BotAPI.createValidatedBot(auth.currentUser?.uid, {
+          name: appName.trim(),
+          username: `${appName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 20)}_${Date.now().toString().slice(-4)}`,
+          description: appDesc.trim() || appConfig.description || appConfig.originalPrompt,
+          welcomeMessage: appConfig.commands?.find(command => command.name === 'start')?.response || 'Hello from Nax Studio.',
+          visibility: 'public',
+          commands: appConfig.commands || [],
+          buttons: appConfig.buttons || [],
+          permissions: appConfig.permissions || []
+        });
+        Alert.alert('🎉 Bot Published', `${bot.name} is now available in the canonical bots collection.`, [{ text: 'Open Portal', onPress: () => navigation.navigate('PortalHome') }]);
+      } else {
+        await MiniAppAPI.publishMiniApp(appConfig, appName.trim(), appDesc.trim(), selectedCategory);
+        Alert.alert('🎉 Published Successfully!', `"${appName}" is now live on the Nax Portal!`, [{ text: 'View in Portal', onPress: () => navigation.navigate('PortalHome') }]);
+      }
       
       Alert.alert(
         "🎉 Published Successfully!", 
