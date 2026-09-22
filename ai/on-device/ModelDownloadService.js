@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 
 const ROOT = `${FileSystem.documentDirectory}nax-models/`;
 const safeName = value => String(value || '').replace(/[^a-zA-Z0-9._-]/g, '_');
