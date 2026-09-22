@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { db, auth } from '../firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import AutomationEngine from '../automation/AutomationEngine';
 
 export default function AutomateScreen({ navigation }) {
   const { isDark } = useTheme();
@@ -14,28 +17,21 @@ export default function AutomateScreen({ navigation }) {
   const borderCol = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
   const accentCol = '#FF9500'; // Automate Orange
 
-  // ⚡ Dummy Workflow Data (Jo user banayega)
-  const [workflows, setWorkflows] = useState([
-    {
-      id: 'wf_1',
-      title: 'Ludo Victory Reward',
-      isActive: true,
-      nodes: [
-        { type: 'trigger', icon: 'gamepad-variant', label: 'When Game Won', color: '#AF52DE' },
-        { type: 'action', icon: 'star', label: 'Give 50 XP', color: '#FF9500' },
-        { type: 'action', icon: 'message-reply-text', label: 'Send Group Message', color: '#34C759' }
-      ]
-    },
-    {
-      id: 'wf_2',
-      title: 'Payment Alert',
-      isActive: false,
-      nodes: [
-        { type: 'trigger', icon: 'cash', label: 'Nax Token Received', color: '#34C759' },
-        { type: 'action', icon: 'robot', label: 'Bot Says "Thank You"', color: '#087EFF' }
-      ]
-    }
-  ]);
+  const [workflows, setWorkflows] = useState([]);
+  useEffect(() => {
+    const engine = new AutomationEngine();
+    let mounted = true;
+    (async () => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      const snap = await getDocs(query(collection(db, 'automations'), where('ownerId', '==', uid)));
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!mounted) return;
+      setWorkflows(items);
+      engine.registerWorkflows(items.filter(w => w.enabled !== false));
+    })().catch(error => console.error('Automate load error', error));
+    return () => { mounted = false; engine.stop(); };
+  }, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
