@@ -87,12 +87,12 @@ export default function StudioPreview({ route, navigation }) {
           <Text style={[styles.actionBtnText, { color: textMain }]}>Test Sandbox</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionBtn, styles.publishBtn, { backgroundColor: purple }]}
-          onPress={() => navigation.navigate('StudioPublisher', { appConfig })}
+          onPress={() => navigation.navigate('StudioTester', { appConfig })}
         >
-          <Ionicons name="cloud-upload-outline" size={20} color="#FFF" style={{ marginRight: 6 }} />
-          <Text style={[styles.actionBtnText, { color: '#FFF' }]}>Publish</Text>
+          <Ionicons name="bug-outline" size={20} color="#FFF" style={{ marginRight: 6 }} />
+          <Text style={[styles.actionBtnText, { color: '#FFF' }]}>Continue to Test</Text>
         </TouchableOpacity>
       </View>
 
