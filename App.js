@@ -30,6 +30,7 @@ import SecurityPermissionsScreen from './screens/SecurityPermissionsScreen';
 import WalletScreen from './screens/WalletScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import AISettingsScreen from './screens/AISettingsScreen';
+import OnDeviceAISettingsScreen from './screens/OnDeviceAISettingsScreen';
 import DeveloperDashboardScreen from './screens/DeveloperDashboardScreen';
 import WebPortalScreen from './screens/WebPortalScreen';
 
@@ -107,6 +108,7 @@ function AppNavigator() {
             <Stack.Screen name="SecurityPermissions" component={SecurityPermissionsScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="AISettings" component={AISettingsScreen} />
+            <Stack.Screen name="OnDeviceAISettings" component={OnDeviceAISettingsScreen} />
             <Stack.Screen name="Wallet" component={WalletScreen} />
             <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
             <Stack.Screen name="WebPortal" component={WebPortalScreen} />
