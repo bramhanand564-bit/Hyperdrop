@@ -60,14 +60,14 @@ const OnDeviceModelCatalog = {
         if (!detailResponse.ok) continue;
         const detail = await detailResponse.json();
         const files = Array.isArray(detail?.siblings) ? detail.siblings : [];
-        files.filter(file => /\\.gguf$/i.test(file?.rfilename || ''))
+        files.filter(file => /\.gguf$/i.test(file?.rfilename || ''))
           .slice(0, 8)
           .forEach(file => {
             const filename = file.rfilename;
             const sizeBytes = Number(file.size || file.lfs?.size || file.pointer_size || 0);
             const sizeMB = Math.round(sizeBytes / 1024 / 1024);
             if (!sizeMB || sizeMB > 2048) return;
-            const quant = (filename.match(/(Q\\d(?:_K)?(?:_[A-Z]+)?|IQ\\d(?:_[A-Z]+)?|F16|F32)/i) || [ 'GGUF' ])[1];
+            const quant = (filename.match(/(Q\d(?:_K)?(?:_[A-Z]+)?|IQ\d(?:_[A-Z]+)?|F16|F32)/i) || [ 'GGUF' ])[1];
             discovered.push({
               id: `hf:${repo.id}:${filename}`,
               name: repo.id.split('/').pop(),
