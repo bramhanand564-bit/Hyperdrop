@@ -9,6 +9,9 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import PresenceManager from './managers/PresenceManager';
 import P2PManager from './managers/P2PManager';
 import CallManager from './managers/CallManager';
+import EventBus from './event-bus/EventBus';
+import AnalyticsService from './analytics/AnalyticsService';
+import NotificationManager from './notifications/NotificationManager';
 
 import MainAppTabs from './navigation/MainAppTabs';
 import ChatRoomScreen from './screens/ChatRoomScreen';
@@ -60,6 +63,13 @@ function AppNavigator() {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribeAnalytics = AnalyticsService.attach(EventBus);
+    const unsubscribeNotifications = NotificationManager.attach();
+    return () => { unsubscribeAnalytics?.(); unsubscribeNotifications?.(); };
+  }, [user]);
 
   if (loading) {
     return (
