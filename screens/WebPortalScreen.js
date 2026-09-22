@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ export default function WebPortalScreen({ route, navigation }) {
   const { isDark } = useTheme();
   const user = auth?.currentUser;
   const urlCheck = url ? URLValidator.scanMiniAppUrl(url) : { isSafe: !!htmlCode };
-  const [blocked, setBlocked] = useState(false);
+
   
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,8 +69,9 @@ export default function WebPortalScreen({ route, navigation }) {
     }
   };
 
+  useEffect(() => { if (!urlCheck.isSafe && !htmlCode) AuditLogger.log('miniapp.blocked', { url, reason: urlCheck.message }); }, [url, htmlCode, urlCheck.isSafe]);
+
   if (!urlCheck.isSafe && !htmlCode) {
-    if (!blocked) { setBlocked(true); AuditLogger.log('miniapp.blocked', { url, reason: urlCheck.message }); }
     return <SafeAreaView style={[styles.container, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}><Ionicons name="shield-checkmark" size={48} color="#FF3B30" /><Text style={{ color: textMain, marginTop: 12, fontWeight: '700' }}>App blocked by security policy</Text><Text style={{ color: textSub, marginTop: 6 }}>{urlCheck.message}</Text></SafeAreaView>;
   }
 
