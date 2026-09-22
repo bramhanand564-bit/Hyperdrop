@@ -15,7 +15,7 @@ export const QRRouter={
     if(target.type==='app') return navigation.navigate('MiniAppViewer',{appId:target.id});
     if(target.type==='bot') return navigation.navigate('BotChat',{botId:target.id});
     if(target.type==='pay') return navigation.navigate('Wallet',{transactionId:target.id});
-    if(target.type==='user') return navigation.navigate('Profile',{userId:target.id});
+    if(target.type==='user') return navigation.navigate('PortalHome',{userId:target.id});
     if(target.type==='store') return navigation.navigate('PortalHome',{itemId:target.id});
     if(target.type==='external') return navigation.navigate('WebPortal',{url:target.url});
     throw new Error('Unsupported QR destination.');
