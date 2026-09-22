@@ -33,7 +33,7 @@ const AIService = {
       const response = await fetch(url);
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error?.message || 'Model discovery failed (' + response.status + ').');
-      return (data.models || []).map(item => String(item.name || '').replace(/^models\\//, '')).filter(Boolean);
+      return (data.models || []).map(item => String(item.name || '').replace(/^models\//, '')).filter(Boolean);
     }
     const response = await fetch(baseUrl + '/models', {
       headers: connection.apiKey ? { Authorization: 'Bearer ' + connection.apiKey } : {},
