@@ -60,8 +60,8 @@ export default function PortalsScreen({ navigation }) {
         
         {/* Filter Pills Grid (Search, Categories, Featured, Trending) */}
         <View style={styles.filterGrid}>
-          {['Search', 'Categories', 'Featured', 'Trending'].map((filter, index) => (
-            <TouchableOpacity key={index} style={[styles.filterPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          {['Search', 'Categories', 'Featured', 'Trending', 'Store'].map((filter, index) => (
+            <TouchableOpacity key={index} onPress={() => filter === 'Store' ? navigation.navigate('PortalStore') : filter === 'Search' ? navigation.navigate('PortalSearch') : filter === 'Categories' ? navigation.navigate('PortalCategories') : filter === 'Featured' ? navigation.navigate('PortalFeatured') : navigation.navigate('PortalTrending')} style={[styles.filterPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
               <Text style={[styles.filterText, { color: textMain }]}>{filter}</Text>
             </TouchableOpacity>
           ))}
