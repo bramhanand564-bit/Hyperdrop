@@ -52,6 +52,7 @@ const TelegramUpdateProcessor = {
       metadata: { source: 'telegram', updateId: update.update_id, chatId },
     });
 
+    runtime.start();
     const result = runtime.handleMessage({
       id: String(update.update_id || Date.now()),
       text: getText(message),
