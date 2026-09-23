@@ -32,6 +32,10 @@ import SettingsScreen from './screens/SettingsScreen';
 import AISettingsScreen from './screens/AISettingsScreen';
 import OnDeviceAISettingsScreen from './screens/OnDeviceAISettingsScreen';
 import DeveloperDashboardScreen from './screens/DeveloperDashboardScreen';
+import TelegramBotFeaturesScreen from './screens/TelegramBotFeaturesScreen';
+import PortalStoreScreen from './screens/PortalStoreScreen';
+import BotEdit from './bots/BotEdit';
+import BotCommands from './bots/BotCommands';
 import WebPortalScreen from './screens/WebPortalScreen';
 
 import PortalHome from './portal/PortalHome';
@@ -99,6 +103,9 @@ function AppNavigator() {
             <Stack.Screen name="NaxStudio" component={NaxStudioScreen} />
             <Stack.Screen name="BotChat" component={BotChatScreen} />
             <Stack.Screen name="BotCreate" component={BotCreateScreen} />
+            <Stack.Screen name="BotEdit" component={BotEdit} />
+            <Stack.Screen name="BotCommands" component={BotCommands} />
+            <Stack.Screen name="TelegramBotFeatures" component={TelegramBotFeaturesScreen} />
             <Stack.Screen name="Call" component={CallScreen} />
             <Stack.Screen name="Automate" component={AutomateScreen} />
             <Stack.Screen name="Discover" component={DiscoverScreen} />
@@ -118,6 +125,7 @@ function AppNavigator() {
             <Stack.Screen name="PortalCategories" component={PortalCategories} />
             <Stack.Screen name="PortalFeatured" component={PortalFeatured} />
             <Stack.Screen name="PortalTrending" component={PortalTrending} />
+            <Stack.Screen name="PortalStore" component={PortalStoreScreen} />
 
             <Stack.Screen name="MiniAppHome" component={MiniAppHome} />
             <Stack.Screen name="MiniAppViewer" component={MiniAppViewer} />
