@@ -1128,6 +1128,25 @@ export default function BotEdit({
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Telegram Bot</Text>
+            <View style={styles.commandCard}>
+              <View style={styles.commandCardText}>
+                <Text style={styles.controlTitle}>Telegram features</Text>
+                <Text style={styles.controlDescription}>
+                  Connect BotFather token, configure commands, buttons, moderation, AI and the complete Telegram feature set.
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('TelegramBotFeatures', { botId: bot.id || botId, bot })}
+                style={styles.manageButton}
+              >
+                <Text style={styles.manageButtonText}>Open</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.section}>
             <Text
               style={styles.sectionTitle}
             >
