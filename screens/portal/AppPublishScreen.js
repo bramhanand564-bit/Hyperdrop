@@ -4,6 +4,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 // 🛡️ Security Engine Import (Jo humne pehle banaya tha)
 import { URLValidator } from '../../security/URLValidator';
+import PortalStoreAPI from '../../api/PortalStoreAPI';
 
 export default function AppPublishScreen({ navigation }) {
   const { isDark } = useTheme();
@@ -26,35 +27,35 @@ export default function AppPublishScreen({ navigation }) {
 
   const categories = ['Game', 'Mini-App', 'AI Bot', 'Utility', 'Watch Party'];
 
-  const handlePublish = () => {
-    if (!appName || !appUrl || !description) {
+  const handlePublish = async () => {
+    if (!appName.trim() || !appUrl.trim() || !description.trim()) {
       Alert.alert("Missing Fields", "Please fill in all the required details.");
       return;
     }
-
     setIsSubmitting(true);
-
-    // 🛡️ SECURITY CHECK: Nax Sandbox URL Validator
-    setTimeout(() => {
-      const securityCheck = URLValidator.scanMiniAppUrl(appUrl);
-      
-      if (!securityCheck.isSafe) {
-        setIsSubmitting(false);
-        Alert.alert("Security Block 🛑", `Your App URL failed the security scan:\n\n${securityCheck.message}`);
-        return;
-      }
-
-      // ✅ SUCCESS: Publish to Database
-      setTimeout(() => {
-        setIsSubmitting(false);
-        Alert.alert(
-          "Published Successfully! 🎉", 
-          `"${appName}" is now live on the Nax Portal. Users can now discover and play your app!`,
-          [{ text: "Go to Dashboard", onPress: () => navigation.goBack() }]
-        );
-      }, 1500);
-      
-    }, 1000); // Simulating network delay
+    try {
+      const securityCheck = URLValidator.scanMiniAppUrl(appUrl.trim());
+      if (!securityCheck.isSafe) throw new Error("Security Block: " + securityCheck.message);
+      await PortalStoreAPI.add({
+        name: appName,
+        url: appUrl,
+        iconUrl,
+        description,
+        category: appCategory,
+        entryType: appCategory === 'AI Bot' ? 'bot' : 'miniapp',
+      });
+      Alert.alert("Published Successfully! 🎉", '"' + appName + '" is now live in the Nax Store.', [
+        { text: "Open Store", onPress: () => navigation.navigate('PortalStore') }
+      ]);
+      setAppName('');
+      setAppUrl('');
+      setIconUrl('');
+      setDescription('');
+    } catch (error) {
+      Alert.alert("Publish Failed", error?.message || "Could not publish this item.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
