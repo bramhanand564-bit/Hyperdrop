@@ -34,6 +34,7 @@ import OnDeviceAISettingsScreen from './screens/OnDeviceAISettingsScreen';
 import DeveloperDashboardScreen from './screens/DeveloperDashboardScreen';
 import TelegramBotFeaturesScreen from './screens/TelegramBotFeaturesScreen';
 import PortalStoreScreen from './screens/PortalStoreScreen';
+import AppPublishScreen from './screens/portal/AppPublishScreen';
 import BotEdit from './bots/BotEdit';
 import BotCommands from './bots/BotCommands';
 import WebPortalScreen from './screens/WebPortalScreen';
@@ -126,6 +127,7 @@ function AppNavigator() {
             <Stack.Screen name="PortalFeatured" component={PortalFeatured} />
             <Stack.Screen name="PortalTrending" component={PortalTrending} />
             <Stack.Screen name="PortalStore" component={PortalStoreScreen} />
+            <Stack.Screen name="AppPublish" component={AppPublishScreen} />
 
             <Stack.Screen name="MiniAppHome" component={MiniAppHome} />
             <Stack.Screen name="MiniAppViewer" component={MiniAppViewer} />
