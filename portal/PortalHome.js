@@ -110,6 +110,10 @@ const PortalHome = ({ navigation }) => {
     navigation.navigate('PortalTrending');
   };
 
+  const handleOpenStore = () => {
+    navigation.navigate('PortalStore');
+  };
+
   const handleOpenStudio = () => {
     navigation.navigate('StudioHome');
   };
@@ -196,6 +200,20 @@ const PortalHome = ({ navigation }) => {
           <Text style={[styles.actionText, { color: textMain }]}>Trending</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={[styles.studioButton, { backgroundColor: isDark ? '#101820' : '#FFFFFF', borderColor: studioBorder }]}
+        onPress={handleOpenStore}
+        activeOpacity={0.85}
+      >
+        <View style={styles.studioContent}>
+          <Text style={[styles.studioTitle, { color: textMain }]}>Nax Store</Text>
+          <Text style={[styles.studioSubtitle, { color: textSub }]}>Publish, discover and open community apps & bots</Text>
+        </View>
+        <View style={[styles.studioArrow, { backgroundColor: 'rgba(8,126,255,0.1)' }]}>
+          <Ionicons name="storefront-outline" size={20} color="#087EFF" />
+        </View>
+      </TouchableOpacity>
 
       {/* Nax Studio Banner (Matte Glass, No Neon) */}
       <TouchableOpacity
