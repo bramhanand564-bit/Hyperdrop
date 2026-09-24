@@ -44,5 +44,5 @@ const s=StyleSheet.create({
   info:{flex:1,flexDirection:'row',alignItems:'center'},
   avatar:{width:40,height:40,borderRadius:20,marginRight:10},
   dot:{position:'absolute',bottom:-1,right:7,width:12,height:12,borderRadius:6,backgroundColor:'#35C76F',borderWidth:2},
-  text:{flex:1},title:{fontSize:16,fontWeight:'850'},sub:{fontSize:12,marginTop:2,fontWeight:'600'},actions:{flexDirection:'row'},btn:{width:40,height:44,justifyContent:'center',alignItems:'center'}
+  text:{flex:1},title:{fontSize:16,fontWeight:'800'},sub:{fontSize:12,marginTop:2,fontWeight:'600'},actions:{flexDirection:'row'},btn:{width:40,height:44,justifyContent:'center',alignItems:'center'}
 });
