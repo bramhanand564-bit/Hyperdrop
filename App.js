@@ -40,6 +40,7 @@ import BotCommands from './bots/BotCommands';
 import WebPortalScreen from './screens/WebPortalScreen';
 import ChatSettingsScreen from './screens/ChatSettingsScreen';
 import MessagingHubScreen from './screens/MessagingHubScreen';
+import ForwardPickerScreen from './screens/ForwardPickerScreen';
 
 import PortalHome from './portal/PortalHome';
 import PortalSearch from './portal/PortalSearch';
@@ -104,6 +105,7 @@ function AppNavigator() {
             <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
             <Stack.Screen name="ChatSettings" component={ChatSettingsScreen} />
             <Stack.Screen name="MessagingHub" component={MessagingHubScreen} />
+            <Stack.Screen name="ForwardPicker" component={ForwardPickerScreen} />
             <Stack.Screen name="TicTacToe" component={TicTacToeScreen} />
             <Stack.Screen name="NaxStudio" component={NaxStudioScreen} />
             <Stack.Screen name="BotChat" component={BotChatScreen} />
