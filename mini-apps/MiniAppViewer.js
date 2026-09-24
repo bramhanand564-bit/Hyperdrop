@@ -135,7 +135,7 @@ export default function MiniAppViewer({ route, navigation }) {
           },
           getSession: function(){ return window.__naxRoom || null; }
         },
-        share: function(){
+        api: {          request: function(url, options){            var id = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2);            return new Promise(function(resolve, reject){              if (!window.__naxApiPending) window.__naxApiPending = {};              window.__naxApiPending[id] = { resolve: resolve, reject: reject };              window.ReactNativeWebView.postMessage(JSON.stringify({action:'REQUEST_API', requestId:id, url:url, method:(options&&options.method)||'GET', headers:(options&&options.headers)||{}, body:(options&&options.body)||undefined}));            });          }        },        share: function(){
           window.ReactNativeWebView.postMessage(JSON.stringify({action:'SHARE_APP'}));
         }
       };
@@ -161,6 +161,25 @@ export default function MiniAppViewer({ route, navigation }) {
       } else if (message.action === 'GET_STATE' && room?.id) {
         const state = await NaxAppSessionAPI.getState(room.id);
         postToApp({ type: 'ROOM_STATE', state });
+      } else if (message.action === 'REQUEST_API') {
+        const apiUrl = String(message.url || '');
+        const urlCheck = URLValidator.scanMiniAppUrl(apiUrl);
+        const declared = Array.isArray(effectiveApp?.apiDomains) ? effectiveApp.apiDomains : [];
+        const host = apiUrl.replace(/^https?:\\/\\//i, '').split('/')[0].split(':')[0].toLowerCase();
+        const allowed = declared.some(domain => {
+          const d = String(domain || '').trim().toLowerCase().replace(/^https?:\\/\\//, '').split('/')[0];
+          return d && (host === d || host.endsWith('.' + d));
+        });
+        if (!urlCheck.isSafe || !allowed) throw new Error('API domain is not allowed by this Nax app manifest.');
+        const response = await fetch(apiUrl, {
+          method: message.method || 'GET',
+          headers: message.headers || {},
+          body: message.body || undefined,
+        });
+        const raw = await response.text();
+        let data = raw;
+        try { data = JSON.parse(raw); } catch (e) {}
+        postToApp({ type: 'API_RESPONSE', requestId: message.requestId, ok: response.ok, status: response.status, data });
       } else if (message.action === 'SHARE_APP') {
         await handleShare();
       }
