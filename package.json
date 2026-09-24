@@ -45,7 +45,8 @@
     "react-native-svg": "15.2.0",
     "react-native-qrcode-svg": "6.3.12",
     "expo-secure-store": "~13.0.2",
-    "llama.rn": "0.9.3"
+    "llama.rn": "0.9.3",
+    "fflate": "^0.8.2"
   },
   "overrides": {
     "expo-modules-core": "1.12.26",
