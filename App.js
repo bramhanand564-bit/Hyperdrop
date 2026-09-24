@@ -14,7 +14,6 @@ import AnalyticsService from './analytics/AnalyticsService';
 import NotificationManager from './notifications/NotificationManager';
 
 import MainAppTabs from './navigation/MainAppTabs';
-import MainAppTabs from './navigation/MainAppTabs';
 
 const lazyRequire = loader => {
   let Screen = null;
