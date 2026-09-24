@@ -98,10 +98,7 @@ export default function ChatsScreen({ navigation }) {
             <Text style={[styles.title, { color: textMain }]}>Chats</Text>
             <Text style={[styles.subtitle, { color: textSub }]}>Your private conversations</Text>
           </View>
-          <TouchableOpacity activeOpacity={0.8} style={styles.newButton} onPress={() => setShowNewMenu(true)}>
-            <Ionicons name="add" size={21} color="#FFFFFF" />
-            <Text style={styles.newText}>New</Text>
-          </TouchableOpacity>
+          <GlassButton title="New" icon="add" onPress={() => setShowNewMenu(true)} compact />
         </View>
 
         <View style={[styles.searchBox, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: border, borderWidth: 1 }]>
