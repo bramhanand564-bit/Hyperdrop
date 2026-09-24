@@ -17,13 +17,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import GlassScene from '../components/ui/GlassScene';
+import GlassButton from '../components/ui/GlassButton';
 
 import { MiniAppAPI } from '../api/MiniAppAPI';
 import { BotAPI } from '../api/BotAPI';
 import PortalCard from './PortalCard';
 
 const PortalHome = ({ navigation }) => {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
 
   const [apps, setApps] = useState([]);
   const [bots, setBots] = useState([]);
@@ -32,13 +34,13 @@ const PortalHome = ({ navigation }) => {
   const [error, setError] = useState('');
 
   // 🎨 Super Glassy, No-Neon, Futuristic Palette
-  const bg = isDark ? '#0A0A0C' : '#F2F2F7';
-  const textMain = isDark ? '#F5F5F7' : '#1C1C1E';
-  const textSub = isDark ? '#8E8E93' : '#6C6C70';
-  const cardBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.75)';
-  const cardBorder = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.04)';
-  const studioBg = isDark ? '#141416' : '#1C1C1E';
-  const studioBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  const bg = theme.bg;
+  const textMain = theme.text;
+  const textSub = theme.sub;
+  const cardBg = theme.surface;
+  const cardBorder = theme.border;
+  const studioBg = theme.blue;
+  const studioBorder = theme.border;
 
   // 1️⃣ ORIGINAL LOGIC (UNTOUCHED / SAFE)
   const fetchPortalData = useCallback(async () => {
@@ -258,7 +260,7 @@ const PortalHome = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}><GlassScene>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <FlatList
