@@ -64,6 +64,9 @@ const StudioGenerator = lazyRequire(() => require('./studio/StudioGenerator').de
 const StudioPreview = lazyRequire(() => require('./studio/StudioPreview').default);
 const StudioTester = lazyRequire(() => require('./studio/StudioTester').default);
 const StudioPublisher = lazyRequire(() => require('./studio/StudioPublisher').default);
+const MiniAppImportScreen = lazyRequire(() => require('./screens/MiniAppImportScreen').default);
+const MiniAppLibraryScreen = lazyRequire(() => require('./screens/MiniAppLibraryScreen').default);
+const MiniAppSharePickerScreen = lazyRequire(() => require('./screens/MiniAppSharePickerScreen').default);
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
@@ -151,6 +154,9 @@ function AppNavigator() {
             <Stack.Screen name="StudioPreview" component={StudioPreview} />
             <Stack.Screen name="StudioTester" component={StudioTester} />
             <Stack.Screen name="StudioPublisher" component={StudioPublisher} />
+            <Stack.Screen name="MiniAppImport" component={MiniAppImportScreen} />
+            <Stack.Screen name="MiniAppLibrary" component={MiniAppLibraryScreen} />
+            <Stack.Screen name="MiniAppSharePicker" component={MiniAppSharePickerScreen} />
           </> : <Stack.Screen name="Auth" component={AuthScreen} />}
         </Stack.Navigator>
       </NavigationContainer>
