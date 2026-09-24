@@ -111,6 +111,38 @@ export const MiniAppAPI = {
       throw error;
     }
   },
+  publishImportedMiniApp: async (app) => {
+    const user = auth.currentUser;
+    if (!user?.uid) throw new Error('Authentication required.');
+    if (!app?.htmlCode) throw new Error('Imported app HTML is missing.');
+    if (String(app.htmlCode).length > 900000) throw new Error('Imported app is too large for the public catalog.');
+
+    const newAppSchema = {
+      ownerId: user.uid,
+      creatorId: user.uid,
+      creatorName: user.displayName || user.email?.split('@')[0] || 'Nax Creator',
+      name: String(app.name || 'Imported App').trim().slice(0, 80),
+      description: String(app.description || 'Imported HTML mini-app').trim().slice(0, 1000),
+      category: String(app.category || 'Other').trim().slice(0, 40),
+      version: Number(app.version || 1),
+      status: 'published',
+      entryType: 'html',
+      htmlCode: app.htmlCode,
+      color: app.color || '#087EFF',
+      icon: app.icon || 'code-slash',
+      maxPlayers: Math.min(16, Math.max(2, Number(app.maxPlayers || 4))),
+      permissions: Array.isArray(app.permissions) ? app.permissions : [],
+      source: 'imported',
+      views: 0,
+      installs: 0,
+      rating: 0,
+    };
+
+    const created = await MiniAppFirebase.createMiniApp(newAppSchema);
+    EventBus.emit(EventTypes.MINIAPP_CREATED, { appId: created?.id, userId: user.uid, source: 'imported' });
+    return created;
+  },
+
   getInstalledApps: async () => {
     const user = auth.currentUser;
     if (!user?.uid) return [];
