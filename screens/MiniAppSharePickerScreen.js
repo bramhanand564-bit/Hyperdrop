@@ -36,6 +36,7 @@ export default function MiniAppSharePickerScreen({ route, navigation }) {
         appName: app?.name || 'Nax App',
         appDescription: app?.description || 'Play or use this app with me.',
         appIcon: app?.icon || 'game-controller',
+        appConfig: app?.appConfig || app || null,
         entryType: 'html',
         htmlCode: app?.htmlCode || null,
         sessionId: sessionId || null,
