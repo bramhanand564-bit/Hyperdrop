@@ -101,7 +101,7 @@ export default function ChatsScreen({ navigation }) {
           <GlassButton title="New" icon="add" onPress={() => setShowNewMenu(true)} compact />
         </View>
 
-        <View style={[styles.searchBox, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: border, borderWidth: 1 }>}>
+        <View style={[styles.searchBox, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: border, borderWidth: 1 }]}>
           <Ionicons name="search" size={21} color={textSub} />
           <TextInput
             style={[styles.searchInput, { color: textMain }]} placeholder="@username search..." placeholderTextColor={textSub}
