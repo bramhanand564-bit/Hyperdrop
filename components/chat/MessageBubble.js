@@ -1,188 +1,38 @@
-// ==========================================
-// FILE: components/chat/MessageBubble.js
-// ==========================================
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, SafeAreaView, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../context/ThemeContext';
-import { Video, ResizeMode } from 'expo-av'; // 🚀 REAL VIDEO PLAYER IMPORT
+import React,{useEffect,useState}from'react';
+import{View,Text,StyleSheet,Image,TouchableOpacity,Modal,SafeAreaView,Linking,TextInput,Alert}from'react-native';
+import{Ionicons}from'@expo/vector-icons';
+import{useTheme}from'../../context/ThemeContext';
+import{Video,ResizeMode}from'expo-av';
+import*as FileSystem from'expo-file-system';
+import{deleteCloudinaryByToken}from'../../utils/cloudinaryUpload';
+import MessagingService from'../../messaging/MessagingService';
 
-// 🚀 IMPORTS FOR AUTO-DOWNLOAD & DELETE MASTER PLAN
-import * as FileSystem from 'expo-file-system';
-import { deleteCloudinaryByToken } from '../../utils/cloudinaryUpload';
-
-export default function MessageBubble({ item, isMe, isGlobal }) {
-  const { isDark } = useTheme();
-  const [modalVisible, setModalVisible] = useState(false); // For Fullscreen Image
-
-  // 🚀 STATE: To switch from Cloudinary URL to Offline Local File
-  const [localMediaUri, setLocalMediaUri] = useState(item.fileUri);
-
-  // --- ORIGINAL COLORS PRESERVED (LOCKED) ---
-  const bubbleMe = '#087EFF';
-  const bubbleOther = isDark ? '#1A2A3A' : '#FFFFFF';
-  const textOther = isDark ? '#F4F7FA' : '#142532';
-  const textSub = isDark ? '#8FA6B9' : '#6C8494';
-  const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-
-  // 🕒 TIME FORMATTER (LOCKED)
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // 📄 REAL DOCUMENT OPENER (LOCKED)
-  const openDocument = () => {
-    const targetUri = localMediaUri || item.fileUri;
-    if (targetUri) {
-      Linking.openURL(targetUri).catch(() => alert("Can't open this file."));
-    }
-  };
-
-  // 💥 THE MASTERSTROKE LOGIC (AUTO-DOWNLOAD & DELETE - NOW WITH DYNAMIC EXTENSION)
-  useEffect(() => {
-    let isMounted = true;
-
-    const processAutoDownloadAndDelete = async () => {
-      if (!isMe && item.fileUri && item.deleteToken) {
-        try {
-          // 1. 🚀 FIX: Extract REAL extension from fileName or fileUri instead of hardcoding .mp4
-          let ext = '';
-          if (item.fileName && item.fileName.includes('.')) {
-            ext = item.fileName.substring(item.fileName.lastIndexOf('.'));
-          } else if (item.fileUri && item.fileUri.split('?')[0].includes('.')) {
-            const urlWithoutParams = item.fileUri.split('?')[0];
-            ext = urlWithoutParams.substring(urlWithoutParams.lastIndexOf('.'));
-          }
-          
-          // Fallback just in case extension is missing or weird
-          if (!ext || ext.length > 6 || ext.includes('/')) {
-            ext = item.type === 'video' ? '.mp4' : (item.type === 'image' ? '.jpg' : '.pdf');
-          }
-
-          const localPath = `${FileSystem.documentDirectory}nax_media_${item.id || Date.now()}${ext}`;
-
-          // 2. Check karenge ki kya receiver ne pehle hi isko download kar liya hai?
-          const fileInfo = await FileSystem.getInfoAsync(localPath);
-
-          if (fileInfo.exists) {
-            if (isMounted) setLocalMediaUri(localPath);
-          } else {
-            // 3. Background me Cloudinary se download karo
-            const downloadRes = await FileSystem.downloadAsync(item.fileUri, localPath);
-            
-            if (downloadRes.status === 200) {
-              if (isMounted) setLocalMediaUri(downloadRes.uri);
-
-              // 4. Download 100% hote hi Cloudinary se Delete kar do!
-              await deleteCloudinaryByToken(item.deleteToken);
-            }
-          }
-        } catch (error) {
-          console.log("Auto-Download/Delete Error:", error);
-        }
-      }
-    };
-
-    processAutoDownloadAndDelete();
-
-    return () => { isMounted = false; };
-  }, [item.fileUri, item.deleteToken, isMe, item.id, item.type, item.fileName]);
-
-
-  return (
-    <View style={[styles.messageWrapper, isMe ? styles.messageWrapperMe : styles.messageWrapperOther]}>
-      
-      {!isMe && isGlobal && (
-        <Text style={[styles.senderName, { color: textSub }]}>@{item.senderName}</Text>
-      )}
-      
-      <View style={[
-        styles.messageBubble,
-        isMe 
-          ? { backgroundColor: bubbleMe, borderBottomRightRadius: 4 } 
-          : { backgroundColor: bubbleOther, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: border }
-      ]}>
-        
-        {/* 📷 100% REAL IMAGE VIEWER */}
-        {item.type === 'image' && item.fileUri && (
-          <>
-            <TouchableOpacity activeOpacity={0.9} onPress={() => setModalVisible(true)}>
-              <Image source={{ uri: localMediaUri || item.fileUri }} style={styles.mediaImage} resizeMode="cover" />
-            </TouchableOpacity>
-            
-            {/* FULLSCREEN IMAGE MODAL */}
-            <Modal visible={modalVisible} transparent={true} animationType="fade" onRequestClose={() => setModalVisible(false)}>
-              <SafeAreaView style={styles.modalContainer}>
-                <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={32} color="#FFF" />
-                </TouchableOpacity>
-                <Image source={{ uri: localMediaUri || item.fileUri }} style={styles.fullScreenImage} resizeMode="contain" />
-              </SafeAreaView>
-            </Modal>
-          </>
-        )}
-
-        {/* 🎥 100% REAL VIDEO PLAYER */}
-        {item.type === 'video' && item.fileUri && (
-          <View style={styles.videoContainer}>
-            <Video
-              style={styles.mediaVideo}
-              source={{ uri: localMediaUri || item.fileUri }}
-              useNativeControls={true}
-              resizeMode={ResizeMode.COVER}
-              isLooping={false}
-            />
-          </View>
-        )}
-
-        {/* 📄 100% REAL DOCUMENT DOWNLOADER */}
-        {item.type === 'file' && (
-          <TouchableOpacity activeOpacity={0.8} style={[styles.mediaDocument, { backgroundColor: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }]} onPress={openDocument}>
-            <Ionicons name="document-text" size={28} color={isMe ? "#FFF" : "#087EFF"} />
-            <Text style={[styles.docText, { color: isMe ? '#FFF' : textOther }]} numberOfLines={1}>
-              {item.fileName || 'Document File'}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 💬 TEXT RENDERING (LOCKED) */}
-        {item.text ? (
-          <Text style={[styles.messageText, { color: isMe ? '#FFF' : textOther, marginTop: (item.type && item.type !== 'text') ? 6 : 0 }]}>
-            {item.text}
-          </Text>
-        ) : null}
-
-        {/* 🕒 TIMESTAMP (LOCKED) */}
-        <Text style={[styles.timestamp, { color: isMe ? 'rgba(255,255,255,0.7)' : textSub }]}>
-          {formatTime(item.createdAt)}
-        </Text>
-
-      </View>
-    </View>
-  );
+export default function MessageBubble({item,isMe,isGlobal,chatId,onReply}){
+ const{isDark}=useTheme();const[imageOpen,setImageOpen]=useState(false);const[actionOpen,setActionOpen]=useState(false);const[editOpen,setEditOpen]=useState(false);const[editText,setEditText]=useState(item.text||'');const[local,setLocal]=useState(item.fileUri);
+ const other=isDark?'#F4F7FA':'#142532',sub=isDark?'#8FA6B9':'#6C8494';
+ const time=t=>{if(!t)return'';const d=t.toDate?t.toDate():new Date(t);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})};
+ useEffect(()=>{let mounted=true;(async()=>{if(!isMe&&item.fileUri&&item.deleteToken){try{const ext=item.fileName?.includes('.')?item.fileName.slice(item.fileName.lastIndexOf('.')):(item.type==='video'?'.mp4':item.type==='image'?'.jpg':'.bin');const path=`${FileSystem.documentDirectory}nax_media_${item.id}${ext}`;const info=await FileSystem.getInfoAsync(path);const r=info.exists?{uri:path,status:200}:await FileSystem.downloadAsync(item.fileUri,path);if(r.status===200&&mounted){setLocal(r.uri);await deleteCloudinaryByToken(item.deleteToken)}}catch(e){}}})();return()=>{mounted=false}},[item.fileUri,item.deleteToken,item.id,isMe]);
+ const reactionValues=Object.values(item.reactions||{});const readBy=Object.keys(item.readBy||{}).some(k=>!isMe||k);const delivered=Object.keys(item.deliveredTo||{}).length>0;
+ const choose=async action=>{setActionOpen(false);try{if(action==='reply')onReply?.(item);if(action==='react')await MessagingService.toggleReaction(chatId,item.id,'❤️');if(action==='star')await MessagingService.toggleStar(chatId,item.id);if(action==='pin')await MessagingService.pinMessage(chatId,item.id);if(action==='delete')await MessagingService.deleteMessage(chatId,item.id,true);if(action==='edit'){setEditText(item.text||'');setEditOpen(true)}}catch(e){Alert.alert('Message',e.message||'Action failed.')}};
+ return <View style={[s.wrap,isMe?s.me:s.other]}>
+  {!isMe&&isGlobal?<Text style={[s.sender,{color:sub}]}>@{item.senderName}</Text>:null}
+  <TouchableOpacity activeOpacity={.9} onLongPress={()=>setActionOpen(true)} style={[s.bubble,isMe?s.bubbleMe:{backgroundColor:isDark?'#1A2A3A':'#FFF',borderColor:'rgba(128,128,128,.15)',borderWidth:1}]}>
+   {item.replyToText?<View style={[s.reply,{borderLeftColor:isMe?'#FFF':'#087EFF'}]}><Text style={{color:isMe?'rgba(255,255,255,.8)':sub,fontSize:11}}>{item.replyToSenderName||'Reply'}</Text><Text style={{color:isMe?'#FFF':other,fontSize:12}} numberOfLines={1}>{item.replyToText}</Text></View>:null}
+   {item.deleted?<Text style={[s.deleted,{color:isMe?'rgba(255,255,255,.75)':sub}]}>This message was deleted</Text>:null}
+   {item.type==='image'&&item.fileUri?<TouchableOpacity onPress={()=>setImageOpen(true)}><Image source={{uri:local||item.fileUri}} style={s.image}/></TouchableOpacity>:null}
+   {item.type==='video'&&item.fileUri?<Video style={s.video} source={{uri:local||item.fileUri}} useNativeControls resizeMode={ResizeMode.COVER}/>:null}
+   {item.type==='file'&&item.fileUri?<TouchableOpacity onPress={()=>Linking.openURL(local||item.fileUri)} style={s.file}><Ionicons name="document-text"size={28}color={isMe?'#FFF':'#087EFF'}/><Text style={{color:isMe?'#FFF':other,flex:1,marginLeft:8}}numberOfLines={1}>{item.fileName||'File'}</Text></TouchableOpacity>:null}
+   {item.type==='voice'&&item.fileUri?<Video style={s.voice} source={{uri:local||item.fileUri}} useNativeControls resizeMode={ResizeMode.CONTAIN}/>:null}
+   {item.type==='location'&&item.location?<TouchableOpacity style={s.special}><Ionicons name="location"size={28}color="#FF9500"/><Text style={{color:isMe?'#FFF':other}}>Shared location</Text></TouchableOpacity>:null}
+   {item.type==='contact'&&item.contact?<View style={s.special}><Ionicons name="person-circle"size={30}color="#5856D6"/><View><Text style={{color:isMe?'#FFF':other,fontWeight:'700'}}>{item.contact.name||'Contact'}</Text><Text style={{color:isMe?'rgba(255,255,255,.7)':sub}}>{item.contact.phone||''}</Text></View></View>:null}
+   {item.type==='poll'&&item.poll?<View><Text style={{color:isMe?'#FFF':other,fontWeight:'800'}}>{item.poll.question}</Text>{(item.poll.options||[]).map((o,i)=><Text key={i}style={{color:isMe?'#FFF':other,marginTop:4}}>○ {o}</Text>)}</View>:null}
+   {item.text&&item.type!=='location'&&item.type!=='contact'&&item.type!=='poll'&&item.text!=='This message was deleted'?<Text style={[s.msg,{color:isMe?'#FFF':other}]}>{item.text}</Text>:null}
+   <View style={s.meta}><Text style={{color:isMe?'rgba(255,255,255,.7)':sub,fontSize:10}}>{time(item.createdAt)}{item.editedAt?' · edited':''}</Text>{isMe?<Ionicons name={readBy?'checkmark-done':delivered?'checkmark-done':'checkmark'}size={14}color={readBy?'#9FE8FF':isMe?'rgba(255,255,255,.7)':sub}/>:null}</View>
+  </TouchableOpacity>
+  {reactionValues.length>0?<View style={[s.reactions,{backgroundColor:isDark?'#14202E':'#FFF'}]}><Text>{reactionValues.slice(0,4).join(' ')}</Text><Text style={{fontSize:10,color:sub}}> {reactionValues.length}</Text></View>:null}
+  <Modal visible={imageOpen}transparent animationType="fade"onRequestClose={()=>setImageOpen(false)}><SafeAreaView style={s.full}><TouchableOpacity onPress={()=>setImageOpen(false)}style={s.close}><Ionicons name="close"size={30}color="#FFF"/></TouchableOpacity><Image source={{uri:local||item.fileUri}}style={s.fullImg}resizeMode="contain"/></SafeAreaView></Modal>
+  <Modal visible={actionOpen}transparent animationType="slide"onRequestClose={()=>setActionOpen(false)}><TouchableOpacity style={s.sheetBg}activeOpacity={1}onPress={()=>setActionOpen(false)}><View style={[s.sheet,{backgroundColor:isDark?'#132B3B':'#FFF'}]}>{[['reply','Reply','return-up-forward'],['react','React ❤️','heart'],['star','Star','star'],['pin','Pin','pin'],...(isMe?[['edit','Edit','create-outline'],['delete','Delete','trash']]:[])].map(([a,t,i])=><TouchableOpacity key={a}style={s.action}onPress={()=>choose(a)}><Ionicons name={i}size={21}color={a==='delete'?'#FF3B30':isDark?'#FFF':'#142532'}/><Text style={{fontSize:15,fontWeight:'700',color:a==='delete'?'#FF3B30':isDark?'#FFF':'#142532'}}>{t}</Text></TouchableOpacity>)}</View></TouchableOpacity></Modal>
+  <Modal visible={editOpen}transparent animationType="fade"onRequestClose={()=>setEditOpen(false)}><View style={s.editBg}><View style={[s.editCard,{backgroundColor:isDark?'#132B3B':'#FFF'}]}><Text style={{fontSize:16,fontWeight:'800',color:isDark?'#FFF':'#142532'}}>Edit message</Text><TextInput value={editText}onChangeText={setEditText}style={[s.editInput,{color:isDark?'#FFF':'#142532'}]}autoFocus/><View style={s.editRow}><TouchableOpacity onPress={()=>setEditOpen(false)}><Text>Cancel</Text></TouchableOpacity><TouchableOpacity onPress={async()=>{try{await MessagingService.editMessage(chatId,item.id,editText);setEditOpen(false)}catch(e){Alert.alert('Edit',e.message)}}}><Text style={{color:'#087EFF',fontWeight:'800'}}>Save</Text></TouchableOpacity></View></View></View></Modal>
+ </View>
 }
-
-// STYLES 100% LOCKED
-const styles = StyleSheet.create({
-  messageWrapper: { marginBottom: 15, maxWidth: '82%' },
-  messageWrapperMe: { alignSelf: 'flex-end' },
-  messageWrapperOther: { alignSelf: 'flex-start' },
-  senderName: { fontSize: 11, marginBottom: 5, marginLeft: 4, fontWeight: '700' },
-  messageBubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20 },
-  messageText: { fontSize: 15, lineHeight: 22 },
-  timestamp: { fontSize: 10, alignSelf: 'flex-end', marginTop: 4 },
-  
-  // Real Media Styles
-  mediaImage: { width: 220, height: 220, borderRadius: 12, marginBottom: 5 },
-  videoContainer: { width: 220, height: 220, borderRadius: 12, overflow: 'hidden', marginBottom: 5, backgroundColor: '#000' },
-  mediaVideo: { width: '100%', height: '100%' },
-  mediaDocument: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 10, marginBottom: 5, width: 220 },
-  docText: { marginLeft: 10, fontSize: 14, fontWeight: '600', flex: 1 },
-
-  // Modal Styles
-  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
-  closeBtn: { position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 20 },
-  fullScreenImage: { width: '100%', height: '80%' }
-});
+const s=StyleSheet.create({wrap:{marginBottom:10,maxWidth:'84%'},me:{alignSelf:'flex-end'},other:{alignSelf:'flex-start'},sender:{fontSize:11,marginBottom:4,marginLeft:4,fontWeight:'700'},bubble:{padding:10,borderRadius:18},bubbleMe:{backgroundColor:'#087EFF',borderBottomRightRadius:4},msg:{fontSize:15,lineHeight:21},deleted:{fontStyle:'italic'},reply:{borderLeftWidth:3,paddingLeft:8,marginBottom:6},image:{width:220,height:220,borderRadius:12},video:{width:220,height:200,borderRadius:12,backgroundColor:'#000'},voice:{width:210,height:48},file:{flexDirection:'row',alignItems:'center',width:220},special:{flexDirection:'row',alignItems:'center',gap:9},meta:{flexDirection:'row',justifyContent:'flex-end',alignItems:'center',gap:3,marginTop:4},reactions:{position:'relative',alignSelf:'flex-end',marginTop:-4,borderRadius:12,paddingHorizontal:8,paddingVertical:3,elevation:2},full:{flex:1,backgroundColor:'rgba(0,0,0,.95)',justifyContent:'center'},fullImg:{width:'100%',height:'80%'},close:{position:'absolute',top:50,right:20,zIndex:2},sheetBg:{flex:1,backgroundColor:'rgba(0,0,0,.45)',justifyContent:'flex-end'},sheet:{padding:14,borderTopLeftRadius:22,borderTopRightRadius:22},action:{paddingVertical:15,flexDirection:'row',alignItems:'center',gap:12},editBg:{flex:1,backgroundColor:'rgba(0,0,0,.5)',justifyContent:'center',padding:20},editCard:{borderRadius:18,padding:18},editInput:{borderWidth:1,borderColor:'#D9DEE7',borderRadius:12,padding:12,marginTop:12,minHeight:80},editRow:{flexDirection:'row',justifyContent:'flex-end',gap:22,marginTop:14}});
