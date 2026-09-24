@@ -98,7 +98,7 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
     if (isGlobal && msgText.length>500) return Alert.alert('Limit Reached','Global Chat में 500 characters तक भेज सकते हो.');
     setInputText(''); AsyncStorage.removeItem(draftKey).catch(()=>{}); setSending(true);
     try {
-      await MessagingService.sendMessage(chatId,{text:msgText,type:'text',replyToId:replyingTo?.id,replyToText:replyingTo?.text,replyToSenderName:replyingTo?.senderName,ttl:messageTTL,viewOnce,participants:[auth.currentUser.uid,friendId].filter(Boolean)});
+      await MessagingService.sendMessage(chatId,{text:msgText,type:'text',replyToId:replyingTo?.id,replyToText:replyingTo?.text,replyToSenderName:replyingTo?.senderName,ttl:messageTTL,participants:[auth.currentUser.uid,friendId].filter(Boolean)});
       setReplyingTo(null);
       await MessagingService.setTyping(chatId,false).catch(()=>{});
     } catch(e) { Alert.alert('Error',e.message || 'Message send failed.'); }
@@ -114,7 +114,7 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
       if(!result?.secureUrl) throw new Error('Upload failed.');
       let url=result.secureUrl;
       if(type==='video'&&url.includes('/upload/')) url=url.replace('/upload/','/upload/f_mp4,vc_auto/');
-      await MessagingService.sendMessage(chatId,{type,fileUri:url,fileName,replyToId:replyingTo?.id,replyToText:replyingTo?.text,replyToSenderName:replyingTo?.senderName,ttl:messageTTL,participants:[auth.currentUser.uid,friendId].filter(Boolean)});
+      await MessagingService.sendMessage(chatId,{type,fileUri:url,fileName,replyToId:replyingTo?.id,replyToText:replyingTo?.text,replyToSenderName:replyingTo?.senderName,ttl:messageTTL,viewOnce,participants:[auth.currentUser.uid,friendId].filter(Boolean)});
       setReplyingTo(null);
     } catch(e) { Alert.alert('Upload Failed',e.message || 'Media upload failed.'); }
     finally { setSending(false); setUploadProgress(0); }
