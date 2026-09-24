@@ -65,7 +65,7 @@ const TelegramBotService = {
     return this.call(botId, 'getUpdates', {
       ...(offset ? { offset } : {}),
       timeout: Math.max(0, Math.min(Number(timeout) || 0, 50)),
-      allowed_updates: ['message','edited_message','callback_query','inline_query','chat_member','my_chat_member'],
+      allowed_updates: ['message','edited_message','callback_query','inline_query','chat_member','my_chat_member','message_reaction','message_reaction_count','chat_join_request'],
     });
   },
 
@@ -110,6 +110,22 @@ const TelegramBotService = {
   sendContact(botId, chatId, phoneNumber, firstName, options = {}) {
     return this.call(botId, 'sendContact', { chat_id: chatId, phone_number: phoneNumber, first_name: firstName, ...options });
   },
+  sendAnimation(botId, chatId, animation, options = {}) { return this.call(botId, 'sendAnimation', { chat_id: chatId, animation, ...options }); },
+  sendVideoNote(botId, chatId, videoNote, options = {}) { return this.call(botId, 'sendVideoNote', { chat_id: chatId, video_note: videoNote, ...options }); },
+  sendDice(botId, chatId, emoji = '🎲') { return this.call(botId, 'sendDice', { chat_id: chatId, emoji }); },
+  sendChatAction(botId, chatId, action = 'typing') { return this.call(botId, 'sendChatAction', { chat_id: chatId, action }); },
+  copyMessage(botId, chatId, fromChatId, messageId, options = {}) { return this.call(botId, 'copyMessage', { chat_id: chatId, from_chat_id: fromChatId, message_id: messageId, ...options }); },
+  forwardMessage(botId, chatId, fromChatId, messageId, options = {}) { return this.call(botId, 'forwardMessage', { chat_id: chatId, from_chat_id: fromChatId, message_id: messageId, ...options }); },
+  editReplyMarkup(botId, chatId, messageId, replyMarkup) { return this.call(botId, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: replyMarkup }); },
+  setMessageReaction(botId, chatId, messageId, reaction = []) { return this.call(botId, 'setMessageReaction', { chat_id: chatId, message_id: messageId, reaction }); },
+  getChatMember(botId, chatId, userId) { return this.call(botId, 'getChatMember', { chat_id: chatId, user_id: userId }); },
+  leaveChat(botId, chatId) { return this.call(botId, 'leaveChat', { chat_id: chatId }); },
+  createInviteLink(botId, chatId, options = {}) { return this.call(botId, 'createChatInviteLink', { chat_id: chatId, ...options }); },
+  approveJoinRequest(botId, chatId, userId) { return this.call(botId, 'approveChatJoinRequest', { chat_id: chatId, user_id: userId }); },
+  answerInlineQuery(botId, inlineQueryId, results = [], options = {}) { return this.call(botId, 'answerInlineQuery', { inline_query_id: inlineQueryId, results, ...options }); },
+  setChatTitle(botId, chatId, title) { return this.call(botId, 'setChatTitle', { chat_id: chatId, title: String(title || '').slice(0, 128) }); },
+  setChatDescription(botId, chatId, description) { return this.call(botId, 'setChatDescription', { chat_id: chatId, description: String(description || '').slice(0, 255) }); },
+  setChatPhoto(botId, chatId, photo) { return this.call(botId, 'setChatPhoto', { chat_id: chatId, photo }); },
   sendPoll(botId, chatId, question, options = {}) {
     return this.call(botId, 'sendPoll', { chat_id: chatId, question, ...options });
   },
