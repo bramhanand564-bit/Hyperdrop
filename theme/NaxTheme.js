@@ -1,0 +1,40 @@
+export const NAX = {
+  blue: '#087EFF',
+  blueSoft: '#5AA9FF',
+  green: '#35C76F',
+  white: '#FFFFFF',
+  black: '#07111A',
+  lightBg: '#EEF6FB',
+  darkBg: '#07111A',
+  lightSurface: 'rgba(255,255,255,0.72)',
+  darkSurface: 'rgba(18,34,48,0.72)',
+  lightSurfaceStrong: 'rgba(255,255,255,0.88)',
+  darkSurfaceStrong: 'rgba(18,34,48,0.9)',
+  lightBorder: 'rgba(255,255,255,0.72)',
+  darkBorder: 'rgba(255,255,255,0.10)',
+  lightText: '#173044',
+  darkText: '#F4F8FC',
+  lightSub: '#6F8799',
+  darkSub: '#9CB0C0',
+  shadow: 'rgba(15,45,70,0.14)',
+};
+
+export function getNaxTheme(isDark) {
+  return {
+    isDark,
+    bg: isDark ? NAX.darkBg : NAX.lightBg,
+    surface: isDark ? NAX.darkSurface : NAX.lightSurface,
+    surfaceStrong: isDark ? NAX.darkSurfaceStrong : NAX.lightSurfaceStrong,
+    border: isDark ? NAX.darkBorder : NAX.lightBorder,
+    text: isDark ? NAX.darkText : NAX.lightText,
+    sub: isDark ? NAX.darkSub : NAX.lightSub,
+    blue: NAX.blue,
+    blueSoft: NAX.blueSoft,
+    green: NAX.green,
+    shadow: NAX.shadow,
+    input: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.62)',
+    nav: isDark ? 'rgba(10,25,38,0.84)' : 'rgba(255,255,255,0.82)',
+    bubbleMine: isDark ? 'rgba(8,126,255,0.28)' : 'rgba(8,126,255,0.14)',
+    bubbleOther: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.78)',
+  };
+}
