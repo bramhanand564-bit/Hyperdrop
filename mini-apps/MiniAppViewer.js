@@ -174,7 +174,7 @@ export default function MiniAppViewer({ route, navigation }) {
         const apiUrl = String(message.url || '');
         const urlCheck = URLValidator.scanMiniAppUrl(apiUrl);
         const declared = Array.isArray(effectiveApp?.apiDomains) ? effectiveApp.apiDomains : [];
-        const host = apiUrl.replace(/^https?:\/\//i, '').split('/')[0].split(':')[0].toLowerCase();
+        const host = new URL(apiUrl).hostname.toLowerCase();
         const allowed = declared.some(domain => {
           const d = String(domain || '').trim().toLowerCase().replace(/^https?:\\/\\//, '').split('/')[0];
           return d && (host === d || host.endsWith('.' + d));
