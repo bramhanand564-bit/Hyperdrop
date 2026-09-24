@@ -44,6 +44,7 @@ export default function WalletScreen() {
         <AdvancedSettings />
 
       </ScrollView>
+      </GlassScene>
     </SafeAreaView>
   );
 }
