@@ -89,6 +89,25 @@ export default function StudioHome({ navigation }) {
           <Ionicons name="arrow-forward-circle" size={32} color={purple} />
         </TouchableOpacity>
 
+        <View style={styles.importRow}>
+          <TouchableOpacity
+            style={[styles.importButton, { backgroundColor: cardBg, borderColor: border }]}
+            onPress={() => navigation.navigate('MiniAppImport')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="cloud-upload-outline" size={18} color={blue} />
+            <Text style={[styles.importText, { color: textMain }]}>Import HTML / ZIP</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.importButton, { backgroundColor: cardBg, borderColor: border }]}
+            onPress={() => navigation.navigate('MiniAppLibrary')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="folder-open-outline" size={18} color={blue} />
+            <Text style={[styles.importText, { color: textMain }]}>My Local Apps</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* TEMPLATES & INSPIRATION */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: textMain }]}>Inspiration Templates</Text>
