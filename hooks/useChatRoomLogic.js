@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -50,11 +50,15 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
   }, [chatId]);
 
   useEffect(() => {
-    if (!auth.currentUser || isGlobal) return undefined;
-    const chatRef = query(collection(db,'chats'));
-    // The message listener above already keeps the chat hot; this lightweight polling is avoided.
-    return () => {};
-  }, [chatId,isGlobal]);
+    if (!auth.currentUser || !chatId) return undefined;
+    const unsubscribe = onSnapshot(doc(db,'chats',chatId), snap => {
+      const data = snap.data() || {};
+      const me = auth.currentUser?.uid;
+      setTypingUsers(Object.keys(data.typing || {}).filter(id => id !== me && data.typing[id]));
+      setMessageTTL(Number(data.messageTTL || 0));
+    }, () => {});
+    return () => unsubscribe();
+  }, [chatId]);
 
   const updateTyping = (value) => {
     setInputText(value);
