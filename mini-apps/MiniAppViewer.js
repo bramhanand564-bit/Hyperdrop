@@ -103,6 +103,15 @@ export default function MiniAppViewer({ route, navigation }) {
       var THEME = ${JSON.stringify(isDark ? 'dark' : 'light')};
       var listeners = [];
       window.__naxNativeMessage = function(message) {
+        if (message && message.type === 'API_RESPONSE' && window.__naxApiPending && window.__naxApiPending[message.requestId]) {
+          var pending = window.__naxApiPending[message.requestId];
+          delete window.__naxApiPending[message.requestId];
+          if (message.ok) pending.resolve(message.data);
+          else pending.reject(new Error('API request failed: ' + message.status));
+        }
+        if (message && message.type === 'NAX_ERROR' && message.message) {
+          window.__naxLastError = message.message;
+        }
         if (message && message.type === 'ROOM_STATE') {
           listeners.forEach(function(fn){ try { fn(message.state); } catch(e) {} });
         }
