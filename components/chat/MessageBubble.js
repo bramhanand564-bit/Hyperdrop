@@ -1,4 +1,4 @@
-import React,{useEffect,useState}from'react';
+import React,{memo,useEffect,useState}from'react';
 import{View,Text,StyleSheet,Image,TouchableOpacity,Modal,SafeAreaView,Linking,TextInput,Alert}from'react-native';
 import{Ionicons}from'@expo/vector-icons';
 import{useTheme}from'../../context/ThemeContext';
@@ -16,7 +16,7 @@ function VoiceNote({uri,isDark}){
  return <TouchableOpacity style={[s.voiceBtn,{backgroundColor:isDark?'rgba(8,126,255,.12)':'rgba(8,126,255,.08)'}]}onPress={toggle}><Ionicons name={playing?'pause':'play'}size={20}color="#087EFF"/><View style={s.wave}>{[1,2,3,4,5].map(i=><View key={i}style={[s.waveLine,{height:8+(i%3)*6}]}/>)}</View><Text style={{fontSize:11,color:'#087EFF',fontWeight:'800'}}>Voice</Text></TouchableOpacity>
 }
 
-export default function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward}){
+function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward}){
  const{isDark,theme}=useTheme();
  const[imageOpen,setImageOpen]=useState(false),[actionOpen,setActionOpen]=useState(false),[editOpen,setEditOpen]=useState(false),[editText,setEditText]=useState(item.text||''),[local,setLocal]=useState(item.fileUri),[openedOnce,setOpenedOnce]=useState(!!item.viewOnceOpenedBy?.[auth.currentUser?.uid]);
  const other=theme.text,sub=theme.sub;
@@ -52,3 +52,5 @@ export default function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForwa
  </View>
 }
 const s=StyleSheet.create({wrap:{marginBottom:10,maxWidth:'84%'},me:{alignSelf:'flex-end'},other:{alignSelf:'flex-start'},sender:{fontSize:11,marginBottom:4,marginLeft:4,fontWeight:'700'},bubble:{padding:10,borderRadius:19},bubbleMe:{backgroundColor:'#087EFF',borderBottomRightRadius:5},msg:{fontSize:15,lineHeight:21},deleted:{fontStyle:'italic'},reply:{borderLeftWidth:3,paddingLeft:8,marginBottom:6},image:{width:220,height:220,borderRadius:16},video:{width:220,height:200,borderRadius:16,backgroundColor:'#000'},onceBox:{width:220,height:150,borderRadius:16,borderWidth:1,alignItems:'center',justifyContent:'center'},voiceBtn:{width:210,height:52,borderRadius:16,flexDirection:'row',alignItems:'center',paddingHorizontal:12,gap:9},wave:{flex:1,height:24,flexDirection:'row',alignItems:'center',justifyContent:'space-around'},waveLine:{width:3,borderRadius:2,backgroundColor:'#087EFF'},file:{flexDirection:'row',alignItems:'center',width:220},special:{flexDirection:'row',alignItems:'center',gap:9},pollOption:{flexDirection:'row',alignItems:'center',borderWidth:1,borderRadius:13,padding:11,marginTop:7},meta:{flexDirection:'row',justifyContent:'flex-end',alignItems:'center',gap:3,marginTop:4},reactions:{alignSelf:'flex-end',marginTop:-4,borderRadius:12,borderWidth:1,paddingHorizontal:8,paddingVertical:3},full:{flex:1,backgroundColor:'rgba(0,0,0,.95)',justifyContent:'center'},fullImg:{width:'100%',height:'80%'},close:{position:'absolute',top:50,right:20,zIndex:2},sheetBg:{flex:1,backgroundColor:'rgba(0,0,0,.45)',justifyContent:'flex-end'},sheet:{padding:14,borderTopLeftRadius:24,borderTopRightRadius:24,borderWidth:1},action:{paddingVertical:15,flexDirection:'row',alignItems:'center',gap:12},editBg:{flex:1,backgroundColor:'rgba(0,0,0,.5)',justifyContent:'center',padding:20},editCard:{borderRadius:20,borderWidth:1,padding:18},editInput:{borderWidth:1,borderRadius:13,padding:12,marginTop:12,minHeight:80},editRow:{flexDirection:'row',justifyContent:'flex-end',gap:22,marginTop:14}});
+
+export default memo(MessageBubble);
