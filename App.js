@@ -38,6 +38,7 @@ import AppPublishScreen from './screens/portal/AppPublishScreen';
 import BotEdit from './bots/BotEdit';
 import BotCommands from './bots/BotCommands';
 import WebPortalScreen from './screens/WebPortalScreen';
+import ChatSettingsScreen from './screens/ChatSettingsScreen';
 
 import PortalHome from './portal/PortalHome';
 import PortalSearch from './portal/PortalSearch';
@@ -100,6 +101,7 @@ function AppNavigator() {
           {user ? <>
             <Stack.Screen name="MainTabs" component={MainAppTabs} />
             <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+            <Stack.Screen name="ChatSettings" component={ChatSettingsScreen} />
             <Stack.Screen name="TicTacToe" component={TicTacToeScreen} />
             <Stack.Screen name="NaxStudio" component={NaxStudioScreen} />
             <Stack.Screen name="BotChat" component={BotChatScreen} />
