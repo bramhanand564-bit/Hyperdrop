@@ -46,7 +46,7 @@ function ChatItem({ item, currentUser, onPress }) {
   };
 
   const avatarUri = item.friendAvatar || item.avatar || item.photoURL;
-  const initials = getChatName().trim().split(/\\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'N';
+  const initials = getChatName().trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'N';
 
   const getTime = (value) => {
     if (!value) return 0;
