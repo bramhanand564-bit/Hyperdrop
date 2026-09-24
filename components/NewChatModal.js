@@ -1,76 +1,11 @@
-import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
+import React from'react';
+import{Modal,View,Text,TouchableOpacity,StyleSheet}from'react-native';
+import{Ionicons}from'@expo/vector-icons';
+import{useTheme}from'../context/ThemeContext';
 
-export default function NewChatModal({ visible, onClose, onStartPrivateChat, onOpenGlobalRoom, onCreateBot }) {
-  const { isDark } = useTheme();
-
-  // Colors
-  const cardBg = isDark ? '#132B3B' : '#FFFFFF';
-  const textMain = isDark ? '#F5F9FC' : '#142532';
-  const textSub = isDark ? '#8EAABD' : '#6C8494';
-  const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} style={styles.modalOverlay} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} style={[styles.newMenu, { backgroundColor: cardBg }]}>
-          <View style={styles.menuHandle} />
-          <Text style={[styles.menuTitle, { color: textMain }]}>New</Text>
-          <Text style={[styles.menuSubtitle, { color: textSub }]}>Start something new</Text>
-
-          {/* Private Chat */}
-          <TouchableOpacity activeOpacity={0.8} style={styles.menuItem} onPress={onStartPrivateChat}>
-            <View style={[styles.menuIcon, { backgroundColor: '#1687FF' }]}><Ionicons name="person" size={22} color="#FFFFFF" /></View>
-            <View style={styles.menuInfo}>
-              <Text style={[styles.menuItemTitle, { color: textMain }]}>New Private Chat</Text>
-              <Text style={[styles.menuItemText, { color: textSub }]}>Find someone by @username</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={textSub} />
-          </TouchableOpacity>
-
-          {/* Global Chat */}
-          <TouchableOpacity activeOpacity={0.8} style={styles.menuItem} onPress={onOpenGlobalRoom}>
-            <View style={[styles.menuIcon, { backgroundColor: '#18A66A' }]}><Ionicons name="earth" size={22} color="#FFFFFF" /></View>
-            <View style={styles.menuInfo}>
-              <Text style={[styles.menuItemTitle, { color: textMain }]}>Global Chat</Text>
-              <Text style={[styles.menuItemText, { color: textSub }]}>Chat with everyone</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={textSub} />
-          </TouchableOpacity>
-
-          {/* Create AI Bot */}
-          <TouchableOpacity activeOpacity={0.8} style={styles.menuItem} onPress={onCreateBot}>
-            <View style={[styles.menuIcon, { backgroundColor: '#AF52DE' }]}><Ionicons name="hardware-chip" size={22} color="#FFFFFF" /></View>
-            <View style={styles.menuInfo}>
-              <Text style={[styles.menuItemTitle, { color: textMain }]}>Create AI Bot</Text>
-              <Text style={[styles.menuItemText, { color: textSub }]}>Build your own Telegram-style bot</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={textSub} />
-          </TouchableOpacity>
-
-          {/* Cancel */}
-          <TouchableOpacity activeOpacity={0.8} style={[styles.cancelButton, { borderColor: border }]} onPress={onClose}>
-            <Text style={[styles.cancelText, { color: textMain }]}>Cancel</Text>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
-  );
+export default function NewChatModal({visible,onClose,onStartPrivateChat,onOpenGlobalRoom,onCreateBot,onOpenMessagingHub}){
+ const{isDark}=useTheme();const bg=isDark?'#132B3B':'#FFF',main=isDark?'#F5F9FC':'#142532',sub=isDark?'#8EAABD':'#6C8494';
+ const items=[['person','New Private Chat','Find someone by @username',onStartPrivateChat,'#1687FF'],['people','Groups • Channels • Status','Telegram / WhatsApp / WeChat style',onOpenMessagingHub,'#34C759'],['earth','Global Chat','Community room',onOpenGlobalRoom,'#18A66A'],['hardware-chip','Create AI Bot','Build your own bot',onCreateBot,'#AF52DE']];
+ return <Modal visible={visible}transparent animationType="slide"onRequestClose={onClose}><TouchableOpacity activeOpacity={1}style={s.overlay}onPress={onClose}><TouchableOpacity activeOpacity={1}style={[s.menu,{backgroundColor:bg}]}><View style={s.handle}/><Text style={[s.title,{color:main}]}>New</Text><Text style={[s.sub,{color:sub}]}>Chat, group, channel, status or bot</Text>{items.map(([icon,title,desc,onPress,color])=><TouchableOpacity key={title}style={s.item}onPress={onPress}><View style={[s.icon,{backgroundColor:color}]}><Ionicons name={icon}size={22}color="#FFF"/></View><View style={s.info}><Text style={[s.itemTitle,{color:main}]}>{title}</Text><Text style={[s.itemText,{color:sub}]}>{desc}</Text></View><Ionicons name="chevron-forward"size={20}color={sub}/></TouchableOpacity>)}<TouchableOpacity style={s.cancel}onPress={onClose}><Text style={{color:main,fontWeight:'700'}}>Cancel</Text></TouchableOpacity></TouchableOpacity></TouchableOpacity></Modal>
 }
-
-const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  newMenu: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 30 },
-  menuHandle: { width: 42, height: 5, borderRadius: 3, backgroundColor: '#71808A', alignSelf: 'center', marginBottom: 18 },
-  menuTitle: { fontSize: 24, fontWeight: '800' },
-  menuSubtitle: { marginTop: 4, marginBottom: 18, fontSize: 14 },
-  menuItem: { minHeight: 72, flexDirection: 'row', alignItems: 'center', paddingVertical: 9 },
-  menuIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  menuInfo: { flex: 1, marginLeft: 13 },
-  menuItemTitle: { fontSize: 16, fontWeight: '800' },
-  menuItemText: { marginTop: 4, fontSize: 13 },
-  cancelButton: { height: 48, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
-  cancelText: { fontSize: 15, fontWeight: '700' }
-});
+const s=StyleSheet.create({overlay:{flex:1,backgroundColor:'rgba(0,0,0,.55)',justifyContent:'flex-end'},menu:{borderTopLeftRadius:28,borderTopRightRadius:28,paddingHorizontal:20,paddingTop:10,paddingBottom:30},handle:{width:42,height:5,borderRadius:3,backgroundColor:'#71808A',alignSelf:'center',marginBottom:18},title:{fontSize:24,fontWeight:'800'},sub:{marginTop:4,marginBottom:12,fontSize:13},item:{minHeight:68,flexDirection:'row',alignItems:'center',paddingVertical:8},icon:{width:46,height:46,borderRadius:23,alignItems:'center',justifyContent:'center'},info:{flex:1,marginLeft:13},itemTitle:{fontSize:15,fontWeight:'800'},itemText:{marginTop:3,fontSize:12},cancel:{height:46,borderRadius:23,borderWidth:1,borderColor:'rgba(128,128,128,.2)',alignItems:'center',justifyContent:'center',marginTop:8}});
