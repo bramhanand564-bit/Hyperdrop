@@ -120,6 +120,14 @@ const PortalHome = ({ navigation }) => {
     navigation.navigate('StudioHome');
   };
 
+  const handleOpenImport = () => {
+    navigation.navigate('MiniAppImport');
+  };
+
+  const handleOpenLocalApps = () => {
+    navigation.navigate('MiniAppLibrary');
+  };
+
   const renderItem = ({ item }) => (
     <PortalCard
       item={item}
@@ -216,6 +224,25 @@ const PortalHome = ({ navigation }) => {
           <Ionicons name="storefront-outline" size={20} color="#087EFF" />
         </View>
       </TouchableOpacity>
+
+      <View style={styles.importRow}>
+        <TouchableOpacity
+          style={[styles.importButton, { backgroundColor: cardBg, borderColor: cardBorder }]}
+          onPress={handleOpenImport}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="cloud-upload-outline" size={18} color={textMain} />
+          <Text style={[styles.importText, { color: textMain }]}>Import App</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.importButton, { backgroundColor: cardBg, borderColor: cardBorder }]}
+          onPress={handleOpenLocalApps}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="folder-open-outline" size={18} color={textMain} />
+          <Text style={[styles.importText, { color: textMain }]}>My Apps</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Nax Studio Banner (Matte Glass, No Neon) */}
       <TouchableOpacity
@@ -418,6 +445,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 10,
   },
+
+  importRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  importButton: { flex: 1, height: 46, borderRadius: 15, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  importText: { fontSize: 13, fontWeight: '800', marginLeft: 7 },
 
   // Error Card
   errorBox: {
