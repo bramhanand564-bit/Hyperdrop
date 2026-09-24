@@ -1,5 +1,5 @@
 import React,{useCallback}from'react';
-import{View,FlatList,StyleSheet,SafeAreaView,ActivityIndicator,Animated,Text,TouchableOpacity}from'react-native';
+import{View,FlatList,StyleSheet,SafeAreaView,ActivityIndicator,Text,TouchableOpacity}from'react-native';
 import{auth}from'../firebaseConfig';
 import{useTheme}from'../context/ThemeContext';
 import GlassScene from'../components/ui/GlassScene';
@@ -20,6 +20,6 @@ export default function ChatRoomScreen({route,navigation}){
   <View style={s.area}>{loading?<ActivityIndicator size="large"color="#087EFF"style={{marginTop:30}}/>:<FlatList data={messages}keyExtractor={m=>m.id}renderItem={renderMessage}inverted contentContainerStyle={s.list}showsVerticalScrollIndicator={false}initialNumToRender={12}maxToRenderPerBatch={8}windowSize={9}removeClippedSubviews/>}</View>
   {replyingTo?<GlassSurface radius={18} style={s.replyBar}><View style={{flex:1}}><Text style={s.replyTitle}>Replying to {replyingTo.senderName||'message'}</Text><Text style={{color:isDark?'#FFF':'#333'}}numberOfLines={1}>{replyingTo.text||'Media'}</Text></View><TouchableOpacity onPress={()=>setReplyingTo(null)}><Text style={{fontSize:22}}>×</Text></TouchableOpacity></GlassSurface>:null}
   <ChatInput value={inputText}onChangeText={setInputText}onSend={handleSend}sending={sending}onAttachImage={()=>handleMediaPick('image')}onAttachVideo={()=>handleMediaPick('video')}onAttachDocument={handleDocumentPick}onAttachVoice={handleVoiceRecord}onAttachLocation={handleLocationPick}onAttachContact={handleContactPick} onPoll={handlePoll}/>
- </Animated.View></GlassScene></SafeAreaView>
+ </View></GlassScene></SafeAreaView>
 }
 const s=StyleSheet.create({container:{flex:1},area:{flex:1},list:{paddingHorizontal:15,paddingBottom:15,paddingTop:10},progress:{padding:8,backgroundColor:'rgba(8,126,255,.1)',alignItems:'center'},progressText:{fontSize:12,fontWeight:'700',color:'#087EFF'},bar:{width:'80%',height:4,backgroundColor:'rgba(8,126,255,.2)',borderRadius:2},fill:{height:'100%',backgroundColor:'#087EFF',borderRadius:2},replyBar:{flexDirection:'row',alignItems:'center',paddingHorizontal:14,paddingVertical:8,borderTopWidth:1,borderTopColor:'rgba(128,128,128,.15)'},replyTitle:{fontSize:11,fontWeight:'800',color:'#087EFF',marginBottom:2}});
