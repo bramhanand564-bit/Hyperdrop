@@ -102,6 +102,9 @@ export default function MiniAppHome({ navigation }) {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={textMain} />
         </TouchableOpacity>
+        <TouchableOpacity style={styles.headerAdd} onPress={() => navigation.navigate('MiniAppImport')}>
+          <Ionicons name="cloud-upload-outline" size={21} color={blue} />
+        </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={[styles.headerTitle, { color: textMain }]}>Mini-Apps Store</Text>
           <Text style={[styles.headerSubtitle, { color: textSub }]}>Discover and play</Text>
@@ -190,6 +193,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  headerAdd: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center', marginLeft: 4 },
   headerInfo: { flex: 1, marginLeft: 5 },
   headerTitle: { fontSize: 20, fontWeight: '800' },
   headerSubtitle: { fontSize: 13, marginTop: 2 },
