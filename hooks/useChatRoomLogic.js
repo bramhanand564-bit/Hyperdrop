@@ -21,6 +21,8 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
   const [typingUsers, setTypingUsers] = useState([]);
   const [replyingTo, setReplyingTo] = useState(null);
   const [messageTTL, setMessageTTL] = useState(0);
+  const [friendOnline, setFriendOnline] = useState(false);
+  const [friendLastSeen, setFriendLastSeen] = useState(null);
   const recordingRef = useRef(null);
   const typingTimer = useRef(null);
 
@@ -48,6 +50,12 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
     }, error => { console.log('Chat fetch error:', error); setLoading(false); });
     return () => unsubscribe();
   }, [chatId]);
+
+  useEffect(() => {
+    if (!friendId) return undefined;
+    const unsubscribe = onSnapshot(doc(db,'users',friendId), snap => { const data=snap.data()||{}; setFriendOnline(!!data.online); setFriendLastSeen(data.lastSeen || null); }, () => {});
+    return () => unsubscribe();
+  }, [friendId]);
 
   useEffect(() => {
     if (!auth.currentUser || !chatId) return undefined;
@@ -183,7 +191,7 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
   };
 
   return {
-    messages,inputText,setInputText:updateTyping,loading,sending,uploadProgress,typingUsers,messageTTL,setMessageTTL,replyingTo,setReplyingTo,
+    messages,inputText,setInputText:updateTyping,loading,sending,uploadProgress,typingUsers,friendOnline,friendLastSeen,messageTTL,setMessageTTL,replyingTo,setReplyingTo,
     handleSend,handleMediaPick,handleDocumentPick,handleVoiceRecord,handleLocationPick,handleContactPick,
     handleMessageAction,editMessage,deleteMessage,initiateCall
   };
