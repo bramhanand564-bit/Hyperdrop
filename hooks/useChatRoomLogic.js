@@ -24,6 +24,7 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
   const [friendOnline, setFriendOnline] = useState(false);
   const [friendLastSeen, setFriendLastSeen] = useState(null);
   const recordingRef = useRef(null);
+  const draftKey = `chat_draft_${chatId}`;
   const typingTimer = useRef(null);
 
   useEffect(() => {
@@ -68,6 +69,16 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
     return () => unsubscribe();
   }, [chatId]);
 
+  useEffect(() => {
+    if (!chatId) return;
+    AsyncStorage.getItem(draftKey).then(value => { if (value) setInputText(value); }).catch(() => {});
+  }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    AsyncStorage.setItem(draftKey, inputText || '').catch(() => {});
+  }, [chatId, inputText]);
+
   const updateTyping = (value) => {
     setInputText(value);
     if (isGlobal || !chatId) return;
@@ -85,7 +96,7 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
     const msgText=inputText.trim();
     if (!msgText || !auth.currentUser) return;
     if (isGlobal && msgText.length>500) return Alert.alert('Limit Reached','Global Chat में 500 characters तक भेज सकते हो.');
-    setInputText(''); setSending(true);
+    setInputText(''); AsyncStorage.removeItem(draftKey).catch(()=>{}); setSending(true);
     try {
       await MessagingService.sendMessage(chatId,{text:msgText,type:'text',replyToId:replyingTo?.id,replyToText:replyingTo?.text,replyToSenderName:replyingTo?.senderName,ttl:messageTTL,participants:[auth.currentUser.uid,friendId].filter(Boolean)});
       setReplyingTo(null);
