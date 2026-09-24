@@ -299,6 +299,7 @@ const PortalHome = ({ navigation }) => {
           </View>
         }
       />
+    </GlassScene>
     </SafeAreaView>
   );
 };
