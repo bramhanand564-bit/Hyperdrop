@@ -4,6 +4,7 @@ import { Ionicons, FontAwesome5, Feather, MaterialCommunityIcons } from '@expo/v
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../context/ThemeContext';
+import GlassScene from '../components/ui/GlassScene';
 
 // FIREBASE INTEGRATION
 import { db, auth } from '../firebaseConfig';
@@ -12,7 +13,7 @@ import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, u
 const { width } = Dimensions.get('window');
 
 export default function MomentsScreen() {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
   const currentUser = auth.currentUser;
   
   // Real-time Data States
@@ -32,13 +33,13 @@ export default function MomentsScreen() {
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   // ================= GLASSY WATER BUBBLE COLORS =================
-  const bg = isDark ? '#0A1520' : '#E8F1F5'; 
-  const textMain = isDark ? '#F0F4F8' : '#1A2C3A';
-  const textSub = isDark ? '#8AA2B5' : '#6A8296';
+  const bg = theme.bg; 
+  const textMain = theme.text;
+  const textSub = theme.sub;
   
-  const glassPanelBg = isDark ? 'rgba(20, 35, 50, 0.65)' : 'rgba(255, 255, 255, 0.75)';
-  const glassBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.4)';
-  const cardBg = isDark ? 'rgba(25, 40, 55, 0.7)' : 'rgba(255, 255, 255, 0.9)';
+  const glassPanelBg = theme.surface;
+  const glassBorder = theme.border;
+  const cardBg = theme.surfaceStrong;
 
   // ================= REAL-TIME FIREBASE SYNC =================
   useEffect(() => {
@@ -159,7 +160,7 @@ export default function MomentsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}><GlassScene>
       
       {/* ================= GLASS HEADER ================= */}
       <View style={[styles.header, { backgroundColor: glassPanelBg, borderBottomColor: glassBorder }]}>
@@ -360,7 +361,7 @@ export default function MomentsScreen() {
         </SafeAreaView>
       </Modal>
 
-    </SafeAreaView>
+    </GlassScene></SafeAreaView>
   );
 }
 
