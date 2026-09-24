@@ -1,6 +1,8 @@
 import React from 'react';
 import { ScrollView, Text, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import GlassScene from '../components/ui/GlassScene';
+import GlassSurface from '../components/ui/GlassSurface';
 
 // 🧩 All Modular Components Imported
 import ProfileCard from '../components/profile/ProfileCard';
@@ -10,13 +12,13 @@ import BackupSection from '../components/settings/BackupSection';
 import AdvancedSettings from '../components/settings/AdvancedSettings';
 
 export default function WalletScreen() {
-  const { isDark } = useTheme();
-  const bg = isDark ? '#121212' : '#F5F5F7';
-  const textMain = isDark ? '#FFFFFF' : '#000000';
-  const textSub = isDark ? '#888888' : '#666666';
+  const { isDark, theme } = useTheme();
+  const bg = theme.bg;
+  const textMain = theme.text;
+  const textSub = theme.sub;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: bg }}><GlassScene>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView 
         style={styles.container} 
