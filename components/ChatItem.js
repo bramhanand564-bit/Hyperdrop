@@ -1,12 +1,12 @@
 // ==========================================
 // FILE: components/ChatItem.js
 // ==========================================
-import React, { useEffect, useRef } from 'react';
+import React, { memo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
-export default function ChatItem({ item, currentUser, onPress }) {
+function ChatItem({ item, currentUser, onPress }) {
   const { isDark } = useTheme();
 
   // --- COLORS ---
@@ -45,12 +45,8 @@ export default function ChatItem({ item, currentUser, onPress }) {
     return 0;
   };
 
-  const getAvatar = () => {
-    const avatar = item.friendAvatar || item.avatar || item.photoURL;
-    if (avatar) return { uri: avatar };
-    const name = encodeURIComponent(getChatName());
-    return { uri: `https://ui-avatars.com/api/?name=${name}&background=1687FF&color=ffffff` };
-  };
+  const avatarUri = item.friendAvatar || item.avatar || item.photoURL;
+  const initials = getChatName().trim().split(/\\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'N';
 
   const getTime = (value) => {
     if (!value) return 0;
@@ -101,7 +97,13 @@ export default function ChatItem({ item, currentUser, onPress }) {
       onPress={() => onPress(item)}
     >
       <View>
-        <Image source={getAvatar()} style={styles.avatar} />
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: isDark ? '#173B52' : '#DCEEFF' }]}>
+            <Text style={[styles.avatarInitials, { color: blue }]}>{initials}</Text>
+          </View>
+        )}
         {/* 🟢 Online Dot (Shows if user is online - ready for future) */}
         {item.isOnline && <View style={[styles.onlineDot, { borderColor: isUnread ? unreadBg : cardBg }]} />}
       </View>
@@ -156,6 +158,8 @@ export default function ChatItem({ item, currentUser, onPress }) {
 const styles = StyleSheet.create({
   chatCard: { minHeight: 76, padding: 12, borderRadius: 17, borderWidth: 1, marginBottom: 10, flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 54, height: 54, borderRadius: 27 },
+  avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  avatarInitials: { fontSize: 18, fontWeight: '800' },
   onlineDot: { position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: '#34C759', borderWidth: 2 },
   chatInfo: { flex: 1, marginLeft: 14, marginRight: 8, justifyContent: 'center' },
   chatTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
@@ -166,3 +170,5 @@ const styles = StyleSheet.create({
   unread: { minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11, backgroundColor: '#1687FF', alignItems: 'center', justifyContent: 'center', marginLeft: 8, elevation: 2, shadowColor: '#1687FF', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 3 },
   unreadText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' }
 });
+
+export default memo(ChatItem);
