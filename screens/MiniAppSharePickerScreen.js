@@ -36,8 +36,10 @@ export default function MiniAppSharePickerScreen({ route, navigation }) {
         appName: app?.name || 'Nax App',
         appDescription: app?.description || 'Play or use this app with me.',
         appIcon: app?.icon || 'game-controller',
-        appConfig: app?.appConfig || app || null,
-        entryType: 'html',
+        appConfig: app?.entryType === 'declarative'
+          ? { id: app?.id, name: app?.name, description: app?.description, color: app?.color, icon: app?.icon, components: app?.components || [] }
+          : { id: app?.id, name: app?.name, description: app?.description, color: app?.color, icon: app?.icon, maxPlayers: app?.maxPlayers || 4 },
+        entryType: app?.entryType || (app?.htmlCode ? 'html' : 'declarative'),
         htmlCode: app?.htmlCode || null,
         sessionId: sessionId || null,
         maxPlayers: Number(app?.maxPlayers || 4),
