@@ -27,11 +27,15 @@ const MessagingService = {
       ...(input.contact ? { contact: input.contact } : {}),
       ...(timer > 0 ? { expiresAt: Timestamp.fromMillis(Date.now() + timer * 1000) } : {}),
     };
-    const ref = await addDoc(collection(db, 'chats', chatId, 'messages'), payload);
-    await setDoc(doc(db, 'chats', chatId), {
-      lastMessage: text || ({image:'📷 Photo',video:'🎥 Video',voice:'🎤 Voice message',file:'📄 Document',location:'📍 Location',contact:'👤 Contact',poll:'📊 Poll'}[input.type] || 'Message'),
-      lastMessageTime: serverTimestamp(), ...(input.participants ? { participants: input.participants } : {}), typing: {},
-    }, { merge: true });
+    const ref = doc(collection(db, 'chats', chatId, 'messages'));
+    const chatRef = doc(db, 'chats', chatId);
+    await Promise.all([
+      setDoc(ref, payload),
+      setDoc(chatRef, {
+        lastMessage: text || ({image:'📷 Photo',video:'🎥 Video',voice:'🎤 Voice message',file:'📄 Document',location:'📍 Location',contact:'👤 Contact',poll:'📊 Poll'}[input.type] || 'Message'),
+        lastMessageTime: serverTimestamp(), ...(input.participants ? { participants: input.participants } : {}), typing: {},
+      }, { merge: true }),
+    ]);
     return { id: ref.id, ...payload };
   },
 
