@@ -158,6 +158,7 @@ export default function ChatsScreen({ navigation }) {
         onCreateBot={() => { setShowNewMenu(false); navigation.navigate('BotCreate'); }}
         onOpenMessagingHub={() => { setShowNewMenu(false); navigation.navigate('MessagingHub'); }}
       />
+    </GlassScene>
     </SafeAreaView>
   );
 }
