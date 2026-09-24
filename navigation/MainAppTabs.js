@@ -3,12 +3,8 @@ import { Animated, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, V
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import AutoRestorePopup from '../components/modals/AutoRestorePopup';
-import GlassScene from '../components/ui/GlassScene';
 import GlassSurface from '../components/ui/GlassSurface';
 import ChatsScreen from '../screens/ChatsScreen';
-import PortalHome from '../portal/PortalHome';
-import MomentsScreen from '../screens/MomentsScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 
 const TABS = [
   { id: 'Chats', icon: 'chatbubbles' },
@@ -32,16 +28,24 @@ export default function MainAppTabs({ navigation }) {
   };
 
   const renderScreen = () => {
-    if (activeTab === 'Portals') return <PortalHome navigation={navigation} />;
-    if (activeTab === 'Moments') return <MomentsScreen navigation={navigation} />;
-    if (activeTab === 'Settings') return <SettingsScreen navigation={navigation} />;
+    if (activeTab === 'Portals') {
+      const Screen = require('../portal/PortalHome').default;
+      return <Screen navigation={navigation} />;
+    }
+    if (activeTab === 'Moments') {
+      const Screen = require('../screens/MomentsScreen').default;
+      return <Screen navigation={navigation} />;
+    }
+    if (activeTab === 'Settings') {
+      const Screen = require('../screens/SettingsScreen').default;
+      return <Screen navigation={navigation} />;
+    }
     return <ChatsScreen navigation={navigation} />;
   };
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: theme.bg }]}>
-      <GlassScene>
-        <View style={styles.content}>{renderScreen()}</View>
+      <View style={styles.content}>{renderScreen()}</View>
         <View pointerEvents="box-none" style={styles.navWrap}>
           <GlassSurface strong radius={26} style={[styles.nav, { backgroundColor: theme.nav }]}>
             {TABS.map(tab => {
@@ -59,7 +63,6 @@ export default function MainAppTabs({ navigation }) {
           </GlassSurface>
         </View>
         <AutoRestorePopup />
-      </GlassScene>
     </SafeAreaView>
   );
 }
