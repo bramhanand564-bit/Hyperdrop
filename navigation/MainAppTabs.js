@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { flex: 1, paddingBottom: 92 },
   navWrap: { position: 'absolute', left: 18, right: 18, bottom: Platform.OS === 'ios' ? 18 : 12 },
-  nav: { height: 70, paddingHorizontal: 4 },
+  nav: { height: 70, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'stretch' },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   activePill: { width: 20, height: 3, borderRadius: 2, marginBottom: 4 },
   label: { fontSize: 10, fontWeight: '700', marginTop: 3 },
