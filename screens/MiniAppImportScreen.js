@@ -138,6 +138,7 @@ export default function MiniAppImportScreen({ navigation }) {
         entryType: 'html',
         htmlCode,
         permissions: Array.isArray(manifest.permissions) ? manifest.permissions : [],
+        apiDomains: Array.isArray(manifest.apiDomains) ? manifest.apiDomains.slice(0, 20) : [],
         sourceFile: fileName,
         status: 'draft',
       });
