@@ -181,6 +181,14 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
     } catch(e){Alert.alert('Contact',e.message || 'Unable to select contact.');}
   };
 
+  const handlePoll = async (question, options) => {
+    try {
+      setSending(true);
+      await MessagingService.sendMessage(chatId,{type:'poll',text:question,poll:{question,options,votes:{}},ttl:messageTTL,participants:[auth.currentUser?.uid,friendId].filter(Boolean)});
+    } catch(e) { Alert.alert('Poll',e.message || 'Poll send failed.'); }
+    finally { setSending(false); }
+  };
+
   const handleMessageAction = async (message, action) => {
     try {
       if(action==='reply') setReplyingTo(message);
@@ -203,7 +211,7 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
 
   return {
     messages,inputText,setInputText:updateTyping,loading,sending,uploadProgress,typingUsers,friendOnline,friendLastSeen,messageTTL,setMessageTTL,replyingTo,setReplyingTo,
-    handleSend,handleMediaPick,handleDocumentPick,handleVoiceRecord,handleLocationPick,handleContactPick,
+    handleSend,handleMediaPick,handleDocumentPick,handleVoiceRecord,handleLocationPick,handleContactPick,handlePoll,
     handleMessageAction,editMessage,deleteMessage,initiateCall
   };
 }
