@@ -1,9 +1,6 @@
-// ==========================================
-// FILE: mini-apps/MiniAppViewer.js
-// ==========================================
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, Platform, Alert
+  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -12,108 +9,249 @@ import DeclarativeMiniAppRenderer from '../components/mini-app/DeclarativeMiniAp
 import { URLValidator } from '../security/BotValidator';
 import RateLimiter from '../security/RateLimiter';
 import AuditLogger from '../security/AuditLogger';
+import LocalMiniAppStore from './LocalMiniAppStore';
+import NaxAppSessionAPI from './NaxAppSessionAPI';
 
 export default function MiniAppViewer({ route, navigation }) {
   const { isDark } = useTheme();
+  const params = route?.params || {};
+  const { title, url, appConfig, entryType = 'web', htmlCode: routeHtmlCode, localAppId, sessionId } = params;
+  const [loading, setLoading] = useState(entryType === 'web' || entryType === 'html');
+  const [effectiveApp, setEffectiveApp] = useState(appConfig || null);
+  const [room, setRoom] = useState(null);
+  const webRef = useRef(null);
+  const roomUnsubRef = useRef(null);
 
-  // Receives the full app object from Portal or Installer
-  const { title, url, appConfig, entryType = 'web' } = route?.params || {};
-  
-  const [loading, setLoading] = useState(entryType === 'web'); // Only show loader for WebViews
-
-  // --- COLORS ---
+  const htmlCode = routeHtmlCode || effectiveApp?.htmlCode || null;
+  const effectiveEntryType = entryType === 'web' && htmlCode ? 'html' : entryType;
   const bg = isDark ? '#050A10' : '#F3F7FA';
   const headerBg = isDark ? '#0B1824' : '#FFFFFF';
   const textMain = isDark ? '#F4F7FA' : '#142532';
   const textSub = isDark ? '#8FA6B9' : '#6C8494';
   const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
   const blue = '#087EFF';
+  const safeUrl = !!url && URLValidator.scanMiniAppUrl(url).isSafe;
 
-  // Security Check for WebView (Block unsafe schemes)
-  const isSafeUrl = (testUrl) => !!testUrl && URLValidator.scanMiniAppUrl(testUrl).isSafe;
+  useEffect(() => {
+    let mounted = true;
+    if (localAppId && !appConfig) {
+      LocalMiniAppStore.get(localAppId).then(app => {
+        if (mounted) setEffectiveApp(app);
+      }).catch(() => {});
+    }
+    return () => { mounted = false; };
+  }, [localAppId, appConfig]);
 
-  const getDomain = (urlStr) => {
-    try { return urlStr.split('/')[2] || 'Nax Mini App'; } catch (e) { return 'Nax Mini App'; }
+  const postToApp = payload => {
+    if (!webRef.current) return;
+    const safe = JSON.stringify(payload).replace(/<\/script/gi, '<\\/script');
+    webRef.current.injectJavaScript(
+      "window.__naxNativeMessage && window.__naxNativeMessage(" + safe + "); true;"
+    );
   };
+
+  const subscribeRoom = roomId => {
+    roomUnsubRef.current?.();
+    roomUnsubRef.current = NaxAppSessionAPI.subscribeState(roomId, state => {
+      postToApp({ type: 'ROOM_STATE', state });
+    });
+  };
+
+  const openOrJoinRoom = async roomId => {
+    try {
+      const joined = await NaxAppSessionAPI.joinSession(roomId);
+      setRoom(joined);
+      subscribeRoom(roomId);
+      postToApp({ type: 'ROOM_READY', room: joined });
+    } catch (e) {
+      Alert.alert('Game room', e.message || 'Could not join this room.');
+    }
+  };
+
+  useEffect(() => () => roomUnsubRef.current?.(), []);
+
+  useEffect(() => {
+    if (sessionId) openOrJoinRoom(sessionId);
+  }, [sessionId]);
+
+  const handleShare = async () => {
+    try {
+      const app = effectiveApp || {
+        id: params.appId || localAppId || title,
+        name: title || 'Nax App',
+        description: 'Nax mini-app',
+        entryType: effectiveEntryType,
+        htmlCode,
+        maxPlayers: 4,
+      };
+      const created = await NaxAppSessionAPI.createSession(app.id, app.maxPlayers || 4);
+      navigation.navigate('MiniAppSharePicker', {
+        app: { ...app, htmlCode, entryType: effectiveEntryType },
+        sessionId: created.id,
+      });
+    } catch (e) {
+      Alert.alert('Invite', e.message || 'Could not create a game room.');
+    }
+  };
+
+  const injectedCode = `
+    (function(){
+      var USER = ${JSON.stringify({
+        uid: (require('../firebaseConfig').auth.currentUser?.uid || 'guest'),
+        name: (require('../firebaseConfig').auth.currentUser?.displayName || 'User'),
+      })};
+      var THEME = ${JSON.stringify(isDark ? 'dark' : 'light')};
+      var listeners = [];
+      window.__naxNativeMessage = function(message) {
+        if (message && message.type === 'ROOM_STATE') {
+          listeners.forEach(function(fn){ try { fn(message.state); } catch(e) {} });
+        }
+        if (message && message.type === 'ROOM_READY') {
+          window.__naxRoom = message.room;
+        }
+      };
+      window.Nax = {
+        user: USER,
+        theme: THEME,
+        getUser: function(){ return USER; },
+        getTheme: function(){ return THEME; },
+        room: {
+          create: function(maxPlayers){
+            window.ReactNativeWebView.postMessage(JSON.stringify({action:'CREATE_ROOM', maxPlayers:maxPlayers || 4}));
+          },
+          join: function(id){
+            window.ReactNativeWebView.postMessage(JSON.stringify({action:'JOIN_ROOM', sessionId:id}));
+          },
+          onState: function(fn){
+            if (typeof fn !== 'function') return function(){};
+            listeners.push(fn);
+            return function(){ listeners = listeners.filter(function(x){ return x !== fn; }); };
+          },
+          getState: function(){
+            window.ReactNativeWebView.postMessage(JSON.stringify({action:'GET_STATE'}));
+          },
+          setState: function(state){
+            window.ReactNativeWebView.postMessage(JSON.stringify({action:'SET_STATE', state:state}));
+          },
+          getSession: function(){ return window.__naxRoom || null; }
+        },
+        share: function(){
+          window.ReactNativeWebView.postMessage(JSON.stringify({action:'SHARE_APP'}));
+        }
+      };
+      window.NaxPortal = window.Nax;
+    })();
+    true;
+  `;
+
+  const handleMessage = async event => {
+    if (!RateLimiter.allow('miniapp:' + (params.appId || localAppId || title || 'app'))) return;
+    try {
+      const message = JSON.parse(event.nativeEvent.data || '{}');
+      if (message.action === 'CREATE_ROOM') {
+        const app = effectiveApp || { id: params.appId || localAppId || title, maxPlayers: message.maxPlayers || 4 };
+        const created = await NaxAppSessionAPI.createSession(app.id, message.maxPlayers || app.maxPlayers || 4);
+        setRoom(created);
+        subscribeRoom(created.id);
+        postToApp({ type: 'ROOM_READY', room: created });
+      } else if (message.action === 'JOIN_ROOM') {
+        await openOrJoinRoom(message.sessionId);
+      } else if (message.action === 'SET_STATE' && room?.id) {
+        await NaxAppSessionAPI.setState(room.id, message.state);
+      } else if (message.action === 'GET_STATE' && room?.id) {
+        const state = await NaxAppSessionAPI.getState(room.id);
+        postToApp({ type: 'ROOM_STATE', state });
+      } else if (message.action === 'SHARE_APP') {
+        await handleShare();
+      }
+    } catch (e) {
+      postToApp({ type: 'NAX_ERROR', message: e.message || 'Bridge error' });
+    }
+  };
+
+  if (effectiveEntryType === 'web' && !safeUrl) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="shield-half" size={48} color="#FF3B30" />
+        <Text style={{ color: textMain, marginTop: 12, fontWeight: '800' }}>Unsafe URL Blocked</Text>
+        <Text style={{ color: textSub, marginTop: 6 }}>Only approved HTTPS apps can open in the Nax sandbox.</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: headerBg }]}>
-      
-      {/* SECURE HEADER */}
       <View style={[styles.header, { backgroundColor: headerBg, borderBottomColor: border }]}>
         <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={26} color={textMain} />
         </TouchableOpacity>
-
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerTitle, { color: textMain }]} numberOfLines={1}>
-            {appConfig?.name || title || 'Nax Mini App'}
-          </Text>
+          <Text style={[styles.headerTitle, { color: textMain }]} numberOfLines={1}>{effectiveApp?.name || title || 'Nax Mini App'}</Text>
           <Text style={[styles.headerSubtitle, { color: textSub }]} numberOfLines={1}>
-            {entryType === 'web' ? getDomain(url) : 'AI Generated App'}
+            {room ? 'Room ' + room.id.slice(0, 8) + ' • ' + room.playerCount + '/' + room.maxPlayers : effectiveEntryType === 'html' ? 'Local HTML Sandbox' : effectiveEntryType === 'web' ? (url || '').split('/')[2] || 'Secure Web App' : 'Nax App'}
           </Text>
         </View>
-
-        <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert("Options", "Mini App Options")}>
-          <Ionicons name="ellipsis-horizontal" size={22} color={textMain} />
+        <TouchableOpacity style={styles.iconBtn} onPress={handleShare}>
+          <Ionicons name="people-outline" size={23} color={textMain} />
         </TouchableOpacity>
       </View>
 
-      {/* APP RUNTIME CONTAINER */}
       <View style={[styles.webContainer, { backgroundColor: bg }]}>
-        
-        {/* CONDITION 1: WEBVIEW MINI APP */}
-        {entryType === 'web' && url && isSafeUrl(url) ? (
+        {effectiveEntryType === 'html' && htmlCode ? (
           <>
-            {loading && (
-              <View style={[styles.loaderBox, { backgroundColor: bg }]}>
-                <ActivityIndicator size="large" color={blue} />
-                <Text style={[styles.loaderText, { color: textSub }]}>Loading {title}...</Text>
-              </View>
-            )}
+            {loading ? <View style={[styles.loaderBox,{backgroundColor:bg}]}><ActivityIndicator size="large" color={blue}/><Text style={[styles.loaderText,{color:textSub}]}>Starting Nax sandbox…</Text></View> : null}
             <WebView
-              source={{ uri: url }}
+              ref={webRef}
+              source={{ html: htmlCode, baseUrl: 'https://nax.app.local/' }}
               style={styles.webview}
+              javaScriptEnabled
+              domStorageEnabled
+              originWhitelist={['https://*','data:*']}
+              injectedJavaScriptBeforeContentLoaded={injectedCode}
+              onMessage={handleMessage}
+              onLoadStart={() => setLoading(true)}
               onLoadEnd={() => setLoading(false)}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              originWhitelist={['https://*']}
               onShouldStartLoadWithRequest={request => {
-                if (!RateLimiter.allow(`webview:${title || 'app'}`)) return false;
+                if (!RateLimiter.allow('webview:' + (title || 'app'))) return false;
+                if (/^about:blank|^https:\/\//i.test(request.url)) return true;
                 const check = URLValidator.scanMiniAppUrl(request.url);
-                if (!check.isSafe) { AuditLogger.log('miniapp.navigation_blocked',{url:request.url,reason:check.message}); return false; }
+                if (!check.isSafe) {
+                  AuditLogger.log('miniapp.navigation_blocked', { url: request.url, reason: check.message });
+                  return false;
+                }
                 return true;
               }}
             />
           </>
-        ) : entryType === 'web' && url && !isSafeUrl(url) ? (
-          // SECURITY BLOCK
-          <View style={styles.errorBox}>
-            <Ionicons name="shield-half" size={50} color="#FF3B30" />
-            <Text style={[styles.errorText, { color: textMain }]}>Unsafe URL Blocked</Text>
-            <Text style={{ color: textSub, marginTop: 5 }}>Only HTTPS URLs are permitted in Nax Sandbox.</Text>
-          </View>
-        ) 
-        
-        /* CONDITION 2: AI DECLARATIVE JSON MINI APP */
-        : entryType === 'declarative' && appConfig ? (
+        ) : effectiveEntryType === 'web' && url ? (
+          <>
+            {loading && <View style={[styles.loaderBox,{backgroundColor:bg}]}><ActivityIndicator size="large" color={blue}/></View>}
+            <WebView
+              ref={webRef}
+              source={{ uri: url }}
+              style={styles.webview}
+              javaScriptEnabled
+              domStorageEnabled
+              originWhitelist={['https://*']}
+              onLoadEnd={() => setLoading(false)}
+              onMessage={handleMessage}
+              injectedJavaScriptBeforeContentLoaded={injectedCode}
+            />
+          </>
+        ) : effectiveEntryType === 'declarative' && (effectiveApp?.components || appConfig?.components) ? (
           <View style={{ flex: 1, padding: 10 }}>
-            <DeclarativeMiniAppRenderer 
-              components={appConfig.components} 
-              themeColor={appConfig.color}
-              isTestMode={false} // Real mode!
+            <DeclarativeMiniAppRenderer
+              components={effectiveApp?.components || appConfig?.components || []}
+              themeColor={effectiveApp?.color || blue}
+              isTestMode={false}
             />
           </View>
-        ) 
-        
-        /* FALLBACK */
-        : (
+        ) : (
           <View style={styles.errorBox}>
             <Ionicons name="warning" size={50} color="#FF9500" />
-            <Text style={[styles.errorText, { color: textMain }]}>Invalid App Format</Text>
+            <Text style={[styles.errorText,{color:textMain}]}>Invalid App Format</Text>
           </View>
         )}
-
       </View>
     </SafeAreaView>
   );
@@ -121,7 +259,7 @@ export default function MiniAppViewer({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, borderBottomWidth: 1, paddingTop: Platform.OS === 'ios' ? 0 : 5 },
+  header: { height: 58, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, borderBottomWidth: 1, paddingTop: Platform.OS === 'ios' ? 0 : 5 },
   iconBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   headerInfo: { flex: 1, marginHorizontal: 8, alignItems: 'center' },
   headerTitle: { fontSize: 16, fontWeight: '800' },
@@ -131,5 +269,5 @@ const styles = StyleSheet.create({
   loaderBox: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, justifyContent: 'center', alignItems: 'center' },
   loaderText: { marginTop: 12, fontSize: 14, fontWeight: '600' },
   errorBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: { fontSize: 18, fontWeight: '800', marginTop: 15 }
+  errorText: { fontSize: 18, fontWeight: '800', marginTop: 15 },
 });
