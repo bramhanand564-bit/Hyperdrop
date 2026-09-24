@@ -238,7 +238,14 @@ export default function MiniAppViewer({ route, navigation }) {
               injectedJavaScriptBeforeContentLoaded={injectedCode}
               onMessage={handleMessage}
               onLoadStart={() => setLoading(true)}
-              onLoadEnd={() => setLoading(false)}
+              onLoadEnd={async () => {
+                setLoading(false);
+                if (room) {
+                  postToApp({ type: 'ROOM_READY', room });
+                  const state = await NaxAppSessionAPI.getState(room.id).catch(() => null);
+                  if (state !== null) postToApp({ type: 'ROOM_STATE', state });
+                }
+              }}
               onShouldStartLoadWithRequest={request => {
                 if (!RateLimiter.allow('webview:' + (title || 'app'))) return false;
                 if (/^about:blank|^https:\/\//i.test(request.url)) return true;
@@ -261,7 +268,14 @@ export default function MiniAppViewer({ route, navigation }) {
               javaScriptEnabled
               domStorageEnabled
               originWhitelist={['https://*']}
-              onLoadEnd={() => setLoading(false)}
+              onLoadEnd={async () => {
+                setLoading(false);
+                if (room) {
+                  postToApp({ type: 'ROOM_READY', room });
+                  const state = await NaxAppSessionAPI.getState(room.id).catch(() => null);
+                  if (state !== null) postToApp({ type: 'ROOM_STATE', state });
+                }
+              }}
               onMessage={handleMessage}
               injectedJavaScriptBeforeContentLoaded={injectedCode}
             />
