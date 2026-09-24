@@ -60,7 +60,11 @@ export default function MiniAppHome({ navigation }) {
     // Navigates to the MiniAppViewer we created earlier
     navigation.navigate('MiniAppViewer', {
       title: app.name,
-      url: app.url
+      url: app.url,
+      appConfig: app,
+      htmlCode: app.htmlCode,
+      entryType: app.entryType || (app.htmlCode ? 'html' : (app.url ? 'web' : 'declarative')),
+      appId: app.id,
     });
   };
 
