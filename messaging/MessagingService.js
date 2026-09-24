@@ -34,6 +34,7 @@ const MessagingService = {
         maxPlayers: Number(input.maxPlayers || 4),
         entryType: input.entryType || 'html',
         htmlCode: input.htmlCode || null,
+        appConfig: input.appConfig || null,
       } : {}),
       ...(timer > 0 ? { expiresAt: Timestamp.fromMillis(Date.now() + timer * 1000) } : {}),
     };
