@@ -60,7 +60,6 @@ export default function P2PManager({ user }) {
   useEffect(() => {
     if (!user?.uid) return undefined;
     
-    const { acceptP2PTransfer, attachFileReceiver, saveReceivedFile, markP2PTransferFailed, markP2PTransferCompleted } = getFileTransfer();
     const transfersQuery = query(collection(db, 'file_transfers'), where('receiverId', '==', user.uid), where('status', 'in', ['offering', 'waiting_for_answer']));
 
     const unsubscribe = onSnapshot(transfersQuery, (snapshot) => {
@@ -72,6 +71,7 @@ export default function P2PManager({ user }) {
         activeTransfers.current.add(transferId);
 
         try {
+          const { acceptP2PTransfer, attachFileReceiver, saveReceivedFile, markP2PTransferFailed, markP2PTransferCompleted } = getFileTransfer();
           const transfer = change.doc.data();
           const connection = await acceptP2PTransfer({ transferId, receiverId: user.uid });
           let receiverCleanup = null;
