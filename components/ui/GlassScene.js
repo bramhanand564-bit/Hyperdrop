@@ -44,10 +44,8 @@ export default function GlassScene({ children, style, showBubbles = true }) {
       </View>
       {showBubbles && (
         <>
-          <Bubble size={18} left="18%" top="18%" duration={2800} delay={0} />
-          <Bubble size={10} left="72%" top="28%" duration={3300} delay={500} />
-          <Bubble size={24} left="82%" top="66%" duration={3600} delay={900} />
-          <Bubble size={12} left="12%" top="74%" duration={3100} delay={300} />
+          <Bubble size={18} left="18%" top="18%" duration={3200} delay={0} />
+          <Bubble size={12} left="78%" top="66%" duration={3600} delay={600} />
         </>
       )}
       <View style={styles.content}>{children}</View>
