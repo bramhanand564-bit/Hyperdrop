@@ -5,13 +5,14 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location'; // 📍 Expo Location API
 import { useTheme } from '../context/ThemeContext';
+import GlassScene from '../components/ui/GlassScene';
 
 // 🔥 REAL FIREBASE IMPORTS
 import { db, auth } from '../firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function DiscoverScreen({ navigation }) {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
   const user = auth.currentUser;
 
   // 📍 Location & Data States
@@ -22,13 +23,13 @@ export default function DiscoverScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
 
   // 🎨 Super Glassy, Zero-Neon Palette
-  const bg = isDark ? '#0A0A0C' : '#F2F2F7';
-  const textMain = isDark ? '#F5F5F7' : '#1C1C1E';
-  const textSub = isDark ? '#8E8E93' : '#6C6C70';
-  const headerBg = isDark ? 'rgba(10, 10, 12, 0.85)' : 'rgba(242, 242, 247, 0.85)';
-  const cardBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.85)';
-  const cardBorder = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.04)';
-  const naxBlue = '#087EFF';
+  const bg = theme.bg;
+  const textMain = theme.text;
+  const textSub = theme.sub;
+  const headerBg = theme.surface;
+  const cardBg = theme.surface;
+  const cardBorder = theme.border;
+  const naxBlue = theme.blue;
 
   const categories = [
     { id: 'All', icon: 'compass' },
@@ -131,7 +132,7 @@ export default function DiscoverScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: bg }}><GlassScene>
       
       {/* 🌟 Glassy Header with Live Location */}
       <View style={[styles.header, { borderBottomColor: cardBorder, backgroundColor: headerBg }]}>
@@ -227,7 +228,7 @@ export default function DiscoverScreen({ navigation }) {
         )}
 
       </ScrollView>
-    </SafeAreaView>
+    </GlassScene></SafeAreaView>
   );
 }
 
