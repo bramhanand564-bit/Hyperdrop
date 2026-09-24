@@ -38,7 +38,20 @@ const TelegramUpdateProcessor = {
     const message = getMessage(update);
     if (!message) {
       if (update?.callback_query) {
-        await TelegramBotService.answerCallback(bot.id, update.callback_query.id);
+        const q = update.callback_query;
+        await TelegramBotService.answerCallback(bot.id, q.id);
+        const chatId = q.message?.chat?.id;
+        if (chatId !== undefined && q.data) {
+          const runtime = new BotRuntime({
+            bot,
+            user: { id:q.from?.id, telegramId:q.from?.id, username:q.from?.username || '', firstName:q.from?.first_name || '' },
+            metadata: { source:'telegram', updateId:update.update_id, chatId, callback:true },
+          });
+          runtime.start();
+          const result = runtime.handleMessage({ id:String(update.update_id || Date.now()), text:String(q.data), type:'callback', metadata:{telegramCallback:q} });
+          if (result?.response?.text) await TelegramBotService.sendMessage(bot.id, chatId, result.response.text);
+          return result;
+        }
       }
       return { handled: false, reason: 'non_message_update' };
     }
