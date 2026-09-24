@@ -4,10 +4,8 @@
 import { useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { acceptP2PTransfer, attachFileReceiver, saveReceivedFile, markP2PTransferFailed, markP2PTransferCompleted } from '../utils/webrtcFileTransfer';
-
-// 🚀 ADDED FOR SUPER APP: webrtcHelper for Watch Party & Game Sync
-import webrtcHelper from '../utils/webrtcHelper'; 
+const getWebRTC = () => require('../utils/webrtcHelper').default;
+const getFileTransfer = () => require('../utils/webrtcFileTransfer'); 
 
 // ==========================================
 // 🎮 NAX PORTAL SYNC ENGINE (New Feature)
@@ -21,7 +19,7 @@ export const PortalSyncEngine = {
     PortalSyncEngine.activeRoomId = roomId;
     
     // WebRTC रूम से कनेक्ट करना
-    webrtcHelper.connectToRoom(roomId, user?.uid, (peerId, message) => {
+    getWebRTC().connectToRoom(roomId, user?.uid, (peerId, message) => {
       try {
         const parsedMessage = JSON.parse(message);
         if (parsedMessage.type === 'PORTAL_SYNC') {
@@ -40,13 +38,13 @@ export const PortalSyncEngine = {
       return;
     }
     const payload = JSON.stringify({ type: 'PORTAL_SYNC', data: syncData });
-    webrtcHelper.broadcast(PortalSyncEngine.activeRoomId, payload);
+    getWebRTC().broadcast(PortalSyncEngine.activeRoomId, payload);
     console.log(`[Portal Engine] State Broadcasted:`, syncData);
   },
 
   leaveRoom: () => {
     if (PortalSyncEngine.activeRoomId) {
-      webrtcHelper.disconnect(PortalSyncEngine.activeRoomId);
+      getWebRTC().disconnect(PortalSyncEngine.activeRoomId);
       PortalSyncEngine.activeRoomId = null;
       console.log("[Portal Engine] Left Portal Room");
     }
@@ -62,6 +60,7 @@ export default function P2PManager({ user }) {
   useEffect(() => {
     if (!user?.uid) return undefined;
     
+    const { acceptP2PTransfer, attachFileReceiver, saveReceivedFile, markP2PTransferFailed, markP2PTransferCompleted } = getFileTransfer();
     const transfersQuery = query(collection(db, 'file_transfers'), where('receiverId', '==', user.uid), where('status', 'in', ['offering', 'waiting_for_answer']));
 
     const unsubscribe = onSnapshot(transfersQuery, (snapshot) => {
