@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: screens/ChatsScreen.js
 // ==========================================
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList,
   ActivityIndicator, Alert, SafeAreaView, RefreshControl
@@ -70,7 +70,7 @@ export default function ChatsScreen({ navigation }) {
     return () => { if (unsubscribe) unsubscribe(); };
   }, [currentUser?.uid]);
 
-  const onRefresh = () => { setRefreshing(true); fetchChats(); };
+  const onRefresh = () => { setRefreshing(true); setTimeout(() => setRefreshing(false), 250); };
 
   function getTime(value) {
     if (!value) return 0;
@@ -78,15 +78,15 @@ export default function ChatsScreen({ navigation }) {
     return value.seconds ? value.seconds * 1000 : (typeof value === 'number' ? value : 0);
   }
 
-  const openChat = (item) => {
+  const openChat = useCallback((item) => {
     navigation.navigate('ChatRoom', {
-      chatId: item.chatId || item.id, 
+      chatId: item.chatId || item.id,
       chatName: item.friendName || item.name || item.username || 'Nax User',
-      friendId: item.friendId || item.userId || '', 
-      friendUsername: item.friendUsername || item.username || '', 
+      friendId: item.friendId || item.userId || '',
+      friendUsername: item.friendUsername || item.username || '',
       friendAvatar: item.friendAvatar || item.avatar || ''
     });
-  };
+  }, [navigation]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]}><GlassScene>
