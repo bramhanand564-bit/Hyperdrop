@@ -132,6 +132,7 @@ export const MiniAppAPI = {
       icon: app.icon || 'code-slash',
       maxPlayers: Math.min(16, Math.max(2, Number(app.maxPlayers || 4))),
       permissions: Array.isArray(app.permissions) ? app.permissions : [],
+      apiDomains: Array.isArray(app.apiDomains) ? app.apiDomains.slice(0, 20) : [],
       source: 'imported',
       views: 0,
       installs: 0,
