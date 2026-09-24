@@ -176,7 +176,8 @@ export default function MiniAppViewer({ route, navigation }) {
         const declared = Array.isArray(effectiveApp?.apiDomains) ? effectiveApp.apiDomains : [];
         const host = new URL(apiUrl).hostname.toLowerCase();
         const allowed = declared.some(domain => {
-          const d = String(domain || '').trim().toLowerCase().replace(/^https?:\\/\\//, '').split('/')[0];
+          const normalizedDomain = String(domain || '').trim().toLowerCase();
+          const d = normalizedDomain.startsWith('https://') ? normalizedDomain.slice(8) : normalizedDomain.startsWith('http://') ? normalizedDomain.slice(7) : normalizedDomain.split('/')[0];
           return d && (host === d || host.endsWith('.' + d));
         });
         if (!urlCheck.isSafe || !allowed) throw new Error('API domain is not allowed by this Nax app manifest.');
