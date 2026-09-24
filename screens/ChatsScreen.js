@@ -115,7 +115,7 @@ export default function ChatsScreen({ navigation }) {
           )}
           {searching && <ActivityIndicator size="small" color={blue} style={styles.searchLoader} />}
         </View>
-      </View>
+      </GlassSurface>
 
       {/* CHATS LIST */}
       {loading ? (
