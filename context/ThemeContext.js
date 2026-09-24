@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getNaxTheme } from '../theme/NaxTheme';
 
 const ThemeContext = createContext();
 
@@ -11,25 +12,21 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     AsyncStorage.getItem('nax_theme_mode').then((mode) => {
-      if (mode) {
-        setThemeMode(mode);
-        if (mode === 'dark') setIsDark(true);
-        else if (mode === 'light') setIsDark(false);
-        else setIsDark(systemColorScheme === 'dark');
-      }
+      if (!mode) return;
+      setThemeMode(mode);
+      setIsDark(mode === 'dark' ? true : mode === 'light' ? false : systemColorScheme === 'dark');
     }).catch(() => {});
   }, [systemColorScheme]);
 
   const changeTheme = async (mode) => {
     setThemeMode(mode);
     await AsyncStorage.setItem('nax_theme_mode', mode).catch(() => {});
-    if (mode === 'dark') setIsDark(true);
-    else if (mode === 'light') setIsDark(false);
-    else setIsDark(systemColorScheme === 'dark');
+    setIsDark(mode === 'dark' ? true : mode === 'light' ? false : systemColorScheme === 'dark');
   };
 
+  const theme = getNaxTheme(isDark);
   return (
-    <ThemeContext.Provider value={{ isDark, themeMode, changeTheme }}>
+    <ThemeContext.Provider value={{ isDark, themeMode, changeTheme, theme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -38,7 +35,8 @@ export function ThemeProvider({ children }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {
-    return { isDark: false, themeMode: 'light', changeTheme: () => {} };
+    const theme = getNaxTheme(false);
+    return { isDark: false, themeMode: 'light', changeTheme: () => {}, theme };
   }
   return context;
 }
