@@ -107,11 +107,6 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
     AsyncStorage.getItem(draftKey).then(value => { if (value) setInputText(value); }).catch(() => {});
   }, [chatId]);
 
-  useEffect(() => {
-    if (!chatId) return;
-    AsyncStorage.setItem(draftKey, inputText || '').catch(() => {});
-  }, [chatId, inputText]);
-
   const updateTyping = (value) => {
     setInputText(value);
     clearTimeout(draftTimer.current);
