@@ -8,6 +8,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import GlassScene from '../components/ui/GlassScene';
+import GlassSurface from '../components/ui/GlassSurface';
+import GlassButton from '../components/ui/GlassButton';
 import { db } from '../firebaseConfig';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -39,7 +42,7 @@ export default function ChatsScreen({ navigation }) {
   const textMain = isDark ? '#F5F9FC' : '#142532';
   const textSub = isDark ? '#8EAABD' : '#6C8494';
   const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const blue = '#1687FF';
+  const blue = '#087EFF';
 
   // --- REALTIME CHATS ---
   const fetchChats = () => {
@@ -86,10 +89,10 @@ export default function ChatsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}><GlassScene>
       
       {/* HEADER & SEARCH */}
-      <View style={[styles.header, { backgroundColor: headerBg, borderBottomColor: border }]}>
+      <GlassSurface strong radius={0} style={[styles.header, { backgroundColor: 'transparent', borderBottomColor: border }]}>
         <View style={styles.titleRow}>
           <View>
             <Text style={[styles.title, { color: textMain }]}>Chats</Text>
@@ -101,7 +104,7 @@ export default function ChatsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.searchBox, { backgroundColor: inputBg }]}>
+        <View style={[styles.searchBox, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: border, borderWidth: 1 }]>
           <Ionicons name="search" size={21} color={textSub} />
           <TextInput
             style={[styles.searchInput, { color: textMain }]} placeholder="@username search..." placeholderTextColor={textSub}
@@ -171,7 +174,7 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: 2, fontSize: 12 },
   newButton: { height: 42, paddingHorizontal: 14, borderRadius: 21, backgroundColor: '#1687FF', flexDirection: 'row', alignItems: 'center', gap: 5 },
   newText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  searchBox: { height: 50, borderRadius: 15, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' },
+  searchBox: { height: 50, borderRadius: 18, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' },
   searchInput: { flex: 1, height: '100%', fontSize: 16, marginLeft: 10 },
   clearButton: { padding: 4 },
   searchLoader: { marginLeft: 8 },
