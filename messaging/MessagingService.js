@@ -35,6 +35,23 @@ const MessagingService = {
     return { id: ref.id, ...payload };
   },
 
+  async openViewOnce(chatId, messageId) {
+    const me = requireUser();
+    const ref = messageRef(chatId, messageId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+    return updateDoc(ref, { [`viewOnceOpenedBy.${me}`]: serverTimestamp() });
+  },
+  async votePoll(chatId, messageId, optionIndex) {
+    const me = requireUser();
+    const ref = messageRef(chatId, messageId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+    const poll = { ...(snap.data().poll || {}) };
+    const votes = { ...(poll.votes || {}) };
+    if (votes[me] === optionIndex) delete votes[me]; else votes[me] = optionIndex;
+    return updateDoc(ref, { poll: { ...poll, votes } });
+  },
   markDelivered(chatId, messageId) {
     const me = requireUser();
     return updateDoc(messageRef(chatId, messageId), { [`deliveredTo.${me}`]: serverTimestamp() });
