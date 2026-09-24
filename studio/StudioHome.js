@@ -195,6 +195,9 @@ const styles = StyleSheet.create({
   aiBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '900', marginLeft: 4, letterSpacing: 0.5 },
   
   scrollContent: { padding: 20 },
+  importRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+  importButton: { flex: 1, minHeight: 46, borderRadius: 15, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  importText: { fontSize: 12, fontWeight: '800', marginLeft: 6 },
   
   heroCard: { 
     flexDirection: 'row', 
