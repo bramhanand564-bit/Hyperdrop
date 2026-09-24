@@ -1,104 +1,23 @@
-// ==========================================
-// FILE: screens/ChatRoomScreen.js
-// ==========================================
-import React, { useRef, useEffect } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator, Animated, Text } from 'react-native';
-import { auth } from '../firebaseConfig';
-import { useTheme } from '../context/ThemeContext';
+import React,{useEffect,useRef}from'react';
+import{View,FlatList,StyleSheet,SafeAreaView,ActivityIndicator,Animated,Text,TouchableOpacity}from'react-native';
+import{auth}from'../firebaseConfig';
+import{useTheme}from'../context/ThemeContext';
+import useChatRoomLogic from'../hooks/useChatRoomLogic';
+import ChatHeader from'../components/chat/ChatHeader';
+import MessageBubble from'../components/chat/MessageBubble';
+import ChatInput from'../components/chat/ChatInput';
 
-// --- CUSTOM HOOK ---
-import useChatRoomLogic from '../hooks/useChatRoomLogic';
-
-// --- COMPONENTS ---
-import ChatHeader from '../components/chat/ChatHeader';
-import MessageBubble from '../components/chat/MessageBubble';
-import ChatInput from '../components/chat/ChatInput';
-
-export default function ChatRoomScreen({ route, navigation }) {
-  const { isDark } = useTheme();
-  const { chatId = 'global', chatName = 'Global Room', friendId, friendAvatar } = route.params || {};
-  const isGlobal = chatId === 'global';
-
-  // 🚀 USE OUR NEW HOOK (NOW WITH uploadProgress)
-  const { 
-    messages, inputText, setInputText, loading, sending, uploadProgress,
-    handleSend, handleMediaPick, handleDocumentPick, initiateCall 
-  } = useChatRoomLogic(chatId, isGlobal, friendId, chatName, navigation);
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const bg = isDark ? '#050A10' : '#F3F7FA';
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-  }, []);
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        
-        {/* 🚀 HEADER (WITH CALL & VIDEO CALL ENABLED) */}
-        <ChatHeader 
-          chatName={chatName} 
-          friendAvatar={friendAvatar}
-          isGlobal={isGlobal} 
-          onBack={() => navigation.goBack()} 
-          onInfoPress={() => {}} 
-          onCall={() => initiateCall('voice')}
-          onVideoCall={() => initiateCall('video')}
-        />
-
-        {/* 🚀 REAL UPLOAD PROGRESS BAR */}
-        {uploadProgress > 0 && uploadProgress < 100 && (
-          <View style={styles.progressContainer}>
-            <Text style={styles.progressText}>Uploading... {uploadProgress}%</Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${uploadProgress}%` }]} />
-            </View>
-          </View>
-        )}
-
-        {/* 💬 CHAT AREA */}
-        <View style={styles.chatArea}>
-          {loading ? (
-            <ActivityIndicator size="large" color="#087EFF" style={{ marginTop: 30 }} />
-          ) : (
-            <FlatList
-              data={messages}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <MessageBubble item={item} isMe={item.senderId === auth.currentUser?.uid} isGlobal={isGlobal} />
-              )}
-              inverted={true}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </View>
-
-        {/* ⌨️ INPUT AREA (WITH ATTACHMENTS ENABLED) */}
-        <ChatInput 
-          value={inputText}
-          onChangeText={setInputText}
-          onSend={handleSend}
-          sending={sending}
-          onAttachImage={() => handleMediaPick('image')}
-          onAttachVideo={() => handleMediaPick('video')}
-          onAttachDocument={handleDocumentPick}
-        />
-        
-      </Animated.View>
-    </SafeAreaView>
-  );
+export default function ChatRoomScreen({route,navigation}){
+ const{isDark}=useTheme();const{chatId='global',chatName='Global Room',friendId,friendAvatar}=route.params||{};const isGlobal=chatId==='global'||chatId==='global_chats';
+ const{messages,inputText,setInputText,loading,sending,uploadProgress,typingUsers,messageTTL,setMessageTTL,replyingTo,setReplyingTo,handleSend,handleMediaPick,handleDocumentPick,handleVoiceRecord,handleLocationPick,handleContactPick,handleMessageAction,initiateCall}=useChatRoomLogic(chatId,isGlobal,friendId,chatName,navigation);
+ const fade=useRef(new Animated.Value(0)).current;const bg=isDark?'#050A10':'#F3F7FA';
+ useEffect(()=>{Animated.timing(fade,{toValue:1,duration:300,useNativeDriver:true}).start()},[]);
+ return <SafeAreaView style={[s.container,{backgroundColor:bg}]}><Animated.View style={{flex:1,opacity:fade}}>
+  <ChatHeader chatName={chatName} friendAvatar={friendAvatar} isGlobal={isGlobal} onBack={()=>navigation.goBack()} onInfoPress={()=>navigation.navigate('ChatSettings',{chatId,friendId,chatName,messageTTL})} onCall={()=>initiateCall('voice')} onVideoCall={()=>initiateCall('video')} typing={typingUsers.length>0} isOnline={route.params?.isOnline!==false}/>
+  {uploadProgress>0&&uploadProgress<100?<View style={s.progress}><Text style={s.progressText}>Uploading… {uploadProgress}%</Text><View style={s.bar}><View style={[s.fill,{width:uploadProgress+'%'}]}/></View></View>:null}
+  <View style={s.area}>{loading?<ActivityIndicator size="large"color="#087EFF"style={{marginTop:30}}/>:<FlatList data={messages}keyExtractor={m=>m.id}renderItem={({item})=><MessageBubble item={item}isMe={item.senderId===auth.currentUser?.uid}isGlobal={isGlobal}chatId={chatId}onReply={setReplyingTo}/>}inverted contentContainerStyle={s.list}showsVerticalScrollIndicator={false}/>}</View>
+  {replyingTo?<View style={[s.replyBar,{backgroundColor:isDark?'#132B3B':'#FFF'}]}><View style={{flex:1}}><Text style={s.replyTitle}>Replying to {replyingTo.senderName||'message'}</Text><Text style={{color:isDark?'#FFF':'#333'}}numberOfLines={1}>{replyingTo.text||'Media'}</Text></View><TouchableOpacity onPress={()=>setReplyingTo(null)}><Text style={{fontSize:22}}>×</Text></TouchableOpacity></View>:null}
+  <ChatInput value={inputText}onChangeText={setInputText}onSend={handleSend}sending={sending}onAttachImage={()=>handleMediaPick('image')}onAttachVideo={()=>handleMediaPick('video')}onAttachDocument={handleDocumentPick}onAttachVoice={handleVoiceRecord}onAttachLocation={handleLocationPick}onAttachContact={handleContactPick}/>
+ </Animated.View></SafeAreaView>
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  chatArea: { flex: 1 },
-  listContent: { paddingHorizontal: 15, paddingBottom: 15, paddingTop: 10 },
-  
-  // 🚀 New Styles for Progress Bar
-  progressContainer: { padding: 10, backgroundColor: 'rgba(8, 126, 255, 0.1)', alignItems: 'center' },
-  progressText: { fontSize: 12, fontWeight: '700', color: '#087EFF', marginBottom: 5 },
-  progressBarBg: { width: '80%', height: 4, backgroundColor: 'rgba(8, 126, 255, 0.2)', borderRadius: 2 },
-  progressBarFill: { height: '100%', backgroundColor: '#087EFF', borderRadius: 2 }
-});
+const s=StyleSheet.create({container:{flex:1},area:{flex:1},list:{paddingHorizontal:15,paddingBottom:15,paddingTop:10},progress:{padding:8,backgroundColor:'rgba(8,126,255,.1)',alignItems:'center'},progressText:{fontSize:12,fontWeight:'700',color:'#087EFF'},bar:{width:'80%',height:4,backgroundColor:'rgba(8,126,255,.2)',borderRadius:2},fill:{height:'100%',backgroundColor:'#087EFF',borderRadius:2},replyBar:{flexDirection:'row',alignItems:'center',paddingHorizontal:14,paddingVertical:8,borderTopWidth:1,borderTopColor:'rgba(128,128,128,.15)'},replyTitle:{fontSize:11,fontWeight:'800',color:'#087EFF',marginBottom:2}});
