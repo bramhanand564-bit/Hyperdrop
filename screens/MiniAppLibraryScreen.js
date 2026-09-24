@@ -21,6 +21,10 @@ export default function MiniAppLibraryScreen({ navigation }) {
   });
 
   const publish = async app => {
+    if (app.status === 'published') {
+      Alert.alert('Already published', app.name + ' is already in the public Nax Apps catalog.');
+      return;
+    }
     setBusy(app.id);
     try {
       await MiniAppAPI.publishImportedMiniApp(app);
