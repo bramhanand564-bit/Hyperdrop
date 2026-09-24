@@ -26,30 +26,63 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
   const recordingRef = useRef(null);
   const draftKey = `chat_draft_${chatId}`;
   const typingTimer = useRef(null);
+  const typingWriteTimer = useRef(null);
+  const draftTimer = useRef(null);
+  const cacheRef = useRef([]);
 
   useEffect(() => {
     if (!auth.currentUser || !chatId) return undefined;
+    let alive = true;
     const localKey = `chat_cache_${chatId}`;
+    const uid = auth.currentUser.uid;
+
     AsyncStorage.getItem(localKey).then(cached => {
-      if (cached) { try { setMessages(JSON.parse(cached)); setLoading(false); } catch (_) {} }
-    });
-    const q = query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, async snapshot => {
-      const serverMsgs = snapshot.docs.map(d => ({ id:d.id, ...d.data() }));
+      if (!alive || !cached) return;
       try {
-        const cached = await AsyncStorage.getItem(localKey);
-        const map = new Map((cached ? JSON.parse(cached) : []).map(m => [m.id,m]));
-        serverMsgs.forEach(m => map.set(m.id,m));
-        const finalMsgs = Array.from(map.values()).filter(m => !m.expiresAt || (m.expiresAt?.toMillis ? m.expiresAt.toMillis() > Date.now() : true)).sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
-        setMessages(finalMsgs);
+        const parsed = JSON.parse(cached);
+        cacheRef.current = Array.isArray(parsed) ? parsed : [];
+        setMessages(cacheRef.current);
         setLoading(false);
-        await AsyncStorage.setItem(localKey, JSON.stringify(finalMsgs));
-        const other = finalMsgs.filter(m => m.senderId && m.senderId !== auth.currentUser.uid).slice(0, 25);
-        await Promise.all(other.map(m => MessagingService.markDelivered(chatId,m.id).catch(()=>{})));
-        await Promise.all(other.slice(0,5).map(m => MessagingService.markRead(chatId,m.id).catch(()=>{})));
-      } catch (e) { console.log('Chat merge error:', e); setLoading(false); }
-    }, error => { console.log('Chat fetch error:', error); setLoading(false); });
-    return () => unsubscribe();
+      } catch (_) {}
+    }).catch(() => {});
+
+    const q = query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, snapshot => {
+      try {
+        const map = new Map(cacheRef.current.map(m => [m.id, m]));
+        snapshot.docs.forEach(d => map.set(d.id, { id:d.id, ...d.data() }));
+        const finalMsgs = Array.from(map.values())
+          .filter(m => !m.expiresAt || (m.expiresAt?.toMillis ? m.expiresAt.toMillis() > Date.now() : true))
+          .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+        cacheRef.current = finalMsgs;
+        if (alive) {
+          setMessages(finalMsgs);
+          setLoading(false);
+        }
+        AsyncStorage.setItem(localKey, JSON.stringify(finalMsgs)).catch(() => {});
+
+        // Only acknowledge messages that actually changed. The previous code
+        // re-read AsyncStorage and wrote up to 30 Firestore documents on every snapshot.
+        const changed = snapshot.docChanges()
+          .map(change => ({ id: change.doc.id, ...change.doc.data() }))
+          .filter(m => m.senderId && m.senderId !== uid);
+
+        const delivered = changed.filter(m => !m.deliveredTo?.[uid] && !m.readBy?.[uid]).slice(0, 25);
+        const readable = changed.filter(m => !m.readBy?.[uid]).slice(0, 5);
+
+        Promise.all(delivered.map(m => MessagingService.markDelivered(chatId, m.id).catch(() => {})));
+        Promise.all(readable.map(m => MessagingService.markRead(chatId, m.id).catch(() => {})));
+      } catch (e) {
+        console.log('Chat merge error:', e);
+        if (alive) setLoading(false);
+      }
+    }, error => {
+      console.log('Chat fetch error:', error);
+      if (alive) setLoading(false);
+    });
+
+    return () => { alive = false; unsubscribe(); };
   }, [chatId]);
 
   useEffect(() => {
@@ -81,14 +114,26 @@ export default function useChatRoomLogic(chatId, isGlobal, friendId, chatName, n
 
   const updateTyping = (value) => {
     setInputText(value);
+    clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      AsyncStorage.setItem(draftKey, value || '').catch(() => {});
+    }, 250);
+
     if (isGlobal || !chatId) return;
-    MessagingService.setTyping(chatId, !!value.trim()).catch(()=>{});
+    clearTimeout(typingWriteTimer.current);
+    typingWriteTimer.current = setTimeout(() => {
+      MessagingService.setTyping(chatId, !!value.trim()).catch(()=>{});
+    }, 120);
     clearTimeout(typingTimer.current);
-    if (value.trim()) typingTimer.current = setTimeout(() => MessagingService.setTyping(chatId,false).catch(()=>{}), 1800);
+    if (value.trim()) {
+      typingTimer.current = setTimeout(() => MessagingService.setTyping(chatId,false).catch(()=>{}), 1800);
+    }
   };
 
   useEffect(() => () => {
     clearTimeout(typingTimer.current);
+    clearTimeout(typingWriteTimer.current);
+    clearTimeout(draftTimer.current);
     if (chatId) MessagingService.setTyping(chatId,false).catch(()=>{});
   }, [chatId]);
 
