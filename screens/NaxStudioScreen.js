@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, TextInput, 
   ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator 
@@ -117,12 +117,11 @@ export default function NaxStudioScreen({ navigation }) {
         creatorId: user?.uid,
         creatorName: user?.displayName || 'Unknown',
         systemPrompt: systemPrompt, // <-- Asli AI logic yahan se chalega
+        aiConnectionId,
         engine: {
           mode: aiMode,
           provider: aiMode === 'local' ? selectedLocalModel : selectedProvider,
           endpoint: customEndpoint || null,
-          // Note: Real apps me API Key ko backend encryption ke saath save karte hain
-          aiConnectionId,
           // API secrets stay in local AI settings; never persist raw keys in bot records.
         },
         type: 'ai-agent',
