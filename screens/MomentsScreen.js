@@ -1818,7 +1818,7 @@ export default function MomentsScreen({ navigation }) {
                     {!!item.text && (
                       <Text style={styles.fullMediaCaption} numberOfLines={3}>{item.text}</Text>
                     )}
-                    <Text style={styles.fullMediaHint}>Swipe up or down • tap video to pause</Text>
+                    <Text style={styles.fullMediaHint}>Swipe up or down • full-screen media</Text>
                   </View>
                 </View>
               )}
