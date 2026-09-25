@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -98,6 +99,28 @@ function safeAvatar(name = 'U', photoURL) {
 
 function clampText(text, max = 320) {
   return String(text || '').trim().slice(0, max);
+}
+
+function pickerErrorMessage(error, fallback) {
+  const message = String(error?.message || error?.exception || '').trim();
+  if (!message) return fallback;
+  return message;
+}
+
+function getPickerMediaTypes(type) {
+  const legacyEnum = ImagePicker.MediaTypeOptions;
+  if (legacyEnum) {
+    return type === 'Reel' ? legacyEnum.Videos : legacyEnum.All;
+  }
+  return type === 'Reel' ? ['videos'] : ['images', 'videos'];
+}
+
+function getPickerCameraType(facing) {
+  const cameraEnum = ImagePicker.CameraType;
+  if (cameraEnum) {
+    return facing === 'front' ? cameraEnum.front : cameraEnum.back;
+  }
+  return facing;
 }
 
 function storyIsFresh(story) {
@@ -415,6 +438,21 @@ export default function MomentsScreen({ navigation }) {
 
   const tabs = ['For You', 'Following', 'Live', 'Reels'];
 
+  // Android may destroy MainActivity while the system picker is open.
+  // Expo exposes getPendingResultAsync so the selected media can be recovered.
+  useEffect(() => {
+    let mounted = true;
+    ImagePicker.getPendingResultAsync?.()
+      .then(result => {
+        if (!mounted || !result || result.canceled || !result.assets?.[0]) return;
+        uploadAsset(result.assets[0]);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     Animated.spring(fabScale, {
       toValue: 1,
@@ -622,62 +660,100 @@ export default function MomentsScreen({ navigation }) {
 
   const pickGallery = useCallback(async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Photos permission', 'Allow photo access to select media for Moments.');
-        return;
+      // Android's system media picker does not require a runtime media-library
+      // permission in the normal picker flow. Requesting it first can block the
+      // picker on devices using the modern Photo Picker.
+      if (Platform.OS !== 'android') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          if (permission.canAskAgain === false) {
+            Alert.alert(
+              'Photos access is blocked',
+              'Enable Photos/Media access from Android/iOS app settings, then try again.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open settings', onPress: () => Linking.openSettings().catch(() => {}) },
+              ]
+            );
+          } else {
+            Alert.alert('Photos permission', 'Allow photo access to select media for Moments.');
+          }
+          return;
+        }
       }
 
-      // Expo SDK 51 expects MediaTypeOptions enum values here.
-      // Passing strings such as ['images', 'videos'] causes the native picker
-      // to reject the request on Android and fall into the generic Gallery error.
-      const mediaTypes =
-        publishType === 'Reel'
-          ? ImagePicker.MediaTypeOptions.Videos
-          : ImagePicker.MediaTypeOptions.All;
-
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes,
+        mediaTypes: getPickerMediaTypes(publishType),
         quality: 0.82,
         allowsEditing: false,
         videoMaxDuration: publishType === 'Reel' ? 60 : 120,
         allowsMultipleSelection: false,
+        legacy: Platform.OS === 'android',
       });
 
-      if (!result.canceled) {
-        await uploadAsset(result.assets?.[0]);
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
+        Alert.alert('No media selected', 'Please choose a photo or video and try again.');
+        return;
       }
+      await uploadAsset(asset);
     } catch (error) {
-      Alert.alert('Gallery error', 'Could not open your media library.');
+      console.warn('Moments gallery picker error:', error);
+      Alert.alert(
+        'Gallery error',
+        pickerErrorMessage(error, 'Could not open your media library.'),
+        [{ text: 'OK' }]
+      );
     }
   }, [publishType, uploadAsset]);
 
   const captureCamera = useCallback(async () => {
     try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Camera permission', 'Allow camera access to create a Moment.');
+      const permission = await ImagePicker.getCameraPermissionsAsync();
+      let finalPermission = permission;
+
+      if (!permission.granted && permission.canAskAgain !== false) {
+        finalPermission = await ImagePicker.requestCameraPermissionsAsync();
+      }
+
+      if (!finalPermission.granted) {
+        if (finalPermission.canAskAgain === false) {
+          Alert.alert(
+            'Camera access is blocked',
+            'Enable Camera permission in app settings, then try again.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open settings', onPress: () => Linking.openSettings().catch(() => {}) },
+            ]
+          );
+        } else {
+          Alert.alert('Camera permission', 'Allow camera access to create a Moment.');
+        }
         return;
       }
 
-      // Keep camera media types compatible with the Expo SDK used by Hyperdrop.
-      const mediaTypes =
-        publishType === 'Reel'
-          ? ImagePicker.MediaTypeOptions.Videos
-          : ImagePicker.MediaTypeOptions.All;
-
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes,
-        cameraType: cameraFacing,
+        mediaTypes: getPickerMediaTypes(publishType),
+        cameraType: getPickerCameraType(cameraFacing),
         quality: 0.82,
         videoMaxDuration: publishType === 'Reel' ? 60 : 120,
       });
 
-      if (!result.canceled) {
-        await uploadAsset(result.assets?.[0]);
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
+        Alert.alert('No media captured', 'Try taking a photo or recording a video again.');
+        return;
       }
+      await uploadAsset(asset);
     } catch (error) {
-      Alert.alert('Camera error', 'Could not start the camera on this device.');
+      console.warn('Moments camera picker error:', error);
+      Alert.alert(
+        'Camera error',
+        pickerErrorMessage(error, 'Could not start the camera on this device.'),
+        [{ text: 'OK' }]
+      );
     }
   }, [cameraFacing, publishType, uploadAsset]);
 
