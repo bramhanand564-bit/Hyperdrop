@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal, Animated, SafeAreaView, Platform, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal, Animated, SafeAreaView, Platform, Alert, TextInput, Share } from 'react-native';
 import { Ionicons, FontAwesome5, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,7 +8,7 @@ import GlassScene from '../components/ui/GlassScene';
 
 // FIREBASE INTEGRATION
 import { db, auth } from '../firebaseConfig';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDocs } from 'firebase/firestore';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 
 const { width } = Dimensions.get('window');
@@ -30,6 +30,9 @@ export default function MomentsScreen() {
   const [publishType, setPublishType] = useState('Post'); // 'Post', 'Story', 'Reel'
   const [creatorText, setCreatorText] = useState('');
   const [creatorMedia, setCreatorMedia] = useState(null);
+  const [commentTarget, setCommentTarget] = useState(null);
+  const [commentText, setCommentText] = useState('');
+  const [comments, setComments] = useState([]);
   
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -135,6 +138,46 @@ export default function MomentsScreen() {
   };
 
   // ================= WORKING LIKES =================
+  const handleCommentOpen = async (post) => {
+    setCommentTarget(post);
+    setCommentText('');
+    try {
+      const snap = await getDocs(query(collection(db, 'global_moments', post.id, 'comments'), orderBy('createdAt', 'asc')));
+      setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) { setComments([]); }
+  };
+
+  const handleCommentSend = async () => {
+    const text = commentText.trim();
+    if (!currentUser?.uid || !commentTarget?.id || !text) return;
+    try {
+      await addDoc(collection(db, 'global_moments', commentTarget.id, 'comments'), {
+        userId: currentUser.uid,
+        userName: currentUser.displayName || 'User',
+        text: text.slice(0, 500),
+        createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, 'global_moments', commentTarget.id), { commentsCount: increment(1) });
+      setComments(items => [...items, { id: `local-${Date.now()}`, userId: currentUser.uid, userName: currentUser.displayName || 'User', text }]);
+      setCommentText('');
+    } catch (e) { Alert.alert('Comment failed', 'Please try again.'); }
+  };
+
+  const handleSharePost = async (post) => {
+    try {
+      await Share.share({ message: `${post.userName || 'Someone'} shared a Moment${post.text ? `: ${post.text}` : ''}${post.media ? `\n${post.media}` : ''}` });
+    } catch (e) {}
+  };
+
+  const handleLikeStory = async (story) => {
+    if (!currentUser?.uid || !story?.id) return;
+    const liked = Array.isArray(story.likes) && story.likes.includes(currentUser.uid);
+    try {
+      await updateDoc(doc(db, 'global_stories', story.id), { likes: liked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid) });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
+    } catch (e) { Alert.alert('Story like failed', 'Please try again.'); }
+  };
+
   const handleLikePost = async (postId, currentLikes) => {
     if(!currentUser) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(()=>{});
@@ -306,8 +349,8 @@ export default function MomentsScreen() {
               <TouchableOpacity style={styles.viewerReplyBox} onPress={() => Alert.alert("Reply", "Keyboard opens...")}>
                 <Text style={{ color: '#FFF', fontSize: 15 }}>Reply to {viewingStory?.userName}...</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={{ marginHorizontal: 12 }} onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{})}><Ionicons name="heart" size={34} color="#FF3B30" /></TouchableOpacity>
-              <TouchableOpacity><Feather name="send" size={28} color="#FFF" /></TouchableOpacity>
+              <TouchableOpacity style={{ marginHorizontal: 12 }} onPress={() => handleLikeStory(viewingStory)}><Ionicons name="heart" size={34} color="#FF3B30" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => handleSharePost(viewingStory)}><Feather name="send" size={28} color="#FFF" /></TouchableOpacity>
             </SafeAreaView>
 
           </TouchableOpacity>
@@ -360,6 +403,24 @@ export default function MomentsScreen() {
           </View>
 
         </SafeAreaView>
+      </Modal>
+
+      <Modal visible={!!commentTarget} transparent animationType="slide" onRequestClose={() => setCommentTarget(null)}>
+        <View style={styles.commentBackdrop}>
+          <View style={[styles.commentSheet, { backgroundColor: cardBg, borderColor: glassBorder }]}>
+            <View style={styles.commentHeader}>
+              <Text style={[styles.commentTitle, { color: textMain }]}>Comments</Text>
+              <TouchableOpacity onPress={() => setCommentTarget(null)}><Ionicons name="close" size={24} color={textMain} /></TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ paddingBottom: 10 }}>
+              {comments.length === 0 ? <Text style={{ color: textSub, textAlign: 'center', padding: 24 }}>No comments yet.</Text> : comments.map(item => <View key={item.id} style={styles.commentRow}><Text style={[styles.commentUser, { color: textMain }]}>{item.userName}</Text><Text style={{ color: textSub, flex: 1 }}>{item.text}</Text></View>)}
+            </ScrollView>
+            <View style={styles.commentComposer}>
+              <TextInput value={commentText} onChangeText={setCommentText} placeholder="Write a comment..." placeholderTextColor={textSub} style={[styles.commentInput, { color: textMain, borderColor: glassBorder }]} multiline />
+              <TouchableOpacity onPress={handleCommentSend} style={styles.commentSend}><Feather name="send" size={18} color="#FFF" /></TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
     </GlassScene></SafeAreaView>
@@ -425,5 +486,14 @@ const styles = StyleSheet.create({
   galleryBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center' }, 
   captureBtn: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center' }, 
   captureInner: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#FFF' }, 
-  flipBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' }
+  flipBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  commentBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  commentSheet: { maxHeight: '70%', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, padding: 18 },
+  commentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  commentTitle: { fontSize: 20, fontWeight: '800' },
+  commentRow: { paddingVertical: 10, gap: 3 },
+  commentUser: { fontWeight: '700' },
+  commentComposer: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 8 },
+  commentInput: { flex: 1, minHeight: 44, maxHeight: 100, borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
+  commentSend: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#087EFF', justifyContent: 'center', alignItems: 'center' }
 });
