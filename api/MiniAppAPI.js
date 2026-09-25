@@ -68,7 +68,7 @@ export const MiniAppAPI = {
   },
 
   // 🚀 4. NEW: INSTALL APP (For MiniAppInstall)
-  installMiniApp: async (app) => {
+  installMiniApp: async (app, grantedPermissions = null) => {
     const user = auth.currentUser;
     if (!user || !user.uid) {
       throw new Error("Please login to install apps.");
@@ -90,6 +90,11 @@ export const MiniAppAPI = {
         entryType: app.entryType || 'web',
         installedAt: serverTimestamp()
       };
+
+      const requestedPermissions = Array.isArray(app.permissions) ? app.permissions : [];
+      savedData.requestedPermissions = requestedPermissions;
+      savedData.grantedPermissions = Array.isArray(grantedPermissions) ? grantedPermissions : requestedPermissions;
+      savedData.permissionUpdatedAt = serverTimestamp();
 
       // If it's an AI declarative app, save the config so it loads instantly later
       if (app.entryType === 'declarative') {
