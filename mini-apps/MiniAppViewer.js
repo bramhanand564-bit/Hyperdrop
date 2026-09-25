@@ -287,6 +287,7 @@ export default function MiniAppViewer({ route, navigation }) {
               components={effectiveApp?.components || appConfig?.components || []}
               themeColor={effectiveApp?.color || blue}
               isTestMode={false}
+              navigation={navigation}
             />
           </View>
         ) : (
