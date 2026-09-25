@@ -99,11 +99,25 @@ const MessagingService = {
     return updateDoc(ref, { reactions });
   },
   async toggleStar(chatId, messageId) {
-    const me = requireUser(); const ref = doc(db, 'users', me, 'starred_messages', `${chatId}_${messageId}`);
+    const me = requireUser();
+    const ref = doc(db, 'users', me, 'starred_messages', `${chatId}_${messageId}`);
+    const message = messageRef(chatId, messageId);
     const snap = await getDoc(ref);
-    return snap.exists() ? deleteDoc(ref) : setDoc(ref, { chatId, messageId, createdAt: serverTimestamp() });
+    if (snap.exists()) {
+      await deleteDoc(ref);
+      await updateDoc(message, { [`starredBy.${me}`]: false });
+      return false;
+    }
+    await setDoc(ref, { chatId, messageId, createdAt: serverTimestamp() });
+    await updateDoc(message, { [`starredBy.${me}`]: true });
+    return true;
   },
-  pinMessage(chatId, messageId) { requireUser(); return updateDoc(doc(db, 'chats', chatId), { pinnedMessageId: messageId, pinnedAt: serverTimestamp() }); },
+  async pinMessage(chatId, messageId) {
+    const me = requireUser();
+    await updateDoc(doc(db, 'chats', chatId), { pinnedMessageId: messageId, pinnedAt: serverTimestamp() });
+    await updateDoc(messageRef(chatId, messageId), { pinnedAt: serverTimestamp(), [`pinnedBy.${me}`]: true });
+    return true;
+  },
   async forwardMessage(sourceChatId, messageId, targetChatId) {
     requireUser(); const snap = await getDoc(messageRef(sourceChatId, messageId));
     if (!snap.exists()) throw new Error('Message not found.');
