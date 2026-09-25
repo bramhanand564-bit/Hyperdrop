@@ -2,19 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import DeviceCapabilityService from '../../ai/on-device/DeviceCapabilityService';
+import { SEED_MODELS } from '../../ai/on-device/OnDeviceModelCatalog';
 
-// 🤖 AVAILABLE OPEN-SOURCE MODELS
-const LOCAL_MODELS = [
-  { id: 'tiny-coder', name: 'TinyCoder 1.1B', size: '680 MB', reqRam: 2, desc: 'Fast code generation.' },
-  { id: 'phi-3-mini', name: 'Phi-3 Mini 3.8B', size: '2.2 GB', reqRam: 4, desc: 'Smart logic & chat replies.' },
-  { id: 'llama-3-8b', name: 'Llama-3 8B (Q4)', size: '4.7 GB', reqRam: 8, desc: 'Pro level, heavy processing.' }
-];
+// 🤖 VERIFIED ON-DEVICE GGUF MODELS
+const LOCAL_MODELS = SEED_MODELS.map(model => ({
+  id: model.id,
+  name: model.name,
+  size: `${model.sizeMB} MB`,
+  reqRam: Math.max(1, Math.ceil(model.estimatedRamMB / 1024)),
+  desc: `${model.quantization} • ${model.context}-token context`,
+  model,
+}));
 
 export default function LocalEngineSettings({ selectedModel, setSelectedModel, isDownloaded, onDownload, onDelete }) {
   const { isDark } = useTheme();
   
   // Simulated Device RAM (Real app will use react-native-device-info)
-  const [deviceRam, setDeviceRam] = useState(0); 
+  const [deviceRam, setDeviceRam] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
 
   const textMain = isDark ? '#F5F5F7' : '#1C1C1E';
@@ -23,11 +28,16 @@ export default function LocalEngineSettings({ selectedModel, setSelectedModel, i
   const cardBg = isDark ? 'rgba(255, 255, 255, 0.03)' : '#FFFFFF';
 
   useEffect(() => {
-    // Simulating hardware scan
-    setTimeout(() => {
-      setDeviceRam(6); // Maan lo phone mein 6GB RAM hai
+    let mounted = true;
+    DeviceCapabilityService.scan().then(caps => {
+      if (!mounted) return;
+      setDeviceRam(caps.ramGB || 0);
       setIsAnalyzing(false);
-    }, 1200);
+    }).catch(() => {
+      if (!mounted) return;
+      setIsAnalyzing(false);
+    });
+    return () => { mounted = false; };
   }, []);
 
   const getPerformanceTag = (reqRam) => {
@@ -78,12 +88,12 @@ export default function LocalEngineSettings({ selectedModel, setSelectedModel, i
                 {isDownloaded ? (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={{ color: '#34C759', fontWeight: 'bold', fontSize: 13 }}>✓ Ready to use offline</Text>
-                    <TouchableOpacity onPress={onDelete} style={{ padding: 5 }}>
+                    <TouchableOpacity onPress={() => onDelete(model)} style={{ padding: 5 }}>
                       <Ionicons name="trash-outline" size={18} color="#FF3B30" />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.downloadBtn} onPress={() => onDownload(model.name)}>
+                  <TouchableOpacity style={styles.downloadBtn} onPress={() => onDownload(model)}>
                     <Ionicons name="cloud-download-outline" size={16} color="#087EFF" style={{ marginRight: 6 }} />
                     <Text style={{ color: '#087EFF', fontWeight: 'bold', fontSize: 13 }}>Download to Device</Text>
                   </TouchableOpacity>
