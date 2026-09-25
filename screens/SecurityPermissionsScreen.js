@@ -8,6 +8,8 @@ import { useTheme } from '../context/ThemeContext';
 
 // 🔥 REAL FIREBASE IMPORTS
 import { db, auth } from '../firebaseConfig';
+import { MiniAppAPI } from '../api/MiniAppAPI';
+import BotAPI from '../api/BotAPI';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 export default function SecurityPermissionsScreen({ navigation }) {
@@ -19,12 +21,7 @@ export default function SecurityPermissionsScreen({ navigation }) {
     globalLocation: true,
     globalCamera: true,
     walletAutoPay: false,
-    apps: [
-      // Fallback UI data if DB is empty
-      { id: 'app_1', name: 'Nax Ludo Multi', type: 'app', wallet: true, location: false, camera: false },
-      { id: 'bot_1', name: 'Travel Bot AI', type: 'bot', wallet: false, location: true, camera: false },
-      { id: 'app_2', name: 'Sharma Sweets', type: 'app', wallet: true, location: true, camera: false },
-    ]
+    apps: []
   });
 
   // 🎨 Super Glassy, Zero-Neon Palette
@@ -44,12 +41,37 @@ export default function SecurityPermissionsScreen({ navigation }) {
       try {
         const docRef = doc(db, 'users', user.uid, 'settings', 'security');
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setPermissions(prev => ({ ...prev, ...docSnap.data() }));
-        } else {
-          // Initialize default security settings if new
-          await setDoc(docRef, { globalLocation: true, globalCamera: true, walletAutoPay: false });
+        const saved = docSnap.exists() ? docSnap.data() : { globalLocation: true, globalCamera: true, walletAutoPay: false };
+        const [installed, bots] = await Promise.all([
+          MiniAppAPI.getInstalledApps().catch(() => []),
+          BotAPI.getUserBots(user.uid).catch(() => []),
+        ]);
+        const installedApps = (installed || []).map(app => {
+          const granted = Array.isArray(app.grantedPermissions) ? app.grantedPermissions : [];
+          return {
+            id: app.appId || app.id,
+            name: app.name || 'Mini-App',
+            type: 'app',
+            wallet: granted.includes('payments'),
+            location: granted.includes('location.coarse') || granted.includes('location.precise') || granted.includes('device.location'),
+            camera: granted.includes('device.camera'),
+            grantedPermissions: granted,
+          };
+        });
+        const botApps = (bots || []).map(bot => ({
+          id: bot.id,
+          name: bot.name || 'Bot',
+          type: 'bot',
+          wallet: false,
+          location: false,
+          camera: false,
+          grantedPermissions: [],
+        }));
+        const apps = [...installedApps, ...botApps];
+        if (!docSnap.exists()) {
+          await setDoc(docRef, { ...saved, apps });
         }
+        setPermissions({ ...saved, apps });
       } catch (error) {
         console.log("Security fetch error:", error);
       } finally {
@@ -64,9 +86,16 @@ export default function SecurityPermissionsScreen({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(()=>{});
     
     // Update Local State for instant UI feedback
-    const updatedApps = permissions.apps.map(app => 
-      app.id === appId ? { ...app, [permType]: !currentValue } : app
-    );
+    const permissionMap = { wallet: 'payments', location: 'location.coarse', camera: 'device.camera' };
+    const permissionName = permissionMap[permType];
+    const updatedApps = permissions.apps.map(app => {
+      if (app.id !== appId) return app;
+      const currentGranted = Array.isArray(app.grantedPermissions) ? app.grantedPermissions : [];
+      const nextGranted = currentValue
+        ? currentGranted.filter(p => p !== permissionName)
+        : [...new Set([...currentGranted, permissionName])];
+      return { ...app, [permType]: !currentValue, grantedPermissions: nextGranted };
+    });
     setPermissions(prev => ({ ...prev, apps: updatedApps }));
 
     // Update Firebase
@@ -90,9 +119,9 @@ export default function SecurityPermissionsScreen({ navigation }) {
           style: "destructive",
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(()=>{});
-            const revokedApps = permissions.apps.map(app => ({ ...app, wallet: false, location: false, camera: false }));
-            setPermissions(prev => ({ ...prev, apps: revokedApps, walletAutoPay: false }));
-            updateDoc(doc(db, 'users', user.uid, 'settings', 'security'), { apps: revokedApps, walletAutoPay: false });
+            const revokedApps = permissions.apps.map(app => ({ ...app, wallet: false, location: false, camera: false, grantedPermissions: [] }));
+            setPermissions(prev => ({ ...prev, apps: revokedApps, walletAutoPay: false, globalLocation: false, globalCamera: false }));
+            updateDoc(doc(db, 'users', user.uid, 'settings', 'security'), { apps: revokedApps, walletAutoPay: false, globalLocation: false, globalCamera: false });
             Alert.alert("Secured", "All third-party access has been revoked.");
           }
         }
@@ -204,7 +233,7 @@ export default function SecurityPermissionsScreen({ navigation }) {
                   <Text style={{ color: textSub, fontSize: 11, marginTop: 2 }}>Allow trusted apps to deduct tokens</Text>
                 </View>
               </View>
-              <Switch value={permissions.walletAutoPay} onValueChange={(v) => setPermissions(p => ({...p, walletAutoPay: v}))} trackColor={{ true: '#34C759' }} />
+              <Switch value={permissions.walletAutoPay} onValueChange={async (v) => { setPermissions(p => ({...p, walletAutoPay: v})); await updateDoc(doc(db, 'users', user.uid, 'settings', 'security'), { walletAutoPay: v }); }} trackColor={{ true: '#34C759' }} />
             </View>
           </View>
 
