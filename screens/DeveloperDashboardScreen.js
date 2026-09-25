@@ -6,8 +6,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
 // 🔥 REAL FIREBASE IMPORTS
-import { db, auth } from '../firebaseConfig';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { auth } from '../firebaseConfig';
+import { MiniAppAPI } from '../api/MiniAppAPI';
+import BotAPI from '../api/BotAPI';
 
 const { width } = Dimensions.get('window');
 
@@ -32,38 +33,34 @@ export default function DeveloperDashboardScreen({ navigation }) {
 
   // 📡 FETCH REAL CREATOR DATA FROM FIREBASE
   useEffect(() => {
-    if (!user?.uid) return;
-
-    // Fetch Apps & Bots created by this user
-    const q = query(collection(db, 'portals'), where('creatorId', '==', user.uid));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      let views = 0;
-      let revenue = 0;
-      const appsData = [];
-
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        appsData.push({ id: doc.id, ...data });
-        views += (data.views || 0);
-        revenue += (data.revenueGenerated || 0);
-      });
-
-      setMyApps(appsData);
-      setTotalViews(views);
-      setTotalRevenue(revenue);
-      
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+    let mounted = true;
+    if (!user?.uid) { setLoading(false); return undefined; }
+    (async () => {
+      try {
+        const [allApps, bots] = await Promise.all([
+          MiniAppAPI.getPublicMiniApps().catch(() => []),
+          BotAPI.getUserBots(user.uid).catch(() => []),
+        ]);
+        const apps = (allApps || []).filter(item => item.creatorId === user.uid || item.ownerId === user.uid);
+        const normalizedApps = apps.map(item => ({ ...item, type: item.type || 'app', views: Number(item.views || 0), revenueGenerated: Number(item.revenueGenerated || 0) }));
+        const normalizedBots = (bots || []).map(item => ({ ...item, type: 'bot', views: Number(item.weeklyViews || item.usageCount || 0), revenueGenerated: Number(item.revenueGenerated || 0) }));
+        const all = [...normalizedApps, ...normalizedBots];
+        if (!mounted) return;
+        setMyApps(all);
+        setTotalViews(all.reduce((sum, item) => sum + Number(item.views || 0), 0));
+        setTotalRevenue(all.reduce((sum, item) => sum + Number(item.revenueGenerated || 0), 0));
+      } finally { if (mounted) setLoading(false); }
+    })();
+    return () => { mounted = false; };
+  }, [user?.uid]);
 
   const renderAppCard = (app) => (
     <TouchableOpacity 
       key={app.id} 
       style={[styles.appCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
-      onPress={() => Alert.alert("App Settings", `Manage ${app.name}`)}
+      onPress={() => app.type === 'bot'
+        ? navigation.navigate('BotEdit', { bot: app, botData: app })
+        : navigation.navigate('MiniAppViewer', { title: app.name, url: app.url, appConfig: app, htmlCode: app.htmlCode, entryType: app.entryType || (app.htmlCode ? 'html' : (app.url ? 'web' : 'declarative')), appId: app.id })}
     >
       <View style={styles.appHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>

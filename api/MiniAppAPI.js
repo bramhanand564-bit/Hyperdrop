@@ -3,7 +3,8 @@
 // ==========================================
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
-import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc } from 'firebase/firestore';
+import { validateRequestedPermissions } from '../security/PermissionManager';
+import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc, runTransaction } from 'firebase/firestore';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
 
@@ -14,6 +15,8 @@ export const MiniAppAPI = {
     const user = auth.currentUser;
     if (!user || !user.uid) throw new Error("Authentication required.");
     if (!name || !category) throw new Error("App name and category are required.");
+    const permissionCheck = validateRequestedPermissions(appConfig?.permissions || []);
+    if (!permissionCheck.valid) throw new Error(`Requested permissions are not publishable: ${[...(permissionCheck.invalid || []), ...(permissionCheck.restricted || [])].join(', ')}`);
 
     const newAppSchema = {
       ownerId: user.uid,
@@ -68,7 +71,7 @@ export const MiniAppAPI = {
   },
 
   // 🚀 4. NEW: INSTALL APP (For MiniAppInstall)
-  installMiniApp: async (app) => {
+  installMiniApp: async (app, grantedPermissions = null) => {
     const user = auth.currentUser;
     if (!user || !user.uid) {
       throw new Error("Please login to install apps.");
@@ -91,21 +94,36 @@ export const MiniAppAPI = {
         installedAt: serverTimestamp()
       };
 
+      const requestedPermissions = Array.isArray(app.permissions) ? app.permissions : [];
+      savedData.requestedPermissions = requestedPermissions;
+      savedData.grantedPermissions = Array.isArray(grantedPermissions)
+        ? [...new Set(grantedPermissions.filter(permission => requestedPermissions.includes(permission)))]
+        : requestedPermissions;
+      savedData.permissionUpdatedAt = serverTimestamp();
+
       // If it's an AI declarative app, save the config so it loads instantly later
       if (app.entryType === 'declarative') {
         savedData.appConfig = app;
       }
 
-      await setDoc(installRef, savedData);
+      const created = await runTransaction(db, async (tx) => {
+        const [installSnap, globalSnap] = await Promise.all([
+          tx.get(installRef),
+          tx.get(doc(db, 'mini_apps', app.id)),
+        ]);
 
-      // Step B: Increment global install count for the app (Trending logic)
-      const globalAppRef = doc(db, 'mini_apps', app.id);
-      await updateDoc(globalAppRef, {
-        installs: increment(1)
-      }).catch(e => console.log("Silent error updating global install count:", e));
-
-      EventBus.emit(EventTypes.MINIAPP_INSTALLED, { appId: app.id, userId: user.uid });
-      return true;
+        if (installSnap.exists()) return false;
+        tx.set(installRef, savedData);
+        if (globalSnap.exists()) {
+          tx.update(doc(db, 'mini_apps', app.id), { installs: increment(1), updatedAt: serverTimestamp() });
+        }
+        return true;
+      });
+      
+      if (created) {
+        EventBus.emit(EventTypes.MINIAPP_INSTALLED, { appId: app.id, userId: user.uid });
+      }
+      return created;
     } catch (error) {
       console.log("Install Error:", error);
       throw error;
@@ -115,6 +133,8 @@ export const MiniAppAPI = {
     const user = auth.currentUser;
     if (!user?.uid) throw new Error('Authentication required.');
     if (!app?.htmlCode) throw new Error('Imported app HTML is missing.');
+    const permissionCheck = validateRequestedPermissions(app.permissions || []);
+    if (!permissionCheck.valid) throw new Error(`Requested permissions are not publishable: ${[...(permissionCheck.invalid || []), ...(permissionCheck.restricted || [])].join(', ')}`);
     if (String(app.htmlCode).length > 900000) throw new Error('Imported app is too large for the public catalog.');
 
     const newAppSchema = {

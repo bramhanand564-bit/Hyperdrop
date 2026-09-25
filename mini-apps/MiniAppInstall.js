@@ -4,10 +4,14 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SafeAreaView,
-  ActivityIndicator, Alert, ScrollView, Platform
+  ActivityIndicator, Alert, ScrollView, Platform, Share
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import GlassScene from '../components/ui/GlassScene';
+import GlassSurface from '../components/ui/GlassSurface';
+import GlassButton from '../components/ui/GlassButton';
+import { getPermissionDefinitions, normalizePermissions } from '../security/PermissionManager';
 
 // 🚀 IMPORT OUR REAL API
 import { MiniAppAPI } from '../api/MiniAppAPI';
@@ -19,6 +23,7 @@ export default function MiniAppInstall({ route, navigation }) {
   const { app } = route.params || {};
   
   const [installing, setInstalling] = useState(false);
+  const [grantedPermissions, setGrantedPermissions] = useState(() => normalizePermissions(app?.permissions || []));
 
   // --- COLORS ---
   const bg = isDark ? '#050A10' : '#F3F7FA';
@@ -37,7 +42,7 @@ export default function MiniAppInstall({ route, navigation }) {
 
     try {
       // Call the secure API
-      await MiniAppAPI.installMiniApp(app);
+      await MiniAppAPI.installMiniApp(app, grantedPermissions);
 
       Alert.alert('Success 🎉', `${app.name} has been added to your Nax Portal!`, [
         { 
@@ -61,6 +66,14 @@ export default function MiniAppInstall({ route, navigation }) {
     }
   };
 
+  const permissionDefinitions = getPermissionDefinitions(app?.permissions || []);
+
+  const shareApp = async () => {
+    if (!app) return;
+    try { await Share.share({ message: `Check out ${app.name} on Nax.` + (app.url ? ` ${app.url}` : '') }); }
+    catch (error) { if (error?.message) Alert.alert('Share', error.message); }
+  };
+
   if (!app) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
@@ -81,7 +94,7 @@ export default function MiniAppInstall({ route, navigation }) {
           <Ionicons name="arrow-back" size={24} color={textMain} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: textMain }]}>App Details</Text>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity style={styles.iconBtn} onPress={shareApp}>
           <Ionicons name="share-outline" size={24} color={textMain} />
         </TouchableOpacity>
       </View>
@@ -124,6 +137,23 @@ export default function MiniAppInstall({ route, navigation }) {
         </View>
 
         {/* PERMISSIONS */}
+        <GlassSurface strong radius={20} style={[styles.permissionBox, { backgroundColor: cardBg, borderColor: border }]}>
+          <Text style={[styles.sectionTitle, { color: textMain, marginBottom: 12 }]}>Permissions</Text>
+          {permissionDefinitions.length === 0 ? (
+            <View style={styles.permItem}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={green} />
+              <Text style={[styles.permText, { color: textMain }]}>No special access requested</Text>
+            </View>
+          ) : permissionDefinitions.map(def => (
+            <TouchableOpacity key={def.permission} style={styles.permItem} onPress={() => setGrantedPermissions(prev => prev.includes(def.permission) ? prev.filter(p => p !== def.permission) : [...prev, def.permission])}>
+              <Ionicons name={grantedPermissions.includes(def.permission) ? "checkmark-circle" : "ellipse-outline"} size={21} color={grantedPermissions.includes(def.permission) ? green : textSub} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={[styles.permText, { color: textMain }]}>{def.label}</Text>
+                <Text style={{ color: textSub, fontSize: 11, marginTop: 2 }}>{def.description}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </GlassSurface>
         <View style={[styles.permissionBox, { backgroundColor: cardBg, borderColor: border }]}>
           <Text style={[styles.sectionTitle, { color: textMain, marginBottom: 12 }]}>Required Permissions</Text>
           {app.entryType === 'web' ? (

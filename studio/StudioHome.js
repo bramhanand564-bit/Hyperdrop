@@ -12,8 +12,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useEffect, useState } from 'react';
+import { auth } from '../firebaseConfig';
+import { MiniAppAPI } from '../api/MiniAppAPI';
+import BotAPI from '../api/BotAPI';
+import GlassScene from '../components/ui/GlassScene';
+import GlassSurface from '../components/ui/GlassSurface';
 
-// --- MOCK DATA ---
+// --- STUDIO TEMPLATES ---
 const TEMPLATES = [
   { id: 't1', title: 'Expense Tracker', desc: 'Track daily spendings', icon: 'wallet', color: '#34C759' },
   { id: 't2', title: 'Quiz App', desc: 'Multiple choice trivia', icon: 'help-circle', color: '#FF9500' },
@@ -21,21 +27,36 @@ const TEMPLATES = [
   { id: 't4', title: 'Translator Bot', desc: 'Multi-language bot', icon: 'language', color: '#AF52DE' },
 ];
 
-const MY_CREATIONS = [
-  { id: 'c1', name: 'My Diet Planner', type: 'Mini App', status: 'Published', date: 'Today', icon: 'restaurant', color: '#FF3B30' },
-  { id: 'c2', name: 'Study Buddy', type: 'Bot', status: 'Draft', date: 'Yesterday', icon: 'book', color: '#087EFF' },
-];
-
 export default function StudioHome({ navigation }) {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
+  const [creations, setCreations] = useState([]);
+  const [loadingCreations, setLoadingCreations] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
+        const [apps, bots] = await Promise.all([
+          MiniAppAPI.getPublicMiniApps().catch(() => []),
+          BotAPI.getUserBots(uid).catch(() => []),
+        ]);
+        const mineApps = (apps || []).filter(item => item.creatorId === uid || item.ownerId === uid).map(item => ({ ...item, kind: 'Mini App', type: 'miniapp', dateValue: item.updatedAt || item.createdAt }));
+        const mineBots = (bots || []).map(item => ({ ...item, kind: 'Bot', type: 'bot', dateValue: item.updatedAt || item.createdAt }));
+        if (mounted) setCreations([...mineApps, ...mineBots].sort((a,b) => (b.dateValue?.seconds || 0) - (a.dateValue?.seconds || 0)));
+      } finally { if (mounted) setLoadingCreations(false); }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // --- COLORS ---
-  const bg = isDark ? '#050A10' : '#F3F7FA';
-  const headerBg = isDark ? '#0B1824' : '#FFFFFF';
-  const cardBg = isDark ? '#101A26' : '#FFFFFF';
-  const textMain = isDark ? '#F4F7FA' : '#142532';
-  const textSub = isDark ? '#8FA6B9' : '#6C8494';
-  const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  const bg = theme.bg;
+  const headerBg = theme.surface;
+  const cardBg = theme.surfaceStrong;
+  const textMain = theme.text;
+  const textSub = theme.sub;
+  const border = theme.border;
   const blue = '#087EFF';
   const purple = '#AF52DE'; // AI Theme color
 
@@ -46,8 +67,15 @@ export default function StudioHome({ navigation }) {
   };
 
   const handleOpenCreation = (item) => {
-    // For now, just a placeholder. Later it will go to StudioPreview or Publisher
-    console.log('Open Creation:', item.name);
+    if (item.type === 'bot') navigation.navigate('BotEdit', { bot: item, botData: item });
+    else navigation.navigate('MiniAppViewer', { title: item.name, url: item.url, appConfig: item, htmlCode: item.htmlCode, entryType: item.entryType || (item.htmlCode ? 'html' : (item.url ? 'web' : 'declarative')), appId: item.id });
+  };
+
+  const formatDate = value => {
+    try {
+      const date = value?.toDate ? value.toDate() : value ? new Date(value) : null;
+      return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : 'Recently';
+    } catch { return 'Recently'; }
   };
 
   return (
@@ -65,7 +93,7 @@ export default function StudioHome({ navigation }) {
             <Text style={styles.aiBadgeText}>AI POWERED</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Settings')}>
           <Ionicons name="settings-outline" size={22} color={textMain} />
         </TouchableOpacity>
       </View>
@@ -134,32 +162,33 @@ export default function StudioHome({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: textMain }]}>My Creations</Text>
-            <TouchableOpacity><Text style={{ color: blue, fontWeight: '600' }}>See All</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('DeveloperDashboard')}><Text style={{ color: blue, fontWeight: '600' }}>See All</Text></TouchableOpacity>
           </View>
           
-          {MY_CREATIONS.length > 0 ? (
-            MY_CREATIONS.map((item) => (
-              <TouchableOpacity 
-                key={item.id} 
-                style={[styles.creationCard, { backgroundColor: cardBg, borderColor: border }]}
-                onPress={() => handleOpenCreation(item)}
-              >
-                <View style={[styles.creationIcon, { backgroundColor: `${item.color}20` }]}>
-                  <Ionicons name={item.icon} size={24} color={item.color} />
-                </View>
-                <View style={styles.creationInfo}>
-                  <Text style={[styles.creationName, { color: textMain }]}>{item.name}</Text>
-                  <View style={styles.creationMeta}>
-                    <Text style={[styles.metaText, { color: textSub }]}>{item.type} • {item.date}</Text>
+          {loadingCreations ? (
+            <View style={styles.loadingCreations}><Text style={{ color: textSub }}>Loading your creations…</Text></View>
+          ) : creations.length > 0 ? (
+            creations.map((item) => {
+              const published = item.status === 'published' || item.status === 'active';
+              const color = item.color || (item.type === 'bot' ? '#34C759' : '#087EFF');
+              const icon = item.icon || (item.type === 'bot' ? 'chatbubble-ellipses' : 'apps');
+              return (
+                <TouchableOpacity key={item.id} style={[styles.creationCard, { backgroundColor: cardBg, borderColor: border }]} onPress={() => handleOpenCreation(item)}>
+                  <View style={[styles.creationIcon, { backgroundColor: `${color}20` }]}>
+                    <Ionicons name={icon} size={24} color={color} />
                   </View>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: item.status === 'Published' ? '#34C75920' : '#FF950020' }]}>
-                  <Text style={[styles.statusText, { color: item.status === 'Published' ? '#34C759' : '#FF9500' }]}>
-                    {item.status}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
+                  <View style={styles.creationInfo}>
+                    <Text style={[styles.creationName, { color: textMain }]} numberOfLines={1}>{item.name}</Text>
+                    <View style={styles.creationMeta}>
+                      <Text style={[styles.metaText, { color: textSub }]}>{item.kind} • {formatDate(item.dateValue)}</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: published ? '#34C75920' : '#FF950020' }]}>
+                    <Text style={[styles.statusText, { color: published ? '#34C759' : '#FF9500' }]}>{published ? 'Live' : 'Draft'}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           ) : (
             <View style={[styles.emptyBox, { backgroundColor: cardBg, borderColor: border }]}>
               <Ionicons name="folder-open-outline" size={40} color={textSub} />
@@ -236,5 +265,6 @@ const styles = StyleSheet.create({
   
   emptyBox: { alignItems: 'center', justifyContent: 'center', padding: 30, borderRadius: 20, borderWidth: 1, borderStyle: 'dashed' },
   emptyTitle: { fontSize: 16, fontWeight: '800', marginTop: 12 },
-  emptyText: { fontSize: 13, marginTop: 4 }
+  emptyText: { fontSize: 13, marginTop: 4 },
+  loadingCreations: { padding: 22, alignItems: 'center' }
 });
