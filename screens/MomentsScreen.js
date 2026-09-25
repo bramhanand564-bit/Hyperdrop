@@ -8,7 +8,8 @@ import GlassScene from '../components/ui/GlassScene';
 
 // FIREBASE INTEGRATION
 import { db, auth } from '../firebaseConfig';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDocs, getDoc } from 'firebase/firestore';
+import { Video } from 'expo-av';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 
 const { width } = Dimensions.get('window');
@@ -33,6 +34,10 @@ export default function MomentsScreen() {
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState([]);
+  const [followingIds, setFollowingIds] = useState([]);
+  const [cameraFacing, setCameraFacing] = useState('back');
+  const [creatorIsVideo, setCreatorIsVideo] = useState(false);
+  const [storyReply, setStoryReply] = useState('');
   
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -58,6 +63,12 @@ export default function MomentsScreen() {
     const unsubStories = onSnapshot(qStories, (snapshot) => {
       setStories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
+    const uid = currentUser?.uid;
+    if (uid) getDoc(doc(db, 'users', uid)).then(snap => {
+      const data = snap.exists() ? snap.data() : {};
+      const ids = Array.isArray(data.followingIds) ? data.followingIds : (Array.isArray(data.following) ? data.following : []);
+      setFollowingIds(ids);
+    }).catch(() => setFollowingIds([]));
 
     return () => { unsubFeed(); unsubStories(); };
   }, []);
@@ -84,10 +95,15 @@ export default function MomentsScreen() {
     try {
       const p = await ImagePicker.requestCameraPermissionsAsync();
       if(!p.granted) { Alert.alert("Permission", "Camera access required"); return; }
-      const r = await ImagePicker.launchCameraAsync({ quality: 0.75 });
+      const wantVideo = publishType === 'Reel';
+      const r = await ImagePicker.launchCameraAsync({ quality: 0.75, cameraType: cameraFacing, mediaTypes: wantVideo ? ['videos'] : ['images'] });
       if(!r.canceled && r.assets?.[0]?.uri) {
-        const upload = await uploadToCloudinary({ fileUri: r.assets[0].uri, fileName: 'moment.jpg', mimeType: 'image/jpeg' });
+        const asset = r.assets[0];
+        const mimeType = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+        const fileName = asset.fileName || (asset.type === 'video' ? 'moment.mp4' : 'moment.jpg');
+        const upload = await uploadToCloudinary({ fileUri: asset.uri, fileName, mimeType });
         setCreatorMedia(upload.secureUrl);
+        setCreatorIsVideo(asset.type === 'video' || mimeType.startsWith('video/'));
         setCreatorMode('Camera');
         setShowCreator(true);
       }
@@ -96,10 +112,14 @@ export default function MomentsScreen() {
 
   const pickGallery = async () => {
     try {
-      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
+      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75, mediaTypes: ['images', 'videos'] });
       if(!r.canceled && r.assets?.[0]?.uri) {
-        const upload = await uploadToCloudinary({ fileUri: r.assets[0].uri, fileName: 'moment.jpg', mimeType: 'image/jpeg' });
+        const asset = r.assets[0];
+        const mimeType = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+        const fileName = asset.fileName || (asset.type === 'video' ? 'moment.mp4' : 'moment.jpg');
+        const upload = await uploadToCloudinary({ fileUri: asset.uri, fileName, mimeType });
         setCreatorMedia(upload.secureUrl);
+        setCreatorIsVideo(asset.type === 'video' || mimeType.startsWith('video/'));
         setCreatorMode('Camera');
       }
     } catch(e){}
@@ -114,6 +134,7 @@ export default function MomentsScreen() {
     
     const collectionName = publishType === 'Story' ? 'global_stories' : 'global_moments';
     const isReel = publishType === 'Reel';
+    if (isReel && !creatorIsVideo) { Alert.alert('Reel video required', 'Choose or record a video for a Reel.'); return; }
 
     try {
       await addDoc(collection(db, collectionName), {
@@ -122,7 +143,7 @@ export default function MomentsScreen() {
         userImg: currentUser?.photoURL || `https://ui-avatars.com/api/?name=${currentUser?.displayName || 'U'}&background=random`,
         text: creatorText.trim(),
         media: creatorMedia,
-        isVideo: isReel,
+        isVideo: isReel || creatorIsVideo,
         likes: [],
         commentsCount: 0,
         createdAt: serverTimestamp()
@@ -131,6 +152,7 @@ export default function MomentsScreen() {
       setShowCreator(false);
       setCreatorText('');
       setCreatorMedia(null);
+      setCreatorIsVideo(false);
       Alert.alert("Success", `${publishType} published globally! 🌊`);
     } catch (e) {
       Alert.alert("Error", "Failed to publish.");
@@ -169,11 +191,23 @@ export default function MomentsScreen() {
     } catch (e) {}
   };
 
+  const handleStoryReply = async () => {
+    const text = storyReply.trim();
+    if (!currentUser?.uid || !viewingStory?.id || !text) return;
+    try {
+      await addDoc(collection(db, 'global_stories', viewingStory.id, 'replies'), { userId: currentUser.uid, userName: currentUser.displayName || 'User', text: text.slice(0, 500), createdAt: serverTimestamp() });
+      setStoryReply('');
+      Alert.alert('Reply sent', 'Your reply was added to the story.');
+    } catch (e) { Alert.alert('Reply failed', 'Please try again.'); }
+  };
+
   const handleLikeStory = async (story) => {
     if (!currentUser?.uid || !story?.id) return;
     const liked = Array.isArray(story.likes) && story.likes.includes(currentUser.uid);
     try {
-      await updateDoc(doc(db, 'global_stories', story.id), { likes: liked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid) });
+      const nextLiked = !liked;
+      await updateDoc(doc(db, 'global_stories', story.id), { likes: nextLiked ? arrayUnion(currentUser.uid) : arrayRemove(currentUser.uid) });
+      setViewingStory(prev => prev ? { ...prev, likes: nextLiked ? [...(prev.likes || []), currentUser.uid] : (prev.likes || []).filter(id => id !== currentUser.uid) } : prev);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
     } catch (e) { Alert.alert('Story like failed', 'Please try again.'); }
   };
@@ -191,6 +225,13 @@ export default function MomentsScreen() {
   };
 
   // ================= UI HELPERS =================
+  const visiblePosts = feedPosts.filter(post => {
+    if (activeTab === 'Reels') return post.isVideo === true;
+    if (activeTab === 'Live') return post.isLive === true;
+    if (activeTab === 'Following') return followingIds.includes(post.userId);
+    return true;
+  });
+
   const formatTime = (createdAt) => {
     if (!createdAt) return 'Just now';
     try {
@@ -252,13 +293,13 @@ export default function MomentsScreen() {
         </View>
 
         {/* ================= REAL-TIME FEED ================= */}
-        {feedPosts.length === 0 ? (
+        {visiblePosts.length === 0 ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
             <Ionicons name="water-outline" size={60} color={textSub} style={{ opacity: 0.5 }} />
             <Text style={{ color: textSub, marginTop: 10 }}>No moments yet. Be the first!</Text>
           </View>
         ) : (
-          feedPosts.map((post) => {
+          visiblePosts.map((post) => {
             const hasLiked = post.likes?.includes(currentUser?.uid);
             
             return (
@@ -281,9 +322,8 @@ export default function MomentsScreen() {
                 
                 {/* Post Media */}
                 {post.media && (
-                  <TouchableOpacity activeOpacity={0.9} onDoublePress={() => handleLikePost(post.id, post.likes || [])} style={[styles.feedMediaPlaceholder, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)', borderColor: glassBorder }]}>
-                    <Image source={{ uri: post.media }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
-                    {post.isVideo && <Ionicons name="play-circle" size={60} color="rgba(255,255,255,0.7)" style={{ position: 'absolute' }} />}
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => post.isVideo ? null : handleLikePost(post.id, post.likes || [])} style={[styles.feedMediaPlaceholder, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)', borderColor: glassBorder }]}>
+                    {post.isVideo ? <Video source={{ uri: post.media }} style={{ width: '100%', height: '100%' }} resizeMode="cover" useNativeControls isLooping /> : <Image source={{ uri: post.media }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />}
                   </TouchableOpacity>
                 )}
 
@@ -346,10 +386,9 @@ export default function MomentsScreen() {
 
             {/* Bottom Reply Box */}
             <SafeAreaView style={styles.viewerFooter}>
-              <TouchableOpacity style={styles.viewerReplyBox} onPress={() => Alert.alert("Reply", "Keyboard opens...")}>
-                <Text style={{ color: '#FFF', fontSize: 15 }}>Reply to {viewingStory?.userName}...</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={{ marginHorizontal: 12 }} onPress={() => handleLikeStory(viewingStory)}><Ionicons name="heart" size={34} color="#FF3B30" /></TouchableOpacity>
+              <TextInput value={storyReply} onChangeText={setStoryReply} placeholder={`Reply to ${viewingStory?.userName || 'story'}...`} placeholderTextColor="rgba(255,255,255,0.7)" style={styles.viewerReplyInput} />
+              <TouchableOpacity style={styles.storyReplySend} onPress={handleStoryReply}><Feather name="send" size={18} color="#FFF" /></TouchableOpacity>
+              <TouchableOpacity style={{ marginHorizontal: 12 }} onPress={() => handleLikeStory(viewingStory)}><Ionicons name={viewingStory?.likes?.includes(currentUser?.uid) ? "heart" : "heart-outline"} size={34} color="#FF3B30" /></TouchableOpacity>
               <TouchableOpacity onPress={() => handleSharePost(viewingStory)}><Feather name="send" size={28} color="#FFF" /></TouchableOpacity>
             </SafeAreaView>
 
@@ -370,9 +409,7 @@ export default function MomentsScreen() {
           </View>
 
           <View style={styles.creatorCanvas}>
-            {creatorMedia ? (
-              <Image source={{ uri: creatorMedia }} style={{ width: '100%', height: '100%', borderRadius: 30 }} />
-            ) : null}
+            {creatorMedia ? (creatorIsVideo ? <Video source={{ uri: creatorMedia }} style={{ width: '100%', height: '100%', borderRadius: 30 }} resizeMode="cover" useNativeControls isLooping /> : <Image source={{ uri: creatorMedia }} style={{ width: '100%', height: '100%', borderRadius: 30 }} />) : null}
             
             {(creatorMode === 'Text' || creatorText) && (
               <TextInput 
@@ -398,7 +435,7 @@ export default function MomentsScreen() {
             <View style={styles.bottomActions}>
               <TouchableOpacity style={styles.galleryBtn} onPress={pickGallery}><Ionicons name="images-outline" size={24} color="#FFF" /></TouchableOpacity>
               <TouchableOpacity style={styles.captureBtn} onPress={launchCamera}><View style={styles.captureInner} /></TouchableOpacity>
-              <TouchableOpacity style={styles.flipBtn}><Ionicons name="camera-reverse-outline" size={28} color="#FFF" /></TouchableOpacity>
+              <TouchableOpacity style={styles.flipBtn} onPress={() => setCameraFacing(value => value === 'back' ? 'front' : 'back')}><Ionicons name="camera-reverse-outline" size={28} color="#FFF" /></TouchableOpacity>
             </View>
           </View>
 
@@ -472,6 +509,8 @@ const styles = StyleSheet.create({
   viewerTime: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginLeft: 10 }, 
   viewerFooter: { position: 'absolute', bottom: Platform.OS === 'ios' ? 40 : 20, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, zIndex: 10 }, 
   viewerReplyBox: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', paddingHorizontal: 20, backgroundColor: 'rgba(0,0,0,0.2)' },
+  viewerReplyInput: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 18, color: '#FFF', backgroundColor: 'rgba(0,0,0,0.2)' },
+  storyReplySend: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(8,126,255,0.9)', justifyContent: 'center', alignItems: 'center', marginLeft: 8 }
 
   // Creator Styles
   creatorContainer: { flex: 1 }, 
