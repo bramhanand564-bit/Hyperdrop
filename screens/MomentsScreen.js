@@ -8,7 +8,8 @@ import GlassScene from '../components/ui/GlassScene';
 
 // FIREBASE INTEGRATION
 import { db, auth } from '../firebaseConfig';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 
 const { width } = Dimensions.get('window');
 
@@ -80,9 +81,10 @@ export default function MomentsScreen() {
     try {
       const p = await ImagePicker.requestCameraPermissionsAsync();
       if(!p.granted) { Alert.alert("Permission", "Camera access required"); return; }
-      const r = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.3 });
-      if(!r.canceled && r.assets?.[0]?.base64) {
-        setCreatorMedia(`data:image/jpeg;base64,${r.assets[0].base64}`);
+      const r = await ImagePicker.launchCameraAsync({ quality: 0.75 });
+      if(!r.canceled && r.assets?.[0]?.uri) {
+        const upload = await uploadToCloudinary({ fileUri: r.assets[0].uri, fileName: 'moment.jpg', mimeType: 'image/jpeg' });
+        setCreatorMedia(upload.secureUrl);
         setCreatorMode('Camera');
         setShowCreator(true);
       }
@@ -91,9 +93,10 @@ export default function MomentsScreen() {
 
   const pickGallery = async () => {
     try {
-      const r = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.3 });
-      if(!r.canceled && r.assets?.[0]?.base64) {
-        setCreatorMedia(`data:image/jpeg;base64,${r.assets[0].base64}`);
+      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
+      if(!r.canceled && r.assets?.[0]?.uri) {
+        const upload = await uploadToCloudinary({ fileUri: r.assets[0].uri, fileName: 'moment.jpg', mimeType: 'image/jpeg' });
+        setCreatorMedia(upload.secureUrl);
         setCreatorMode('Camera');
       }
     } catch(e){}
@@ -137,13 +140,11 @@ export default function MomentsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(()=>{});
     
     const hasLiked = currentLikes.includes(currentUser.uid);
-    const updatedLikes = hasLiked 
-      ? currentLikes.filter(id => id !== currentUser.uid) 
-      : [...currentLikes, currentUser.uid];
-
     try {
-      await updateDoc(doc(db, 'global_moments', postId), { likes: updatedLikes });
-    } catch(e){}
+      await updateDoc(doc(db, 'global_moments', postId), {
+        likes: hasLiked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid),
+      });
+    } catch(e) { Alert.alert('Like failed', 'Please try again.'); }
   };
 
   // ================= UI HELPERS =================
