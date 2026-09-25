@@ -4,6 +4,7 @@
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
 import { validateRequestedPermissions } from '../security/PermissionManager';
+import { URLValidator, normalizeAllowedDomains } from '../security/URLValidator';
 import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc, runTransaction, query, where } from 'firebase/firestore';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
@@ -16,6 +17,7 @@ export const MiniAppAPI = {
     if (!user || !user.uid) throw new Error("Authentication required.");
     if (!name || !category) throw new Error("App name and category are required.");
     const permissionCheck = validateRequestedPermissions(appConfig?.permissions || []);
+    if (appConfig?.url && !URLValidator.validateMiniAppURL(appConfig.url).valid) throw new Error('Mini App URL failed security validation.');
     if (!permissionCheck.valid) throw new Error(`Requested permissions are not publishable: ${[...(permissionCheck.invalid || []), ...(permissionCheck.restricted || [])].join(', ')}`);
 
     const newAppSchema = {
@@ -86,6 +88,7 @@ export const MiniAppAPI = {
     if (!app || !app.id) {
       throw new Error("Invalid app data.");
     }
+    if (app.url && !URLValidator.validateMiniAppURL(app.url).valid) throw new Error('Mini App URL failed security validation.');
 
     try {
       // Step A: Save to user's personal installed list
@@ -143,6 +146,7 @@ export const MiniAppAPI = {
     const permissionCheck = validateRequestedPermissions(app.permissions || []);
     if (!permissionCheck.valid) throw new Error(`Requested permissions are not publishable: ${[...(permissionCheck.invalid || []), ...(permissionCheck.restricted || [])].join(', ')}`);
     if (String(app.htmlCode).length > 900000) throw new Error('Imported app is too large for the public catalog.');
+    if (app.url && !URLValidator.validateMiniAppURL(app.url).valid) throw new Error('Mini App URL failed security validation.');
 
     const newAppSchema = {
       ownerId: user.uid,
@@ -159,7 +163,7 @@ export const MiniAppAPI = {
       icon: app.icon || 'code-slash',
       maxPlayers: Math.min(16, Math.max(2, Number(app.maxPlayers || 4))),
       permissions: Array.isArray(app.permissions) ? app.permissions : [],
-      apiDomains: Array.isArray(app.apiDomains) ? app.apiDomains.slice(0, 20) : [],
+      apiDomains: normalizeAllowedDomains(Array.isArray(app.apiDomains) ? app.apiDomains.slice(0, 20) : []),
       source: 'imported',
       views: 0,
       installs: 0,
@@ -186,8 +190,18 @@ export const MiniAppAPI = {
   },
 
   updateMiniApp: async (appId, patch) => {
+    const user = auth.currentUser;
+    if (!user?.uid) throw new Error('Authentication required.');
     if (!appId) throw new Error('App id is required.');
-    await updateDoc(doc(db, 'mini_apps', appId), { ...patch, updatedAt: serverTimestamp(), version: increment(1) });
+    const current = await getDoc(doc(db, 'mini_apps', appId));
+    if (!current.exists()) throw new Error('Mini App not found.');
+    const data = current.data();
+    if (data.creatorId !== user.uid && data.ownerId !== user.uid) throw new Error('You do not own this Mini App.');
+    const nextPatch = { ...(patch || {}) };
+    if (nextPatch.url && !URLValidator.validateMiniAppURL(nextPatch.url).valid) throw new Error('Mini App URL failed security validation.');
+    if (nextPatch.permissions) { const permissionCheck = validateRequestedPermissions(nextPatch.permissions); if (!permissionCheck.valid) throw new Error('Requested permissions are not publishable.'); }
+    if (nextPatch.apiDomains) nextPatch.apiDomains = normalizeAllowedDomains(nextPatch.apiDomains);
+    await updateDoc(doc(db, 'mini_apps', appId), { ...nextPatch, updatedAt: serverTimestamp(), version: increment(1) });
     EventBus.emit(EventTypes.MINIAPP_UPDATED, { appId, patch });
     return true;
   },
