@@ -96,98 +96,85 @@ export function createPeerConnection(
   // ========================================
   // REMOTE STREAM
   // ========================================
+  // Keep one stable MediaStream and add every
+  // remote track to it. On Android, audio can
+  // arrive before video; handing the first stream
+  // object directly to RTCView can leave the video
+  // surface black when the video track is attached later.
+  const remoteMediaStream = new MediaStream();
+  const remoteTrackIds = new Set();
 
-  // We keep our own remote MediaStream because
-  // some React Native WebRTC versions may send
-  // ontrack without event.streams.
-  let remoteMediaStream = null;
+  const publishRemoteStream = (source) => {
+    try {
+      if (source?.getTracks) {
+        source.getTracks().forEach((track) => {
+          if (!track || !track.id || remoteTrackIds.has(track.id)) {
+            return;
+          }
+
+          try {
+            if (track.enabled === false) {
+              track.enabled = true;
+            }
+          } catch (trackError) {
+            console.log('⚠️ Remote track enable error:', trackError);
+          }
+
+          try {
+            remoteMediaStream.addTrack(track);
+            remoteTrackIds.add(track.id);
+            console.log(
+              '✅ Remote track attached:',
+              track.kind,
+              track.id
+            );
+          } catch (addTrackError) {
+            console.log(
+              '⚠️ Remote track attach error:',
+              addTrackError
+            );
+          }
+        });
+      }
+
+      if (onTrack && remoteMediaStream.getTracks().length > 0) {
+        onTrack(remoteMediaStream);
+      }
+    } catch (error) {
+      console.log('❌ Remote stream publish error:', error);
+    }
+  };
 
   pc.ontrack = (event) => {
     try {
       console.log(
         '📥 Remote track received:',
-        event.track?.kind
+        event.track?.kind,
+        event.track?.id
       );
-
-      // --------------------------------------
-      // If browser/RN gives us a stream,
-      // use it directly.
-      // --------------------------------------
-      if (
-        event.streams &&
-        event.streams.length > 0 &&
-        event.streams[0]
-      ) {
-        const remoteStream =
-          event.streams[0];
-
-        console.log(
-          '🎥 Remote stream received directly'
-        );
-
-        if (onTrack) {
-          onTrack(remoteStream);
-        }
-
-        return;
-      }
-
-      // --------------------------------------
-      // Fallback:
-      // Build MediaStream from individual tracks.
-      // --------------------------------------
-      if (!remoteMediaStream) {
-        remoteMediaStream =
-          new MediaStream();
-      }
 
       if (event.track) {
-        try {
-          remoteMediaStream.addTrack(
-            event.track
-          );
-        } catch (addTrackError) {
-          console.log(
-            '⚠️ Remote track already added or could not be added:',
-            addTrackError
-          );
-        }
+        publishRemoteStream(new MediaStream([event.track]));
       }
 
-      console.log(
-        '📺 Remote MediaStream built from track'
-      );
-
-      if (onTrack) {
-        onTrack(remoteMediaStream);
+      if (event.streams && event.streams[0]) {
+        publishRemoteStream(event.streams[0]);
       }
     } catch (error) {
-      console.log(
-        '❌ Remote Track Error:',
-        error
-      );
+      console.log('❌ Remote Track Error:', error);
     }
   };
 
-  // ========================================
-  // OLD REACT-NATIVE FALLBACK
-  // ========================================
+  // Older RN WebRTC builds may still expose
+  // onaddstream; keep it as a compatibility path.
   pc.onaddstream = (event) => {
     try {
       if (event.stream) {
-        console.log(
-          '📥 Remote stream received via onaddstream'
-        );
-
-        if (onTrack) {
-          onTrack(event.stream);
-        }
+        console.log('📥 Remote stream received via onaddstream');
+        publishRemoteStream(event.stream);
       }
     } catch (error) {
-      console.log(
-        '❌ onaddstream Error:',
-        error
-      );
+      console.log('❌ onaddstream Error:', error);
     }
   };
 
