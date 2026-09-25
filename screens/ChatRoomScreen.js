@@ -21,8 +21,8 @@ export default function ChatRoomScreen({route,navigation}){
  const[activeFilter,setActiveFilter]=useState('all');
  const[messageSearch,setMessageSearch]=useState('');
  const[muted,setMuted]=useState(false);
- const[listRef]=[useRef(null)];
- const[inputRef]=[useRef(null)];
+ const listRef=useRef(null);
+ const inputRef=useRef(null);
 
  const applyFilter=useCallback(filter=>{
    setMessageSearch('');
