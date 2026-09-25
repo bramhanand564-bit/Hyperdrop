@@ -126,6 +126,16 @@ export function createPeerConnection(
         }
       );
 
+      // On video calls, do not mount RTCView for an audio-only ontrack event.
+      // Mounting too early can leave Android RTCView stuck on a black surface.
+      // Wait until the native stream actually contains a video track.
+      if (type === 'video' && videoTracks.length === 0) {
+        console.log(
+          '⏳ Waiting for remote video track before publishing stream'
+        );
+        return;
+      }
+
       onTrack(stream);
     } catch (error) {
       console.log('❌ Remote stream publish error:', error);
@@ -188,8 +198,18 @@ export function createPeerConnection(
       return;
     }
 
+    const candidate = event.candidate;
+    const candidateLine = candidate.candidate || '';
+    const candidateType =
+      candidateLine.match(/ typ ([a-z0-9]+)/i)?.[1] || 'unknown';
+
     console.log(
-      '🧊 Local ICE candidate generated'
+      '🧊 Local ICE candidate generated:',
+      {
+        type: candidateType,
+        sdpMid: candidate.sdpMid,
+        sdpMLineIndex: candidate.sdpMLineIndex,
+      }
     );
 
     if (onIceCandidate) {
