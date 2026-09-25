@@ -112,9 +112,9 @@ function pickerErrorMessage(error, fallback) {
 function getPickerMediaTypes(type) {
   const legacyEnum = ImagePicker.MediaTypeOptions;
   if (legacyEnum) {
-    return type === Reel ? legacyEnum.Videos : legacyEnum.All;
+    return type === 'Reel' ? legacyEnum.Videos : legacyEnum.All;
   }
-  return type === Reel ? ['videos'] : ['images', 'videos'];
+  return type === 'Reel' ? ['videos'] : ['images', 'videos'];
 }
 
 function getPickerCameraType(facing) {
@@ -738,7 +738,7 @@ export default function MomentsScreen({ navigation }) {
         mediaTypes: getPickerMediaTypes(publishType),
         quality: 0.82,
         allowsEditing: false,
-        videoMaxDuration: publishType === Reel ? 60 : 120,
+        videoMaxDuration: publishType === 'Reel' ? 60 : 120,
         allowsMultipleSelection: false,
         legacy: Platform.OS === 'android',
       });
@@ -789,7 +789,7 @@ export default function MomentsScreen({ navigation }) {
         mediaTypes: getPickerMediaTypes(publishType),
         cameraType: getPickerCameraType(cameraFacing),
         quality: 0.82,
-        videoMaxDuration: publishType === Reel ? 60 : 120,
+        videoMaxDuration: publishType === 'Reel' ? 60 : 120,
       });
 
       if (result.canceled) return;
@@ -818,7 +818,7 @@ export default function MomentsScreen({ navigation }) {
       return;
     }
 
-    if (publishType === Reel && !creatorIsVideo) {
+    if (publishType === 'Reel' && !creatorIsVideo) {
       Alert.alert('Reel needs a video', 'Choose or record a video for a Reel.');
       return;
     }
@@ -1217,7 +1217,7 @@ export default function MomentsScreen({ navigation }) {
         <Text style={[styles.emptyBody, { color: theme.sub }]}>{body}</Text>
         <TouchableOpacity
           style={[styles.emptyCta, { backgroundColor: theme.blue }]}
-          onPress={() => openCreator(activeTab === 'Clips' ? Reel : 'Post')}
+          onPress={() => openCreator(activeTab === 'Clips' ? 'Reel' : 'Post')}
           accessibilityRole="button"
           accessibilityLabel="Create a new Moment"
         >
@@ -1481,7 +1481,7 @@ export default function MomentsScreen({ navigation }) {
               </View>
 
               <View style={styles.typeSelector}>
-                {['Post', 'Story', Reel].map(type => {
+                {['Post', 'Story', 'Reel'].map(type => {
                   const active = publishType === type;
                   return (
                     <TouchableOpacity
@@ -1548,7 +1548,7 @@ export default function MomentsScreen({ navigation }) {
                     placeholder={
                       publishType === 'Story'
                         ? 'Add a story caption…'
-                        : publishType === Reel
+                        : publishType === 'Reel'
                           ? 'Tell people what this clip is about…'
                           : 'What’s happening?'
                     }
@@ -1591,7 +1591,7 @@ export default function MomentsScreen({ navigation }) {
                 </View>
 
                 <Text style={styles.creatorHint}>
-                  {publishType === Reel
+                  {publishType === 'Reel'
                     ? 'Reels support video up to 60 seconds.'
                     : 'Your Moment will appear instantly in the live feed.'}
                 </Text>
