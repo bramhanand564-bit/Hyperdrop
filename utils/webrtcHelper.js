@@ -37,6 +37,11 @@ const ICE_SERVERS = {
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
+    {
+      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
 };
 
@@ -54,9 +59,12 @@ export function createPeerConnection(
     type
   );
 
-  const pc = new RTCPeerConnection(
-    ICE_SERVERS
-  );
+  const pc = new RTCPeerConnection({
+    ...ICE_SERVERS,
+    sdpSemantics: 'unified-plan',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+  });
 
   // ========================================
   // LOCAL CAMERA + MICROPHONE
@@ -96,50 +104,29 @@ export function createPeerConnection(
   // ========================================
   // REMOTE STREAM
   // ========================================
-  // Keep one stable MediaStream and add every
-  // remote track to it. On Android, audio can
-  // arrive before video; handing the first stream
-  // object directly to RTCView can leave the video
-  // surface black when the video track is attached later.
-  const remoteMediaStream = new MediaStream();
-  const remoteTrackIds = new Set();
+  // Prefer the native stream supplied by WebRTC in event.streams[0].
+  // RTCView resolves streamURL through the native WebRTC module, so
+  // keeping that native stream avoids black surfaces on Android.
+  let fallbackRemoteStream = null;
 
-  const publishRemoteStream = (source) => {
+  const publishRemoteStream = (stream) => {
+    if (!stream || !onTrack) {
+      return;
+    }
+
     try {
-      if (source?.getTracks) {
-        source.getTracks().forEach((track) => {
-          if (!track || !track.id || remoteTrackIds.has(track.id)) {
-            return;
-          }
+      const videoTracks = stream.getVideoTracks?.() || [];
+      const audioTracks = stream.getAudioTracks?.() || [];
+      console.log(
+        '🎥 Publishing native remote stream:',
+        stream.toURL?.(),
+        {
+          audio: audioTracks.length,
+          video: videoTracks.length,
+        }
+      );
 
-          try {
-            if (track.enabled === false) {
-              track.enabled = true;
-            }
-          } catch (trackError) {
-            console.log('⚠️ Remote track enable error:', trackError);
-          }
-
-          try {
-            remoteMediaStream.addTrack(track);
-            remoteTrackIds.add(track.id);
-            console.log(
-              '✅ Remote track attached:',
-              track.kind,
-              track.id
-            );
-          } catch (addTrackError) {
-            console.log(
-              '⚠️ Remote track attach error:',
-              addTrackError
-            );
-          }
-        });
-      }
-
-      if (onTrack && remoteMediaStream.getTracks().length > 0) {
-        onTrack(remoteMediaStream);
-      }
+      onTrack(stream);
     } catch (error) {
       console.log('❌ Remote stream publish error:', error);
     }
@@ -153,20 +140,32 @@ export function createPeerConnection(
         event.track?.id
       );
 
-      if (event.track) {
-        publishRemoteStream(new MediaStream([event.track]));
+      // Primary path: use the native MediaStream sent with the track.
+      if (event.streams && event.streams.length > 0 && event.streams[0]) {
+        publishRemoteStream(event.streams[0]);
+        return;
       }
 
-      if (event.streams && event.streams[0]) {
-        publishRemoteStream(event.streams[0]);
+      // Compatibility fallback when the platform does not provide streams.
+      if (!fallbackRemoteStream) {
+        fallbackRemoteStream = new MediaStream();
       }
+
+      if (event.track) {
+        const alreadyThere = (fallbackRemoteStream.getTracks?.() || [])
+          .some((track) => track.id === event.track.id);
+
+        if (!alreadyThere) {
+          fallbackRemoteStream.addTrack(event.track);
+        }
+      }
+
+      publishRemoteStream(fallbackRemoteStream);
     } catch (error) {
       console.log('❌ Remote Track Error:', error);
     }
   };
 
-  // Older RN WebRTC builds may still expose
-  // onaddstream; keep it as a compatibility path.
   pc.onaddstream = (event) => {
     try {
       if (event.stream) {
