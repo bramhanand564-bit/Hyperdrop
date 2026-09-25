@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, 
-  KeyboardAvoidingView, Platform, Image, SafeAreaView 
+  KeyboardAvoidingView, Platform, Image, SafeAreaView, Alert 
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import BotAPI from '../api/BotAPI';
 import AIService from '../ai/AIService';
+import { auth } from '../firebaseConfig';
 
 export default function BotChatScreen({ route, navigation }) {
   const { isDark } = useTheme();
@@ -50,6 +52,8 @@ export default function BotChatScreen({ route, navigation }) {
   const [isTyping, setIsTyping] = useState(false);
   const [activeAI, setActiveAI] = useState(null);
   const scrollViewRef = useRef();
+  const messagesLoadedRef = useRef(false);
+  const storageKey = `nax:bot-chat:${auth.currentUser?.uid || 'guest'}:${botData.id || botData.botId || 'default'}`;
 
   // Super Glassy, No-Neon, Futuristic Palette
   const bg = isDark ? '#0A0A0C' : '#F2F2F7';
@@ -67,8 +71,31 @@ export default function BotChatScreen({ route, navigation }) {
   const sendBtnIcon = isDark ? '#000000' : '#FFFFFF';
 
   useEffect(() => {
+    let active = true;
+    messagesLoadedRef.current = false;
+    AsyncStorage.getItem(storageKey)
+      .then(raw => {
+        if (!active) return;
+        if (raw) {
+          try {
+            const saved = JSON.parse(raw);
+            if (Array.isArray(saved) && saved.length) setMessages(saved.slice(-50));
+          } catch (_) {}
+        }
+        messagesLoadedRef.current = true;
+      })
+      .catch(() => { messagesLoadedRef.current = true; });
+    return () => { active = false; };
+  }, [storageKey]);
+
+  useEffect(() => {
     AIService.getActiveConnection().then(setActiveAI).catch(() => setActiveAI(null));
   }, []);
+
+  useEffect(() => {
+    if (!messagesLoadedRef.current) return;
+    AsyncStorage.setItem(storageKey, JSON.stringify(messages.slice(-50))).catch(() => {});
+  }, [messages, storageKey]);
 
   const botAvatar = `https://ui-avatars.com/api/?name=${botName?.replace(' ', '+')}&background=random&color=fff`;
 
@@ -101,7 +128,7 @@ export default function BotChatScreen({ route, navigation }) {
           connectionId: botData.aiConnectionId || undefined,
           model: botData.aiModel || undefined,
           systemPrompt,
-          messages: [{ role: 'user', content: userText }],
+          messages: messages.slice(-20).map(msg => ({ role: msg.sender === 'user' ? 'user' : 'assistant', content: msg.text })).concat([{ role: 'user', content: userText }]),
           maxTokens: 800,
         });
       }
@@ -161,7 +188,7 @@ export default function BotChatScreen({ route, navigation }) {
               )}
             </View>
           </View>
-          <TouchableOpacity style={styles.menuBtn}>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => Alert.alert('Chat options', 'Clear this conversation?',[{text:'Cancel',style:'cancel'},{text:'Clear',style:'destructive',onPress:async()=>{const welcome={id:'1',text:`Hi! I am ${botName} 🤖\\nCreated by @${creatorName}.\\nSay hello to start!`,sender:'bot'};setMessages([welcome]);await AsyncStorage.removeItem(storageKey).catch(()=>{});}}])}>
             <Ionicons name="ellipsis-horizontal" size={24} color={textMain} />
           </TouchableOpacity>
         </View>
