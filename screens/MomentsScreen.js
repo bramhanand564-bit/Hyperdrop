@@ -1488,7 +1488,7 @@ export default function MomentsScreen({ navigation }) {
                       key={type}
                       onPress={() => {
                         setPublishType(type);
-                        if (type !== Reel && creatorIsVideo) {
+                        if (type !== 'Reel' && creatorIsVideo) {
                           setCreatorIsVideo(false);
                         }
                         fireHaptic('selection');
