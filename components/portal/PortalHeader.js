@@ -33,7 +33,7 @@ export default function PortalHeader({ onSearchPress, onAiHubPress }) {
             <MaterialCommunityIcons name="robot-outline" size={24} color={accentCol} />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.profilePicWrap}>
+          <View style={styles.profilePicWrap}>
             <Image 
               source={{ uri: user?.photoURL || 'https://via.placeholder.com/150' }} 
               style={styles.profilePic} 
