@@ -2,6 +2,7 @@ import React,{useCallback,useMemo,useRef,useState}from'react';
 import{View,FlatList,StyleSheet,SafeAreaView,ActivityIndicator,Text,TouchableOpacity,Share,Alert}from'react-native';
 import{auth}from'../firebaseConfig';
 import{useTheme}from'../context/ThemeContext';
+import{Ionicons}from'@expo/vector-icons';
 import GlassScene from'../components/ui/GlassScene';
 import GlassSurface from'../components/ui/GlassSurface';
 import useChatRoomLogic from'../hooks/useChatRoomLogic';
