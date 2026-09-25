@@ -96,8 +96,7 @@ export const MiniAppAPI = {
         savedData.appConfig = app;
       }
 
-      let created = false;
-      await runTransaction(db, async (tx) => {
+      const created = await runTransaction(db, async (tx) => {
         const [installSnap, globalSnap] = await Promise.all([
           tx.get(installRef),
           tx.get(doc(db, 'mini_apps', app.id)),
@@ -105,13 +104,13 @@ export const MiniAppAPI = {
 
         if (!installSnap.exists()) {
           tx.set(installRef, savedData);
-          created = true;
           if (globalSnap.exists()) {
             tx.update(doc(db, 'mini_apps', app.id), { installs: increment(1), updatedAt: serverTimestamp() });
           }
         }
+        return true;
       });
-
+      
       if (created) {
         EventBus.emit(EventTypes.MINIAPP_INSTALLED, { appId: app.id, userId: user.uid });
       }
