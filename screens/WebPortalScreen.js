@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 // Firebase auth इम्पोर्ट कर रहे हैं ताकि मिनी-ऐप को यूज़र की डिटेल दे सकें
 import { auth } from '../firebaseConfig';
-import { URLValidator } from '../security/BotValidator';
+import PaymentEngine from '../payments/PaymentEngine';
+import { URLValidator } from '../security/URLValidator';
 import RateLimiter from '../security/RateLimiter';
 import AuditLogger from '../security/AuditLogger'; 
 
@@ -55,14 +56,34 @@ export default function WebPortalScreen({ route, navigation }) {
       console.log("Mini-App Action Received:", message);
 
       if (message.action === 'REQUEST_PAYMENT') {
-        Alert.alert("Token Request 🪙", `${title} needs ${message.data?.amount || 0} Nax Tokens.`, [
-          { text: "Cancel", style: "cancel" },
-          { text: "Pay", onPress: () => Alert.alert("Success", "Tokens Sent!") }
+        const amount = Number(message.data?.amount);
+        const recipientId = String(message.data?.recipientId || message.data?.userId || message.data?.to || '').trim();
+        if (!Number.isFinite(amount) || amount <= 0) {
+          Alert.alert('Payment request', 'The requested amount is invalid.');
+          return;
+        }
+        if (!recipientId) {
+          navigation.navigate('Wallet', { suggestedAmount: amount });
+          return;
+        }
+        Alert.alert('Token Request 🪙', `${title} requests ${amount} NAX.`, [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Pay', onPress: async () => {
+            try {
+              await PaymentEngine.transferTokens({ senderId: user?.uid, recipientId, amount });
+              Alert.alert('Payment complete', `${amount} NAX sent successfully.`);
+            } catch (error) { Alert.alert('Payment failed', error?.message || 'Please try again.'); }
+          } }
         ]);
       } else if (message.action === 'OPEN_AI_SETTINGS') {
-        Alert.alert("AI Engine", "Hardware Limit Reached. Please enter your API Key to use Premium Cloud AI.");
+        navigation.navigate('AISettings');
       } else if (message.action === 'JOIN_WATCH_PARTY') {
-        Alert.alert("Watch Party 🎬", "Connecting to P2P Video Sync...");
+        const targetUrl = String(message.data?.url || '').trim();
+        if (!targetUrl || !URLValidator.validateExternalLink(targetUrl).valid) {
+          Alert.alert('Watch Party', 'A valid HTTPS watch-party URL is required.');
+          return;
+        }
+        navigation.navigate('WebPortal', { title: `${title} Watch Party`, url: targetUrl });
       }
     } catch (e) {
       console.error("Bridge Error:", e);
