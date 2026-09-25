@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import PaymentEngine from '../../payments/PaymentEngine';
 
 // 🔥 REAL FIREBASE IMPORTS
 import { db, auth } from '../../firebaseConfig';
@@ -16,6 +17,7 @@ export default function WalletDashboard({ navigation }) {
   const [revenue, setRevenue] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState(false);
 
   // UI Colors (Super Glassy, Zero-Neon)
   const textMain = isDark ? '#F5F5F7' : '#1C1C1E';
@@ -52,12 +54,18 @@ export default function WalletDashboard({ navigation }) {
     return () => { unsubUser(); unsubTx(); };
   }, [user]);
 
-  const handleWithdraw = () => {
-    if (revenue < 100) {
-      Alert.alert("Minimum Limit", "You need at least 100 Nax Tokens in Creator Revenue to withdraw to bank.");
-    } else {
-      Alert.alert("Processing 🏦", `${revenue} Tokens are being processed for UPI Withdrawal.`);
+  const handleWithdraw = async () => {
+    if (revenue < 100 || actionBusy) {
+      Alert.alert('Minimum Limit', 'You need at least 100 NAX Tokens in Creator Revenue to request a withdrawal.');
+      return;
     }
+    setActionBusy(true);
+    try {
+      const result = await PaymentEngine.requestWithdrawal({ userId: user.uid, amount: revenue });
+      Alert.alert('Withdrawal requested', `Request ${result.id.slice(0, 8)}… is pending processing.`);
+    } catch (error) {
+      Alert.alert('Withdrawal failed', error?.message || 'Please try again.');
+    } finally { setActionBusy(false); }
   };
 
   return (
@@ -74,7 +82,7 @@ export default function WalletDashboard({ navigation }) {
         </View>
         
         <View style={styles.walletActions}>
-          <TouchableOpacity style={styles.walletBtn} activeOpacity={0.8} onPress={() => navigation?.navigate?.('QRHub')}>
+          <TouchableOpacity style={styles.walletBtn} activeOpacity={0.8} onPress={() => Alert.alert('Add NAX', 'Use your NAX receive QR so another wallet can send you tokens.', [{ text: 'Show Receive QR', onPress: () => navigation?.navigate?.('QRHub') }, { text: 'Cancel', style: 'cancel' }])}>
             <Ionicons name="add-circle" size={20} color={naxBlue} />
             <Text style={styles.walletBtnText}>Top Up</Text>
           </TouchableOpacity>
