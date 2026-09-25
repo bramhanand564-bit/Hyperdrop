@@ -32,8 +32,8 @@ export default function WalletDashboard() {
     const unsubUser = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setTokens(data.walletBalance || 1250); // Fallback to 1250 (from video) if new user
-        setRevenue(data.creatorRevenue || 450); 
+        setTokens(Number(data.walletBalance || 0));
+        setRevenue(Number(data.creatorRevenue || 0)); 
       }
       setLoading(false);
     });
@@ -45,11 +45,7 @@ export default function WalletDashboard() {
       if (!snapshot.empty) {
         setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } else {
-        // Fallback UI to match video exactly if DB is currently empty
-        setTransactions([
-          { id: '1', title: 'Nax Ludo Multi (Entry)', time: 'Today, 2:30 PM', amount: -20, isCredit: false },
-          { id: '2', title: 'App Revenue (Resume AI)', time: 'Yesterday', amount: 150, isCredit: true }
-        ]);
+        setTransactions([]);
       }
     });
 
