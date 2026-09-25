@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Video, ResizeMode } from 'expo-av';
@@ -38,7 +38,6 @@ import {
   query,
   serverTimestamp,
   updateDoc,
-  where,
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebaseConfig';
@@ -405,7 +404,6 @@ export default function MomentsScreen({ navigation }) {
 
   const [viewingStoryIndex, setViewingStoryIndex] = useState(null);
   const [storyReply, setStoryReply] = useState('');
-  const [storyProgress, setStoryProgress] = useState(0);
 
   const [mediaTarget, setMediaTarget] = useState(null);
   const [infoModal, setInfoModal] = useState(null);
@@ -824,15 +822,17 @@ export default function MomentsScreen({ navigation }) {
     const isOwner = post.userId === currentUser?.uid;
     Alert.alert(
       post.userName || 'Moment',
-      '',
+      'Choose an action',
       [
         { text: 'Cancel', style: 'cancel' },
+        { text: 'Share', onPress: () => sharePost(post) },
+        { text: post.savedBy?.includes(currentUser?.uid) ? 'Remove from Saved' : 'Save Moment', onPress: () => toggleSave(post) },
         ...(isOwner
           ? [{ text: 'Delete', style: 'destructive', onPress: () => deletePost(post) }]
           : []),
       ]
     );
-  }, [currentUser?.uid, deletePost]);
+  }, [currentUser?.uid, deletePost, sharePost, toggleSave]);
 
   const sharePost = useCallback(async post => {
     try {
@@ -1501,7 +1501,6 @@ export default function MomentsScreen({ navigation }) {
           </View>
         </Modal>
 
-        <Modal visible={!!viewingStoryIndex}={false} />
         <Modal
           visible={viewingStoryIndex !== null}
           animationType="fade"
@@ -1567,13 +1566,11 @@ export default function MomentsScreen({ navigation }) {
             <View style={styles.storyTapLayer} pointerEvents="box-none">
               <Pressable style={styles.storyTapSide} onPress={previousStory} />
               <Pressable style={[styles.storyTapSide, { right: 0, left: undefined }]} onPress={nextStory} />
-              <Pressable style={StyleSheet.absoluteFill} onLongPress={() => storyProgressAnim.stopAnimation()} delayLongPress={180}>
-                {!!visibleStory?.text && visibleStory.media ? (
-                  <View style={styles.storyCaption}>
-                    <Text style={styles.storyCaptionText}>{visibleStory.text}</Text>
-                  </View>
-                ) : null}
-              </Pressable>
+              {!!visibleStory?.text && visibleStory.media ? (
+                <View pointerEvents="none" style={styles.storyCaption}>
+                  <Text style={styles.storyCaptionText}>{visibleStory.text}</Text>
+                </View>
+              ) : null}
             </View>
 
             <SafeAreaView style={styles.storyBottom}>
@@ -2184,7 +2181,7 @@ const styles = StyleSheet.create({
   infoCard: { width: '100%', maxWidth: 360, borderRadius: 26, borderWidth: 1, padding: 24, alignItems: 'center' },
   infoIcon: { width: 52, height: 52, borderRadius: 17, backgroundColor: 'rgba(8,126,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   infoTitle: { fontSize: 20, fontWeight: '900', marginTop: 13 },
-  infoBody: { textAlign: 'center', fontSize: 13, lineHeight: 21, marginTop: 8, whiteSpace: 'pre-line' },
+  infoBody: { textAlign: 'center', fontSize: 13, lineHeight: 21, marginTop: 8 },
   infoButton: { width: '100%', height: 46, borderRadius: 15, marginTop: 18, alignItems: 'center', justifyContent: 'center' },
   infoButtonText: { color: '#fff', fontSize: 13, fontWeight: '900' },
 });
