@@ -50,11 +50,11 @@ export const URLValidator = {
       const hostname = parsedUrl.hostname.toLowerCase();
 
       // Agar domain blocked list mein hai -> FAILED
-      const isBlocked = BLOCKED_DOMAINS.some(domain => hostname.includes(domain));
+      const isBlocked = BLOCKED_DOMAINS.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
       if (isBlocked) return { safe: false, reason: 'Blocked Domain Detected (Security Risk)' };
 
       // Agar domain trusted list mein hai -> SAFE
-      const isTrusted = TRUSTED_DOMAINS.some(domain => hostname.includes(domain));
+      const isTrusted = TRUSTED_DOMAINS.some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
       if (isTrusted) return { safe: true, reason: 'Trusted Nax Partner' };
 
       // Baki saare naye domains ke liye (Neutral - safe but unknown)
