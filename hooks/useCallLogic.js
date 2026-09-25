@@ -62,6 +62,7 @@ export default function useCallLogic(route, navigation) {
   // UI STATE
   // ==========================================
   const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteStreamVersion, setRemoteStreamVersion] = useState(0);
 
   const [status, setStatus] = useState(
     isCaller ? 'Calling...' : 'Incoming...'
@@ -213,6 +214,9 @@ export default function useCallLogic(route, navigation) {
         }
 
         setRemoteStream(remote);
+        // Force RTCView to remount when audio/video tracks arrive
+        // separately (common on Android WebRTC).
+        setRemoteStreamVersion((value) => value + 1);
         setBusy(false);
       },
 
@@ -1269,6 +1273,7 @@ export default function useCallLogic(route, navigation) {
     // ----------------------------------------
     if (mountedRef.current) {
       setRemoteStream(null);
+      setRemoteStreamVersion(0);
       setConnected(false);
       setBusy(false);
     }
@@ -1312,6 +1317,7 @@ export default function useCallLogic(route, navigation) {
     localStreamRef,
 
     remoteStream,
+    remoteStreamVersion,
 
     isMuted,
     isCameraOff,
