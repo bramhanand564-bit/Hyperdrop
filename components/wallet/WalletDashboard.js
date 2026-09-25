@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { db, auth } from '../../firebaseConfig';
 import { doc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
 
-export default function WalletDashboard() {
+export default function WalletDashboard({ navigation }) {
   const { isDark } = useTheme();
   const user = auth.currentUser;
 
@@ -74,11 +74,11 @@ export default function WalletDashboard() {
         </View>
         
         <View style={styles.walletActions}>
-          <TouchableOpacity style={styles.walletBtn} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.walletBtn} activeOpacity={0.8} onPress={() => navigation?.navigate?.('QRHub')}>
             <Ionicons name="add-circle" size={20} color={naxBlue} />
             <Text style={styles.walletBtnText}>Top Up</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.walletBtn} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.walletBtn} activeOpacity={0.8} onPress={() => Alert.alert('Send Tokens', 'Scan a NAX payment QR to continue.', [{ text: 'Open QR Scanner', onPress: () => navigation?.navigate?.('QRHub') }, { text: 'Cancel', style: 'cancel' }])}>
             <Ionicons name="send" size={18} color={naxBlue} />
             <Text style={styles.walletBtnText}>Send</Text>
           </TouchableOpacity>
