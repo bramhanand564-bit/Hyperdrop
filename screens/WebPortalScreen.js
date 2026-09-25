@@ -15,6 +15,7 @@ export default function WebPortalScreen({ route, navigation }) {
   const { title = 'Mini-App', url, htmlCode, isPremium = false } = route.params || {};
   const { isDark } = useTheme();
   const user = auth?.currentUser;
+  const portalUser = { uid: user?.uid || 'guest', name: user?.displayName || 'User', isPremium: Boolean(isPremium) };
   const urlCheck = url ? URLValidator.scanMiniAppUrl(url) : { isSafe: !!htmlCode };
 
   
@@ -31,9 +32,9 @@ export default function WebPortalScreen({ route, navigation }) {
   const injectedCode = `
     window.NaxPortal = {
       user: {
-        uid: "${user?.uid || 'guest'}",
-        name: "${user?.displayName || 'User'}",
-        isPremium: ${isPremium}
+        uid: ${JSON.stringify(portalUser.uid)},
+        name: ${JSON.stringify(portalUser.name)},
+        isPremium: ${JSON.stringify(portalUser.isPremium)}
       },
       theme: "${isDark ? 'dark' : 'light'}",
       hardware: {
