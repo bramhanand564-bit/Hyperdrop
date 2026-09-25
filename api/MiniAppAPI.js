@@ -96,7 +96,9 @@ export const MiniAppAPI = {
 
       const requestedPermissions = Array.isArray(app.permissions) ? app.permissions : [];
       savedData.requestedPermissions = requestedPermissions;
-      savedData.grantedPermissions = Array.isArray(grantedPermissions) ? grantedPermissions : requestedPermissions;
+      savedData.grantedPermissions = Array.isArray(grantedPermissions)
+        ? [...new Set(grantedPermissions.filter(permission => requestedPermissions.includes(permission)))]
+        : requestedPermissions;
       savedData.permissionUpdatedAt = serverTimestamp();
 
       // If it's an AI declarative app, save the config so it loads instantly later
