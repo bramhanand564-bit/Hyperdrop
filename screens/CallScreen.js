@@ -143,9 +143,9 @@ export default function CallScreen({ route, navigation }) {
         <TouchableOpacity style={styles.controlButton} onPress={toggleMute}>
           <Ionicons name={isMuted ? 'mic-off' : 'mic'} size={25} color="#FFFFFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.controlButton}>
+        <View style={styles.controlButton}>
           <Ionicons name="volume-high" size={25} color="#FFFFFF" />
-        </TouchableOpacity>
+        </View>
         <TouchableOpacity style={styles.endButton} onPress={endCall}>
           <Ionicons name="call" size={27} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
         </TouchableOpacity>
