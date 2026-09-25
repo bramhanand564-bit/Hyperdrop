@@ -628,13 +628,20 @@ export default function MomentsScreen({ navigation }) {
         return;
       }
 
-      const mediaTypes = publishType === 'Reel' ? ['videos'] : ['images', 'videos'];
+      // Expo SDK 51 expects MediaTypeOptions enum values here.
+      // Passing strings such as ['images', 'videos'] causes the native picker
+      // to reject the request on Android and fall into the generic Gallery error.
+      const mediaTypes =
+        publishType === 'Reel'
+          ? ImagePicker.MediaTypeOptions.Videos
+          : ImagePicker.MediaTypeOptions.All;
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes,
         quality: 0.82,
         allowsEditing: false,
         videoMaxDuration: publishType === 'Reel' ? 60 : 120,
-        selectionLimit: 1,
+        allowsMultipleSelection: false,
       });
 
       if (!result.canceled) {
@@ -653,7 +660,12 @@ export default function MomentsScreen({ navigation }) {
         return;
       }
 
-      const mediaTypes = publishType === 'Reel' ? ['videos'] : ['images', 'videos'];
+      // Keep camera media types compatible with the Expo SDK used by Hyperdrop.
+      const mediaTypes =
+        publishType === 'Reel'
+          ? ImagePicker.MediaTypeOptions.Videos
+          : ImagePicker.MediaTypeOptions.All;
+
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes,
         cameraType: cameraFacing,
