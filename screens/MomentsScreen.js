@@ -49,6 +49,8 @@ import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const STORY_SIZE = 74;
 const STORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const STORY_IMAGE_DURATION_MS = 5000;
+const STORY_VIDEO_FALLBACK_DURATION_MS = 10000;
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -183,6 +185,9 @@ function FeedCard({
   onOpenMedia,
 }) {
   const entrance = useRef(new Animated.Value(0)).current;
+  const videoRef = useRef(null);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const isReel = item.contentType === 'reel' || item.type === 'reel';
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
   const saved = Array.isArray(item.savedBy) && item.savedBy.includes(currentUser?.uid);
@@ -196,6 +201,27 @@ function FeedCard({
       bounciness: 6,
     }).start();
   }, [entrance]);
+
+  useEffect(() => {
+    if (!pauseMedia || !videoRef.current) return;
+    videoRef.current.pauseAsync?.().catch(() => {});
+    setVideoPlaying(false);
+  }, [pauseMedia]);
+
+  const toggleVideo = async () => {
+    if (!videoRef.current) return;
+    try {
+      const status = await videoRef.current.getStatusAsync();
+      if (!status?.isLoaded) return;
+      if (status.isPlaying) {
+        await videoRef.current.pauseAsync();
+        setVideoPlaying(false);
+      } else {
+        await videoRef.current.playAsync();
+        setVideoPlaying(true);
+      }
+    } catch (e) {}
+  };
 
   const doubleTap = () => {
     if (!liked) onLike(item);
@@ -214,6 +240,7 @@ function FeedCard({
     <Animated.View
       style={[
         styles.feedCard,
+        isReel && styles.reelCard,
         {
           backgroundColor: isDark ? 'rgba(10, 26, 40, 0.74)' : theme.surfaceStrong,
           borderColor: theme.border,
@@ -262,14 +289,24 @@ function FeedCard({
         <Pressable onPress={doubleTap} onLongPress={onOpenMedia ? () => onOpenMedia(item) : undefined}>
           <View style={styles.mediaWrap}>
             {item.isVideo ? (
-              <Video
-                source={{ uri: item.media }}
-                style={styles.feedMedia}
-                resizeMode={ResizeMode.COVER}
-                useNativeControls
-                shouldPlay={false}
-                isLooping
-              />
+              <Pressable style={styles.videoPressArea} onPress={toggleVideo}>
+                <Video
+                  ref={videoRef}
+                  source={{ uri: item.media }}
+                  style={styles.feedMedia}
+                  resizeMode={isReel ? ResizeMode.COVER : ResizeMode.CONTAIN}
+                  shouldPlay={false}
+                  isLooping
+                  onPlaybackStatusUpdate={status => {
+                    if (status?.isLoaded) setVideoPlaying(!!status.isPlaying);
+                  }}
+                />
+                {!videoPlaying ? (
+                  <View style={styles.inlinePlayButton} pointerEvents="none">
+                    <Ionicons name="play" size={25} color="#fff" />
+                  </View>
+                ) : null}
+              </Pressable>
             ) : (
               <Image source={{ uri: item.media }} style={styles.feedMedia} />
             )}
@@ -289,8 +326,8 @@ function FeedCard({
 
             {item.isVideo ? (
               <View style={styles.mediaTypePill}>
-                <Ionicons name="play" size={13} color="#fff" />
-                <Text style={styles.mediaTypeText}>VIDEO</Text>
+                <Ionicons name={isReel ? 'flash' : 'play'} size={13} color="#fff" />
+                <Text style={styles.mediaTypeText}>{isReel ? 'REEL' : 'VIDEO'}</Text>
               </View>
             ) : null}
           </View>
@@ -427,6 +464,8 @@ export default function MomentsScreen({ navigation }) {
 
   const [viewingStoryIndex, setViewingStoryIndex] = useState(null);
   const [storyReply, setStoryReply] = useState('');
+  const [storyDurationMs, setStoryDurationMs] = useState(STORY_VIDEO_FALLBACK_DURATION_MS);
+  const storyVideoRef = useRef(null);
 
   const [mediaTarget, setMediaTarget] = useState(null);
   const [infoModal, setInfoModal] = useState(null);
@@ -604,7 +643,7 @@ export default function MomentsScreen({ navigation }) {
     if (activeTab === 'Following') {
       next = next.filter(item => followingIds.includes(item.userId));
     } else if (activeTab === 'Reels') {
-      next = next.filter(item => item.isVideo === true);
+      next = next.filter(item => item.isVideo === true && (item.contentType === 'reel' || item.type === 'reel' || !item.contentType));
     } else if (activeTab === 'Live') {
       next = next.filter(item => item.isLive === true);
     }
@@ -787,6 +826,7 @@ export default function MomentsScreen({ navigation }) {
         text,
         media: creatorMedia || null,
         isVideo: creatorIsVideo,
+        contentType: publishType.toLowerCase(),
         isLive: false,
         audience: 'public',
         likes: [],
@@ -979,13 +1019,21 @@ export default function MomentsScreen({ navigation }) {
     if (!visibleStory) {
       storyProgressAnim.stopAnimation();
       storyProgressAnim.setValue(0);
+      setStoryDurationMs(STORY_VIDEO_FALLBACK_DURATION_MS);
+      storyVideoRef.current?.pauseAsync?.().catch(() => {});
       return;
     }
 
+    const duration = visibleStory.isVideo
+      ? Math.max(1000, storyDurationMs || STORY_VIDEO_FALLBACK_DURATION_MS)
+      : STORY_IMAGE_DURATION_MS;
+
+    storyProgressAnim.stopAnimation();
     storyProgressAnim.setValue(0);
+
     const anim = Animated.timing(storyProgressAnim, {
       toValue: 1,
-      duration: 5500,
+      duration,
       useNativeDriver: false,
     });
 
@@ -999,10 +1047,11 @@ export default function MomentsScreen({ navigation }) {
     });
 
     return () => storyProgressAnim.stopAnimation();
-  }, [stories.length, visibleStory?.id, storyProgressAnim]);
+  }, [stories.length, visibleStory?.id, visibleStory?.isVideo, storyDurationMs, storyProgressAnim]);
 
   const closeStory = useCallback(() => {
     storyProgressAnim.stopAnimation();
+    storyVideoRef.current?.pauseAsync?.().catch(() => {});
     setViewingStoryIndex(null);
     setStoryReply('');
   }, [storyProgressAnim]);
@@ -1294,6 +1343,7 @@ export default function MomentsScreen({ navigation }) {
               onSave={toggleSave}
               onDelete={postOptions}
               onOpenMedia={setMediaTarget}
+              pauseMedia={viewingStoryIndex !== null}
             />
           )}
           ListHeaderComponent={renderHeader}
@@ -1602,11 +1652,19 @@ export default function MomentsScreen({ navigation }) {
             {visibleStory?.media ? (
               visibleStory.isVideo ? (
                 <Video
+                  key={visibleStory.id}
+                  ref={storyVideoRef}
                   source={{ uri: visibleStory.media }}
                   style={styles.storyMedia}
                   resizeMode={ResizeMode.COVER}
                   shouldPlay
                   isLooping={false}
+                  onPlaybackStatusUpdate={status => {
+                    if (!status?.isLoaded) return;
+                    if (status.durationMillis && Math.abs(status.durationMillis - storyDurationMs) > 250) {
+                      setStoryDurationMs(status.durationMillis);
+                    }
+                  }}
                 />
               ) : (
                 <Image source={{ uri: visibleStory.media }} style={styles.storyMedia} />
@@ -1672,13 +1730,19 @@ export default function MomentsScreen({ navigation }) {
                   placeholder="Reply to story…"
                   placeholderTextColor="rgba(255,255,255,0.68)"
                   style={styles.storyReplyInput}
-                  onFocus={() => storyProgressAnim.stopAnimation()}
+                  onFocus={() => {
+                    storyProgressAnim.stopAnimation();
+                    storyVideoRef.current?.pauseAsync?.().catch(() => {});
+                  }}
                   onBlur={() => {
                     if (viewingStoryIndex !== null) {
+                      storyVideoRef.current?.playAsync?.().catch(() => {});
                       storyProgressAnim.setValue(0);
                       Animated.timing(storyProgressAnim, {
                         toValue: 1,
-                        duration: 5500,
+                        duration: visibleStory?.isVideo
+                          ? Math.max(1000, storyDurationMs || STORY_VIDEO_FALLBACK_DURATION_MS)
+                          : STORY_IMAGE_DURATION_MS,
                         useNativeDriver: false,
                       }).start();
                     }
@@ -1855,6 +1919,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 5,
   },
+  reelCard: {
+    backgroundColor: '#05080C',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
   feedHeader: {
     paddingHorizontal: 14,
     paddingTop: 14,
@@ -1885,6 +1953,20 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   feedMedia: { width: '100%', height: '100%' },
+  videoPressArea: { width: '100%', height: '100%', position: 'relative' },
+  inlinePlayButton: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    marginLeft: -28,
+    marginTop: -28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   doubleHeart: {
     position: 'absolute',
     left: '50%',
