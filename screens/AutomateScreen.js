@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { db, auth } from '../firebaseConfig';
 import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, doc, where } from 'firebase/firestore';
 import AutomationEngine from '../automation/AutomationEngine';
+import EventBus from '../event-bus/EventBus';
 
 const starterWorkflow = (ownerId) => ({
   ownerId,
@@ -31,8 +32,19 @@ export default function AutomateScreen({ navigation }) {
   const accentCol = '#0A84FF';
 
   const [workflows, setWorkflows] = useState([]);
+  const [executions, setExecutions] = useState([]);
   const [busy, setBusy] = useState(false);
   const engineRef = useRef(null);
+
+  const loadExecutions = useCallback(async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    try {
+      const snap = await getDocs(query(collection(db, 'automation_executions'), where('ownerId', '==', uid)));
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((x,y) => (y.createdAt?.toMillis?.() || 0) - (x.createdAt?.toMillis?.() || 0));
+      setExecutions(items.slice(0, 20));
+    } catch (error) { console.error('Automation executions load error', error); }
+  }, [loadExecutions]);
 
   const loadWorkflows = useCallback(async () => {
     const uid = auth.currentUser?.uid;
@@ -53,6 +65,7 @@ export default function AutomateScreen({ navigation }) {
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (!mounted) return;
         setWorkflows(items);
+        await loadExecutions();
         engine.registerWorkflows(items.filter(w => w.enabled !== false));
       } catch (error) {
         console.error('Automate load error', error);
@@ -73,6 +86,12 @@ export default function AutomateScreen({ navigation }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const runWorkflow = async (workflow) => {
+    if (!workflow?.id) return;
+    EventBus.emit('automation.manual', { workflowId: workflow.id, ownerId: auth.currentUser?.uid, manual: true });
+    setTimeout(loadExecutions, 250);
   };
 
   const toggleWorkflow = async (workflow) => {
@@ -158,6 +177,14 @@ export default function AutomateScreen({ navigation }) {
                 ))}
               </View>
 
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => runWorkflow(wf)}
+                style={[styles.editBtn, { flex: 1, backgroundColor: 'rgba(10,132,255,0.10)' }]}
+                accessibilityLabel="Run workflow"
+              >
+                <Text style={[styles.editBtnText, { color: accentCol }]}>Run</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => toggleWorkflow(wf)}
                 style={[styles.editBtn, { backgroundColor: enabled ? 'rgba(255,59,48,0.10)' : 'rgba(52,199,89,0.10)' }]}
@@ -167,9 +194,20 @@ export default function AutomateScreen({ navigation }) {
                   {enabled ? 'Disable Workflow' : 'Enable Workflow'}
                 </Text>
               </TouchableOpacity>
+              </View>
             </View>
           );
         })}
+
+        {executions.length > 0 && <>
+          <Text style={[styles.sectionTitle, { color: textMain, marginTop: 14 }]}>Recent Executions</Text>
+          <View style={[styles.executionCard, { backgroundColor: cardBg, borderColor: borderCol }]}>
+            {executions.slice(0, 8).map(item => <View key={item.id} style={styles.executionRow}>
+              <View style={[styles.execDot, { backgroundColor: item.status === 'succeeded' ? '#34C759' : item.status === 'failed' ? '#FF3B30' : '#0A84FF' }]} />
+              <View style={{ flex: 1 }}><Text style={[styles.execTitle, { color: textMain }]}>{item.status || 'completed'}</Text><Text style={{ color: textSub, fontSize: 11 }}>{item.eventType || 'workflow event'} · {item.durationMs ?? 0}ms</Text></View>
+            </View>)}
+          </View>
+        </>}
       </ScrollView>
     </SafeAreaView>
   );
@@ -200,4 +238,8 @@ const styles = StyleSheet.create({
   emptyCard: { padding: 28, borderRadius: 20, borderWidth: 1, alignItems: 'center' },
   emptyTitle: { fontSize: 17, fontWeight: '800', marginTop: 10 },
   emptyText: { marginTop: 6, textAlign: 'center' },
+  executionCard: { padding: 14, borderRadius: 18, borderWidth: 1, marginBottom: 20 },
+  executionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  execDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
+  execTitle: { fontSize: 13, fontWeight: '700' },
 });
