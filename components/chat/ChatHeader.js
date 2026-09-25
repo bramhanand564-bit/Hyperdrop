@@ -3,7 +3,7 @@ import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
-export default function ChatHeader({ chatName, friendAvatar, isGlobal, onBack, onInfoPress, onCall, onVideoCall, isOnline=false, statusText, typing=false }) {
+export default function ChatHeader({ chatName, friendAvatar, isGlobal, onBack, onInfoPress, onCall, onVideoCall, onFeatures, isOnline=false, statusText, typing=false }) {
   const { theme } = useTheme();
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -33,6 +33,9 @@ export default function ChatHeader({ chatName, friendAvatar, isGlobal, onBack, o
       </TouchableOpacity>
       <View style={s.actions}>
         {!isGlobal && <><TouchableOpacity style={s.btn} onPress={onCall}><Ionicons name="call-outline" size={21} color={theme.blue} /></TouchableOpacity><TouchableOpacity style={s.btn} onPress={onVideoCall}><Ionicons name="videocam-outline" size={23} color={theme.blue} /></TouchableOpacity></>}
+        <TouchableOpacity style={s.btn} onPress={onFeatures} accessibilityRole="button" accessibilityLabel="Chat toolkit">
+          <Ionicons name="sparkles-outline" size={21} color={theme.blue} />
+        </TouchableOpacity>
         <TouchableOpacity style={s.btn} onPress={onInfoPress}><Ionicons name="ellipsis-horizontal" size={22} color={theme.text} /></TouchableOpacity>
       </View>
     </View>
