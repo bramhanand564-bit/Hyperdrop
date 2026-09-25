@@ -23,6 +23,7 @@ export default function DiscoverScreen({ navigation }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [radiusKm, setRadiusKm] = useState(10);
+  const [coords, setCoords] = useState(null);
 
   // 🎨 Super Glassy, Zero-Neon Palette
   const bg = theme.bg;
@@ -54,6 +55,7 @@ export default function DiscoverScreen({ navigation }) {
         }
         
         setLocationStatus('granted');
+        setCoords({ lat: location.coords.latitude, lng: location.coords.longitude });
         
         // Step 2: Get Real Device Coordinates
         let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -98,12 +100,17 @@ export default function DiscoverScreen({ navigation }) {
     }
   };
 
+  useEffect(() => {
+    if (coords) fetchNearbyEcosystem(coords.lat, coords.lng);
+  }, [radiusKm]);
+
   // 🖱️ SMART ROUTER
   const handleOpenItem = (item) => {
     if (item.type === 'bot') {
       navigation.navigate('BotChatScreen', { botData: { botName: item.name, systemPrompt: `You are a helpful local guide for ${item.name}.` } });
     } else {
-      navigation.navigate('WebPortalScreen', { title: item.name, url: item.url || 'https://html5games.com' });
+      if (item.url) navigation.navigate('WebPortalScreen', { title: item.name, url: item.url });
+      else Alert.alert('Not available yet', 'This ecosystem item has no launch target.');
     }
   };
 
@@ -160,7 +167,7 @@ export default function DiscoverScreen({ navigation }) {
           <View style={styles.radarCircle}>
             <MaterialCommunityIcons name="radar" size={50} color={naxBlue} style={{ opacity: 0.8 }} />
           </View>
-          <Text style={[styles.mapBannerText, { color: textMain }]}>Scanning within {radiusKm} km...</Text>
+          <Text style={[styles.mapBannerText, { color: textMain }]}>{`Scanning within ${radiusKm} km...`}</Text>
           <Text style={{ color: textSub, fontSize: 12 }}>{nearbyApps.length} ecosystem items found nearby</Text>
         </View>
 
