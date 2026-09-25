@@ -70,23 +70,17 @@ service cloud.firestore {
     // 6. CALLS & WEBRTC
     // =========================================================
     match /calls/{callId} {
-
-      // Only the caller may create a new call.
       allow create: if request.auth != null
                     && request.resource.data.callerId == request.auth.uid
                     && request.resource.data.receiverId is string
                     && request.resource.data.receiverId != request.auth.uid;
 
-      // Both participants need to read the call document
-      // because the offer/answer/status are exchanged here.
       allow read: if request.auth != null
                   && (
                     resource.data.callerId == request.auth.uid
                     || resource.data.receiverId == request.auth.uid
                   );
 
-      // Both participants may update signaling/status fields.
-      // Caller/receiver IDs themselves cannot be changed.
       allow update: if request.auth != null
                     && (
                       resource.data.callerId == request.auth.uid
@@ -101,12 +95,8 @@ service cloud.firestore {
                       || resource.data.receiverId == request.auth.uid
                     );
 
-      // Caller ICE candidates.
       match /offerCandidates/{candidateId} {
         allow read, write: if request.auth != null
-                           && exists(
-                             /databases/$(database)/documents/calls/$(callId)
-                           )
                            && (
                              get(
                                /databases/$(database)/documents/calls/$(callId)
@@ -118,12 +108,8 @@ service cloud.firestore {
                            );
       }
 
-      // Receiver ICE candidates.
       match /answerCandidates/{candidateId} {
         allow read, write: if request.auth != null
-                           && exists(
-                             /databases/$(database)/documents/calls/$(callId)
-                           )
                            && (
                              get(
                                /databases/$(database)/documents/calls/$(callId)
