@@ -71,8 +71,6 @@ export default function DiscoverScreen({ navigation }) {
           setCurrentCity(`${geocode[0].city || geocode[0].district || geocode[0].name}, ${geocode[0].region}`);
         }
 
-        // Step 4: Fetch Nearby Mini-Apps from Firebase (Geo-query simulation)
-        fetchNearbyEcosystem(location.coords.latitude, location.coords.longitude);
 
       } catch (error) {
         Alert.alert("GPS Error", "Failed to fetch device location.");
