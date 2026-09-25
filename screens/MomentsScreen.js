@@ -1,538 +1,2190 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Modal, Animated, SafeAreaView, Platform, Alert, TextInput, Share } from 'react-native';
-import { Ionicons, FontAwesome5, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { Video, ResizeMode } from 'expo-av';
+import {
+  addDoc,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  increment,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+
+import { auth, db } from '../firebaseConfig';
 import { useTheme } from '../context/ThemeContext';
 import GlassScene from '../components/ui/GlassScene';
-
-// FIREBASE INTEGRATION
-import { db, auth } from '../firebaseConfig';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDocs, getDoc } from 'firebase/firestore';
-import { Video } from 'expo-av';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 
-const { width } = Dimensions.get('window');
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const STORY_SIZE = 74;
+const STORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-export default function MomentsScreen() {
-  const { isDark, theme } = useTheme();
-  const currentUser = auth.currentUser;
-  
-  // Real-time Data States
-  const [feedPosts, setFeedPosts] = useState([]);
-  const [stories, setStories] = useState([]);
-  
-  const [activeTab, setActiveTab] = useState('For You');
-  const [viewingStory, setViewingStory] = useState(null);
-  
-  // Working Creator States
-  const [showCreator, setShowCreator] = useState(false);
-  const [creatorMode, setCreatorMode] = useState('Camera'); // 'Text' or 'Camera'
-  const [publishType, setPublishType] = useState('Post'); // 'Post', 'Story', 'Reel'
-  const [creatorText, setCreatorText] = useState('');
-  const [creatorMedia, setCreatorMedia] = useState(null);
-  const [commentTarget, setCommentTarget] = useState(null);
-  const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState([]);
-  const [followingIds, setFollowingIds] = useState([]);
-  const [cameraFacing, setCameraFacing] = useState('back');
-  const [creatorIsVideo, setCreatorIsVideo] = useState(false);
-  const [storyReply, setStoryReply] = useState('');
-  
-  const progressAnim = useRef(new Animated.Value(0)).current;
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  // ================= GLASSY WATER BUBBLE COLORS =================
-  const bg = theme.bg; 
-  const textMain = theme.text;
-  const textSub = theme.sub;
-  
-  const glassPanelBg = theme.surface;
-  const glassBorder = theme.border;
-  const cardBg = theme.surfaceStrong;
-
-  // ================= REAL-TIME FIREBASE SYNC =================
-  useEffect(() => {
-    // 1. Fetch Real Feed (Posts/Reels)
-    const qFeed = query(collection(db, 'global_moments'), orderBy('createdAt', 'desc'));
-    const unsubFeed = onSnapshot(qFeed, (snapshot) => {
-      setFeedPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    // 2. Fetch Real Stories
-    const qStories = query(collection(db, 'global_stories'), orderBy('createdAt', 'desc'));
-    const unsubStories = onSnapshot(qStories, (snapshot) => {
-      setStories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    const uid = currentUser?.uid;
-    if (uid) getDoc(doc(db, 'users', uid)).then(snap => {
-      const data = snap.exists() ? snap.data() : {};
-      const ids = Array.isArray(data.followingIds) ? data.followingIds : (Array.isArray(data.following) ? data.following : []);
-      setFollowingIds(ids);
-    }).catch(() => setFollowingIds([]));
-
-    return () => { unsubFeed(); unsubStories(); };
-  }, []);
-
-  // ================= WORKING STORY LOGIC =================
-  const openStory = (story) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(()=>{});
-    setViewingStory(story);
-    startStoryTimer();
-  };
-
-  const startStoryTimer = () => {
-    progressAnim.setValue(0);
-    Animated.timing(progressAnim, { toValue: 1, duration: 5000, useNativeDriver: false }).start(({ finished }) => {
-      if (finished) closeStory();
-    });
-  };
-
-  const closeStory = () => { setViewingStory(null); progressAnim.setValue(0); };
-
-  // ================= WORKING CREATOR (CAMERA & PUBLISH) =================
-  const launchCamera = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(()=>{});
-    try {
-      const p = await ImagePicker.requestCameraPermissionsAsync();
-      if(!p.granted) { Alert.alert("Permission", "Camera access required"); return; }
-      const wantVideo = publishType === 'Reel';
-      const r = await ImagePicker.launchCameraAsync({ quality: 0.75, cameraType: cameraFacing, mediaTypes: wantVideo ? ['videos'] : ['images'] });
-      if(!r.canceled && r.assets?.[0]?.uri) {
-        const asset = r.assets[0];
-        const mimeType = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
-        const fileName = asset.fileName || (asset.type === 'video' ? 'moment.mp4' : 'moment.jpg');
-        const upload = await uploadToCloudinary({ fileUri: asset.uri, fileName, mimeType });
-        setCreatorMedia(upload.secureUrl);
-        setCreatorIsVideo(asset.type === 'video' || mimeType.startsWith('video/'));
-        setCreatorMode('Camera');
-        setShowCreator(true);
-      }
-    } catch(e){}
-  };
-
-  const pickGallery = async () => {
-    try {
-      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75, mediaTypes: ['images', 'videos'] });
-      if(!r.canceled && r.assets?.[0]?.uri) {
-        const asset = r.assets[0];
-        const mimeType = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
-        const fileName = asset.fileName || (asset.type === 'video' ? 'moment.mp4' : 'moment.jpg');
-        const upload = await uploadToCloudinary({ fileUri: asset.uri, fileName, mimeType });
-        setCreatorMedia(upload.secureUrl);
-        setCreatorIsVideo(asset.type === 'video' || mimeType.startsWith('video/'));
-        setCreatorMode('Camera');
-      }
-    } catch(e){}
-  };
-
-  const handlePublish = async () => {
-    if (!creatorText.trim() && !creatorMedia) {
-      Alert.alert("Empty", "Please add text or a photo."); return;
+function fireHaptic(type = 'light') {
+  try {
+    if (type === 'success') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else if (type === 'selection') {
+      Haptics.selectionAsync();
+    } else {
+      Haptics.impactAsync(
+        type === 'medium'
+          ? Haptics.ImpactFeedbackStyle.Medium
+          : Haptics.ImpactFeedbackStyle.Light
+      );
     }
-    
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
-    
-    const collectionName = publishType === 'Story' ? 'global_stories' : 'global_moments';
-    const isReel = publishType === 'Reel';
-    if (isReel && !creatorIsVideo) { Alert.alert('Reel video required', 'Choose or record a video for a Reel.'); return; }
+  } catch (e) {}
+}
 
-    try {
-      await addDoc(collection(db, collectionName), {
-        userId: currentUser?.uid || 'unknown',
-        userName: currentUser?.displayName || 'User',
-        userImg: currentUser?.photoURL || `https://ui-avatars.com/api/?name=${currentUser?.displayName || 'U'}&background=random`,
-        text: creatorText.trim(),
-        media: creatorMedia,
-        isVideo: isReel || creatorIsVideo,
-        likes: [],
-        commentsCount: 0,
-        createdAt: serverTimestamp()
-      });
+function toDate(timestamp) {
+  try {
+    if (!timestamp) return new Date();
+    if (typeof timestamp.toDate === 'function') return timestamp.toDate();
+    return new Date(timestamp);
+  } catch (e) {
+    return new Date();
+  }
+}
 
-      setShowCreator(false);
-      setCreatorText('');
-      setCreatorMedia(null);
-      setCreatorIsVideo(false);
-      Alert.alert("Success", `${publishType} published globally! 🌊`);
-    } catch (e) {
-      Alert.alert("Error", "Failed to publish.");
-    }
-  };
+function formatTime(timestamp) {
+  const diff = Math.max(0, Date.now() - toDate(timestamp).getTime());
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return toDate(timestamp).toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
 
-  // ================= WORKING LIKES =================
-  const handleCommentOpen = async (post) => {
-    setCommentTarget(post);
-    setCommentText('');
-    try {
-      const snap = await getDocs(query(collection(db, 'global_moments', post.id, 'comments'), orderBy('createdAt', 'asc')));
-      setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) { setComments([]); }
-  };
+function safeAvatar(name = 'U', photoURL) {
+  return (
+    photoURL ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=0C77FF&color=fff&size=160`
+  );
+}
 
-  const handleCommentSend = async () => {
-    const text = commentText.trim();
-    if (!currentUser?.uid || !commentTarget?.id || !text) return;
-    try {
-      await addDoc(collection(db, 'global_moments', commentTarget.id, 'comments'), {
-        userId: currentUser.uid,
-        userName: currentUser.displayName || 'User',
-        text: text.slice(0, 500),
-        createdAt: serverTimestamp(),
-      });
-      await updateDoc(doc(db, 'global_moments', commentTarget.id), { commentsCount: increment(1) });
-      setComments(items => [...items, { id: `local-${Date.now()}`, userId: currentUser.uid, userName: currentUser.displayName || 'User', text }]);
-      setCommentText('');
-    } catch (e) { Alert.alert('Comment failed', 'Please try again.'); }
-  };
+function clampText(text, max = 320) {
+  return String(text || '').trim().slice(0, max);
+}
 
-  const handleSharePost = async (post) => {
-    try {
-      await Share.share({ message: `${post.userName || 'Someone'} shared a Moment${post.text ? `: ${post.text}` : ''}${post.media ? `\n${post.media}` : ''}` });
-    } catch (e) {}
-  };
+function storyIsFresh(story) {
+  const age = Date.now() - toDate(story?.createdAt).getTime();
+  return age < STORY_MAX_AGE_MS;
+}
 
-  const handleStoryReply = async () => {
-    const text = storyReply.trim();
-    if (!currentUser?.uid || !viewingStory?.id || !text) return;
-    try {
-      await addDoc(collection(db, 'global_stories', viewingStory.id, 'replies'), { userId: currentUser.uid, userName: currentUser.displayName || 'User', text: text.slice(0, 500), createdAt: serverTimestamp() });
-      setStoryReply('');
-      Alert.alert('Reply sent', 'Your reply was added to the story.');
-    } catch (e) { Alert.alert('Reply failed', 'Please try again.'); }
-  };
+function initials(name = 'U') {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase();
+}
 
-  const handleLikeStory = async (story) => {
-    if (!currentUser?.uid || !story?.id) return;
-    const liked = Array.isArray(story.likes) && story.likes.includes(currentUser.uid);
-    try {
-      const nextLiked = !liked;
-      await updateDoc(doc(db, 'global_stories', story.id), { likes: nextLiked ? arrayUnion(currentUser.uid) : arrayRemove(currentUser.uid) });
-      setViewingStory(prev => prev ? { ...prev, likes: nextLiked ? [...(prev.likes || []), currentUser.uid] : (prev.likes || []).filter(id => id !== currentUser.uid) } : prev);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
-    } catch (e) { Alert.alert('Story like failed', 'Please try again.'); }
-  };
+function ActionButton({ icon, activeIcon, label, active, color, onPress, accessibilityLabel }) {
+  const scale = useRef(new Animated.Value(1)).current;
 
-  const handleLikePost = async (postId, currentLikes) => {
-    if(!currentUser) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(()=>{});
-    
-    const hasLiked = currentLikes.includes(currentUser.uid);
-    try {
-      await updateDoc(doc(db, 'global_moments', postId), {
-        likes: hasLiked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid),
-      });
-    } catch(e) { Alert.alert('Like failed', 'Please try again.'); }
-  };
-
-  // ================= UI HELPERS =================
-  const visiblePosts = feedPosts.filter(post => {
-    if (activeTab === 'Reels') return post.isVideo === true;
-    if (activeTab === 'Live') return post.isLive === true;
-    if (activeTab === 'Following') return followingIds.includes(post.userId);
-    return true;
-  });
-
-  const formatTime = (createdAt) => {
-    if (!createdAt) return 'Just now';
-    try {
-      const diff = new Date() - createdAt.toDate();
-      const minutes = Math.floor(diff / 60000);
-      if (minutes < 60) return `${minutes}m ago`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `${hours}h ago`;
-      return `${Math.floor(hours / 24)}d ago`;
-    } catch(e) { return 'Just now'; }
+  const press = () => {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.88, duration: 70, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, speed: 22, bounciness: 8, useNativeDriver: true }),
+    ]).start();
+    fireHaptic('light');
+    onPress?.();
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]}><GlassScene>
-      
-      {/* ================= GLASS HEADER ================= */}
-      <View style={[styles.header, { backgroundColor: glassPanelBg, borderBottomColor: glassBorder }]}>
-        <Text style={[styles.headerTitle, { color: textMain }]}>Moments</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert('Your Archive', `You have ${feedPosts.filter(post => post.userId === currentUser?.uid).length} published moments and ${stories.filter(story => story.userId === currentUser?.uid).length} stories in your account.`)} accessibilityLabel="View archive summary"><Ionicons name="time-outline" size={26} color={textMain} /></TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => { const own = feedPosts.filter(post => post.userId === currentUser?.uid); const likes = own.reduce((sum, post) => sum + (post.likes?.length || 0), 0); const comments = own.reduce((sum, post) => sum + Number(post.commentsCount || 0), 0); Alert.alert('Your Activity', `${likes} likes and ${comments} comments received across your moments.`); }} accessibilityLabel="View activity summary"><Ionicons name="heart-outline" size={26} color={textMain} /></TouchableOpacity>
-        </View>
-      </View>
+    <TouchableOpacity
+      onPress={press}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={styles.actionButton}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons
+          name={active && activeIcon ? activeIcon : icon}
+          size={22}
+          color={active ? color : '#AFC4D8'}
+        />
+      </Animated.View>
+      {!!label && <Text style={[styles.actionLabel, active && { color }]}>{label}</Text>}
+    </TouchableOpacity>
+  );
+}
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        
-        {/* ================= REAL STORIES SECTION ================= */}
-        <View style={[styles.storySection, { borderBottomColor: glassBorder }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 15 }}>
-            
-            {/* My Story Button */}
-            <TouchableOpacity style={styles.storyItem} onPress={() => { setCreatorMode('Camera'); setPublishType('Story'); setShowCreator(true); }}>
-              <View style={[styles.storyRing, { borderColor: glassBorder }]}>
-                <Image source={{ uri: currentUser?.photoURL || `https://ui-avatars.com/api/?name=${currentUser?.displayName || 'Me'}&background=007AFF&color=fff` }} style={styles.storyImg} />
-                <View style={styles.addStoryBtn}><Ionicons name="add" size={16} color="#FFF" /></View>
+function FeedCard({
+  item,
+  currentUser,
+  theme,
+  isDark,
+  onLike,
+  onComment,
+  onShare,
+  onSave,
+  onDelete,
+  onOpenMedia,
+}) {
+  const entrance = useRef(new Animated.Value(0)).current;
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
+  const saved = Array.isArray(item.savedBy) && item.savedBy.includes(currentUser?.uid);
+  const liked = Array.isArray(item.likes) && item.likes.includes(currentUser?.uid);
+
+  useEffect(() => {
+    Animated.spring(entrance, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 18,
+      bounciness: 6,
+    }).start();
+  }, [entrance]);
+
+  const doubleTap = () => {
+    if (!liked) onLike(item);
+    heartScale.setValue(0.55);
+    heartOpacity.setValue(1);
+    Animated.parallel([
+      Animated.spring(heartScale, { toValue: 1.25, useNativeDriver: true, speed: 16 }),
+      Animated.sequence([
+        Animated.delay(250),
+        Animated.timing(heartOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]),
+    ]).start();
+  };
+
+  return (
+    <Animated.View
+      style={[
+        styles.feedCard,
+        {
+          backgroundColor: isDark ? 'rgba(10, 26, 40, 0.74)' : theme.surfaceStrong,
+          borderColor: theme.border,
+          opacity: entrance,
+          transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+        },
+      ]}
+    >
+      <View style={styles.feedHeader}>
+        <Image source={{ uri: safeAvatar(item.userName, item.userImg) }} style={styles.feedAvatar} />
+        <View style={styles.feedIdentity}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.feedUser, { color: theme.text }]} numberOfLines={1}>
+              {item.userName || 'User'}
+            </Text>
+            {item.userId === currentUser?.uid ? (
+              <View style={styles.youBadge}>
+                <Text style={styles.youBadgeText}>YOU</Text>
               </View>
-              <Text style={[styles.storyName, { color: textMain }]} numberOfLines={1}>Add Story</Text>
-            </TouchableOpacity>
-
-            {/* Fetched Stories */}
-            {stories.map((s) => (
-              <TouchableOpacity key={s.id} style={styles.storyItem} onPress={() => openStory(s)}>
-                <View style={[styles.storyRing, { borderColor: '#007AFF' }]}>
-                  <Image source={{ uri: s.userImg }} style={styles.storyImg} />
-                </View>
-                <Text style={[styles.storyName, { color: textMain }]} numberOfLines={1}>{s.userName}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* ================= TABS ================= */}
-        <View style={[styles.tabsContainer, { borderBottomColor: glassBorder }]}>
-          {['For You', 'Following', 'Live', 'Reels'].map((tab) => (
-            <TouchableOpacity key={tab} style={[styles.tabBtn, activeTab === tab && { borderBottomColor: '#007AFF', borderBottomWidth: 2 }]} onPress={() => { Haptics.selectionAsync().catch(()=>{}); setActiveTab(tab); }}>
-              <Text style={[styles.tabText, { color: activeTab === tab ? '#007AFF' : textSub, fontWeight: activeTab === tab ? '700' : '500' }]}>{tab}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ================= REAL-TIME FEED ================= */}
-        {visiblePosts.length === 0 ? (
-          <View style={{ padding: 40, alignItems: 'center' }}>
-            <Ionicons name="water-outline" size={60} color={textSub} style={{ opacity: 0.5 }} />
-            <Text style={{ color: textSub, marginTop: 10 }}>No moments yet. Be the first!</Text>
+            ) : null}
           </View>
-        ) : (
-          visiblePosts.map((post) => {
-            const hasLiked = post.likes?.includes(currentUser?.uid);
-            
-            return (
-              <View key={post.id} style={[styles.feedCard, { backgroundColor: cardBg, borderColor: glassBorder }]}>
-                
-                {/* Post Header */}
-                <View style={styles.feedHeader}>
-                  <Image source={{ uri: post.userImg }} style={styles.feedAvatar} />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[styles.feedUser, { color: textMain }]}>{post.userName}</Text>
-                    <Text style={{ color: textSub, fontSize: 12, marginTop: 2 }}>{formatTime(post.createdAt)} • 🌎 Public</Text>
-                  </View>
-                  {post.userId === currentUser?.uid && (
-                    <TouchableOpacity onPress={() => deleteDoc(doc(db, 'global_moments', post.id))}><Ionicons name="trash-outline" size={20} color="#FF3B30" /></TouchableOpacity>
-                  )}
-                </View>
+          <Text style={[styles.feedMeta, { color: theme.sub }]}>
+            {formatTime(item.createdAt)} • {item.audience === 'friends' ? 'Friends' : 'Public'}
+          </Text>
+        </View>
 
-                {/* Post Content */}
-                {post.text ? <Text style={[styles.feedText, { color: textMain }]}>{post.text}</Text> : null}
-                
-                {/* Post Media */}
-                {post.media && (
-                  <TouchableOpacity activeOpacity={0.9} onPress={() => post.isVideo ? null : handleLikePost(post.id, post.likes || [])} style={[styles.feedMediaPlaceholder, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)', borderColor: glassBorder }]}>
-                    {post.isVideo ? <Video source={{ uri: post.media }} style={{ width: '100%', height: '100%' }} resizeMode="cover" useNativeControls isLooping /> : <Image source={{ uri: post.media }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />}
-                  </TouchableOpacity>
-                )}
-
-                {/* Engagement Actions */}
-                <View style={styles.feedActions}>
-                  <View style={{ flexDirection: 'row' }}>
-                    <TouchableOpacity style={styles.feedActionBtn} onPress={() => handleLikePost(post.id, post.likes || [])}>
-                      <Ionicons name={hasLiked ? "heart" : "heart-outline"} size={26} color={hasLiked ? "#FF3B30" : textMain} />
-                      <Text style={[styles.actionNum, { color: hasLiked ? "#FF3B30" : textMain }]}>{post.likes?.length || 0}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.feedActionBtn} onPress={() => handleCommentOpen(post)}>
-                      <Ionicons name="chatbubble-outline" size={24} color={textMain} />
-                      <Text style={[styles.actionNum, { color: textMain }]}>{post.commentsCount || 0}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.feedActionBtn} onPress={() => handleSharePost(post)}>
-                      <Feather name="send" size={24} color={textMain} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
-
-      {/* ================= FLOATING BUBBLE BUTTONS ================= */}
-      <View style={styles.fabContainer}>
-        <TouchableOpacity style={[styles.fabMini, { backgroundColor: glassPanelBg, borderColor: glassBorder }]} onPress={() => { setCreatorMode('Text'); setPublishType('Post'); setShowCreator(true); }}>
-          <Ionicons name="pencil" size={20} color={textMain} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.fabMain, { backgroundColor: '#007AFF', shadowColor: '#007AFF' }]} onPress={launchCamera}>
-          <Ionicons name="add" size={32} color="#FFF" />
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="More options"
+          hitSlop={10}
+          onPress={() => {
+            fireHaptic('selection');
+            onDelete?.(item);
+          }}
+          style={styles.moreButton}
+        >
+          <Ionicons name="ellipsis-horizontal" size={22} color={theme.sub} />
         </TouchableOpacity>
       </View>
 
-      {/* ================= REAL STORY VIEWER ================= */}
-      <Modal visible={!!viewingStory} transparent={false} animationType="fade" onRequestClose={closeStory}>
-        <View style={styles.viewerContainer}>
-          <TouchableOpacity activeOpacity={1} style={styles.viewerTapArea} onLongPress={() => { progressAnim.stopAnimation(); Haptics.selectionAsync().catch(()=>{}); }} onPressOut={startStoryTimer}>
-            
-            {/* Story Content Background */}
-            <Image source={{ uri: viewingStory?.media || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop' }} style={StyleSheet.absoluteFillObject} />
-            <View style={styles.viewerOverlay}>
-              {viewingStory?.text ? <Text style={{ color: '#FFF', fontSize: 24, fontWeight: 'bold', textAlign: 'center', padding: 20 }}>{viewingStory.text}</Text> : null}
-            </View>
+      {!!item.text && (
+        <Text style={[styles.feedText, { color: theme.text }]}>{item.text}</Text>
+      )}
 
-            {/* Header & Progress */}
-            <SafeAreaView style={styles.viewerHeader}>
-              <View style={styles.progressBarBg}>
-                <Animated.View style={[styles.progressBarFill, { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
+      {!!item.media && (
+        <Pressable onPress={doubleTap} onLongPress={onOpenMedia ? () => onOpenMedia(item) : undefined}>
+          <View style={styles.mediaWrap}>
+            {item.isVideo ? (
+              <Video
+                source={{ uri: item.media }}
+                style={styles.feedMedia}
+                resizeMode={ResizeMode.COVER}
+                useNativeControls
+                shouldPlay={false}
+                isLooping
+              />
+            ) : (
+              <Image source={{ uri: item.media }} style={styles.feedMedia} />
+            )}
+
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.doubleHeart,
+                {
+                  opacity: heartOpacity,
+                  transform: [{ scale: heartScale }],
+                },
+              ]}
+            >
+              <Ionicons name="heart" size={82} color="#FFFFFF" />
+            </Animated.View>
+
+            {item.isVideo ? (
+              <View style={styles.mediaTypePill}>
+                <Ionicons name="play" size={13} color="#fff" />
+                <Text style={styles.mediaTypeText}>VIDEO</Text>
               </View>
-              <View style={styles.viewerUserInfo}>
-                <Image source={{ uri: viewingStory?.userImg }} style={styles.viewerAvatar} />
-                <Text style={styles.viewerName}>{viewingStory?.userName}</Text>
-                <Text style={styles.viewerTime}>{formatTime(viewingStory?.createdAt)}</Text>
-                <View style={{ flex: 1 }} />
-                <TouchableOpacity onPress={closeStory} style={{ padding: 5 }}><Ionicons name="close" size={28} color="#FFF" /></TouchableOpacity>
-              </View>
-            </SafeAreaView>
+            ) : null}
+          </View>
+        </Pressable>
+      )}
 
-            {/* Bottom Reply Box */}
-            <SafeAreaView style={styles.viewerFooter}>
-              <TextInput value={storyReply} onChangeText={setStoryReply} placeholder={`Reply to ${viewingStory?.userName || 'story'}...`} placeholderTextColor="rgba(255,255,255,0.7)" style={styles.viewerReplyInput} />
-              <TouchableOpacity style={styles.storyReplySend} onPress={handleStoryReply}><Feather name="send" size={18} color="#FFF" /></TouchableOpacity>
-              <TouchableOpacity style={{ marginHorizontal: 12 }} onPress={() => handleLikeStory(viewingStory)}><Ionicons name={viewingStory?.likes?.includes(currentUser?.uid) ? "heart" : "heart-outline"} size={34} color="#FF3B30" /></TouchableOpacity>
-              <TouchableOpacity onPress={() => handleSharePost(viewingStory)}><Feather name="send" size={28} color="#FFF" /></TouchableOpacity>
-            </SafeAreaView>
+      <View style={styles.engagementSummary}>
+        <View style={styles.engagementLeft}>
+          <View style={styles.miniHeart}>
+            <Ionicons name="heart" size={11} color="#fff" />
+          </View>
+          <Text style={[styles.engagementText, { color: theme.sub }]}>
+            {item.likes?.length || 0} {item.likes?.length === 1 ? 'like' : 'likes'}
+          </Text>
+          <Text style={[styles.engagementDot, { color: theme.sub }]}>•</Text>
+          <Text style={[styles.engagementText, { color: theme.sub }]}>
+            {Number(item.commentsCount || 0)} comments
+          </Text>
+        </View>
+        {saved ? (
+          <Text style={[styles.savedHint, { color: theme.blue }]}>Saved</Text>
+        ) : null}
+      </View>
 
+      <View style={[styles.actionBar, { borderTopColor: theme.border }]}>
+        <ActionButton
+          icon="heart-outline"
+          activeIcon="heart"
+          label={item.likes?.length ? String(item.likes.length) : ''}
+          active={liked}
+          color="#FF4F78"
+          onPress={() => onLike(item)}
+          accessibilityLabel={liked ? 'Unlike moment' : 'Like moment'}
+        />
+        <ActionButton
+          icon="chatbubble-ellipses-outline"
+          label={item.commentsCount ? String(item.commentsCount) : ''}
+          onPress={() => onComment(item)}
+          accessibilityLabel="Open comments"
+        />
+        <ActionButton
+          icon="arrow-redo-outline"
+          onPress={() => onShare(item)}
+          accessibilityLabel="Share moment"
+        />
+        <ActionButton
+          icon="bookmark-outline"
+          activeIcon="bookmark"
+          active={saved}
+          color={theme.blue}
+          onPress={() => onSave(item)}
+          accessibilityLabel={saved ? 'Remove bookmark' : 'Save moment'}
+        />
+      </View>
+    </Animated.View>
+  );
+}
+
+function StoryBubble({ story, onPress, theme, isOwn }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!isOwn) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.03, duration: 1100, useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+  }, [isOwn, pulse]);
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.86}
+      accessibilityRole="button"
+      accessibilityLabel={`${story.userName || 'User'} story`}
+      style={styles.storyItem}
+    >
+      <Animated.View
+        style={[
+          styles.storyRingOuter,
+          {
+            borderColor: isOwn ? theme.border : '#5C8CFF',
+            transform: [{ scale: pulse }],
+          },
+        ]}
+      >
+        <Image source={{ uri: safeAvatar(story.userName, story.userImg) }} style={styles.storyImage} />
+        {isOwn ? (
+          <View style={styles.storyAdd}>
+            <Ionicons name="add" size={16} color="#fff" />
+          </View>
+        ) : null}
+      </Animated.View>
+      <Text style={[styles.storyLabel, { color: theme.text }]} numberOfLines={1}>
+        {isOwn ? 'Create' : story.userName || 'Story'}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+export default function MomentsScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
+  const currentUser = auth.currentUser;
+
+  const [feedPosts, setFeedPosts] = useState([]);
+  const [stories, setStories] = useState([]);
+  const [followingIds, setFollowingIds] = useState([]);
+  const [activeTab, setActiveTab] = useState('For You');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [listenerKey, setListenerKey] = useState(0);
+
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [publishType, setPublishType] = useState('Post');
+  const [creatorText, setCreatorText] = useState('');
+  const [creatorMedia, setCreatorMedia] = useState(null);
+  const [creatorIsVideo, setCreatorIsVideo] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [cameraFacing, setCameraFacing] = useState('back');
+
+  const [commentTarget, setCommentTarget] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+
+  const [viewingStoryIndex, setViewingStoryIndex] = useState(null);
+  const [storyReply, setStoryReply] = useState('');
+  const [storyProgress, setStoryProgress] = useState(0);
+
+  const [mediaTarget, setMediaTarget] = useState(null);
+  const [infoModal, setInfoModal] = useState(null);
+
+  const tabIndicator = useRef(new Animated.Value(0)).current;
+  const fabScale = useRef(new Animated.Value(0.85)).current;
+  const creatorTranslate = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const storyProgressAnim = useRef(new Animated.Value(0)).current;
+
+  const tabs = ['For You', 'Following', 'Live', 'Reels'];
+
+  useEffect(() => {
+    Animated.spring(fabScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 18,
+      bounciness: 9,
+    }).start();
+  }, [fabScale]);
+
+  useEffect(() => {
+    const index = tabs.indexOf(activeTab);
+    Animated.spring(tabIndicator, {
+      toValue: index,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 5,
+    }).start();
+  }, [activeTab, tabIndicator]);
+
+  useEffect(() => {
+    if (!creatorOpen) return;
+    creatorTranslate.setValue(SCREEN_WIDTH);
+    Animated.spring(creatorTranslate, {
+      toValue: 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 4,
+    }).start();
+  }, [creatorOpen, creatorTranslate]);
+
+  const closeCreator = useCallback(() => {
+    Animated.timing(creatorTranslate, {
+      toValue: SCREEN_WIDTH,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setCreatorOpen(false);
+    });
+  }, [creatorTranslate]);
+
+  useEffect(() => {
+    let unsubFeed = () => {};
+    let unsubStories = () => {};
+
+    setLoading(true);
+    setLoadError('');
+
+    try {
+      const feedQuery = query(collection(db, 'global_moments'), orderBy('createdAt', 'desc'));
+      unsubFeed = onSnapshot(
+        feedQuery,
+        snapshot => {
+          const next = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          setFeedPosts(next);
+          setLoading(false);
+          setLoadError('');
+        },
+        error => {
+          console.warn('Moments feed listener:', error);
+          setLoading(false);
+          setLoadError('Feed could not be loaded. Check your connection and try again.');
+        }
+      );
+
+      const storyQuery = query(collection(db, 'global_stories'), orderBy('createdAt', 'desc'));
+      unsubStories = onSnapshot(
+        storyQuery,
+        snapshot => {
+          const fresh = snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(storyIsFresh);
+
+          const seen = new Set();
+          const unique = [];
+          for (const story of fresh) {
+            const key = story.userId || story.id;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            unique.push(story);
+          }
+          setStories(unique);
+        },
+        error => {
+          console.warn('Moments story listener:', error);
+        }
+      );
+    } catch (error) {
+      setLoading(false);
+      setLoadError('Unable to connect to Moments.');
+    }
+
+    const uid = currentUser?.uid;
+    if (uid) {
+      getDoc(doc(db, 'users', uid))
+        .then(snapshot => {
+          if (!snapshot.exists()) return;
+          const data = snapshot.data() || {};
+          const ids = Array.isArray(data.followingIds)
+            ? data.followingIds
+            : Array.isArray(data.following)
+              ? data.following
+              : [];
+          setFollowingIds(ids.filter(Boolean));
+        })
+        .catch(() => setFollowingIds([]));
+    }
+
+    return () => {
+      unsubFeed();
+      unsubStories();
+    };
+  }, [currentUser?.uid, listenerKey]);
+
+  useEffect(() => {
+    if (!commentTarget?.id) return;
+    setCommentLoading(true);
+    const commentQuery = query(
+      collection(db, 'global_moments', commentTarget.id, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+    const unsubscribe = onSnapshot(
+      commentQuery,
+      snapshot => {
+        setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        setCommentLoading(false);
+      },
+      () => {
+        setComments([]);
+        setCommentLoading(false);
+      }
+    );
+    return unsubscribe;
+  }, [commentTarget?.id]);
+
+  const freshStories = useMemo(() => {
+    const mine = {
+      id: '__create__',
+      userId: currentUser?.uid,
+      userName: 'Create',
+      userImg: currentUser?.photoURL,
+      own: true,
+    };
+    return [mine, ...stories];
+  }, [stories, currentUser?.uid, currentUser?.photoURL]);
+
+  const filteredPosts = useMemo(() => {
+    let next = [...feedPosts];
+
+    if (activeTab === 'Following') {
+      next = next.filter(item => followingIds.includes(item.userId));
+    } else if (activeTab === 'Reels') {
+      next = next.filter(item => item.isVideo === true);
+    } else if (activeTab === 'Live') {
+      next = next.filter(item => item.isLive === true);
+    }
+
+    const q = searchText.trim().toLowerCase();
+    if (q) {
+      next = next.filter(item =>
+        [item.userName, item.text].some(value => String(value || '').toLowerCase().includes(q))
+      );
+    }
+
+    return next;
+  }, [activeTab, feedPosts, followingIds, searchText]);
+
+  const openCreator = useCallback(type => {
+    setPublishType(type);
+    setCreatorText('');
+    setCreatorMedia(null);
+    setCreatorIsVideo(false);
+    setUploadProgress(0);
+    setSearchOpen(false);
+    setCreatorOpen(true);
+    fireHaptic('medium');
+  }, []);
+
+  const uploadAsset = useCallback(async asset => {
+    if (!asset?.uri) return;
+    const mimeType =
+      asset.mimeType ||
+      (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const result = await uploadToCloudinary({
+        fileUri: asset.uri,
+        fileName: asset.fileName || (asset.type === 'video' ? 'moment.mp4' : 'moment.jpg'),
+        mimeType,
+        onProgress: progress => setUploadProgress(progress),
+      });
+
+      setCreatorMedia(result.secureUrl);
+      setCreatorIsVideo(asset.type === 'video' || mimeType.startsWith('video/'));
+      setUploadProgress(100);
+      fireHaptic('success');
+    } catch (error) {
+      Alert.alert('Upload failed', error?.message || 'Could not upload this file.');
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
+  const pickGallery = useCallback(async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Photos permission', 'Allow photo access to select media for Moments.');
+        return;
+      }
+
+      const mediaTypes = publishType === 'Reel' ? ['videos'] : ['images', 'videos'];
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes,
+        quality: 0.82,
+        allowsEditing: false,
+        videoMaxDuration: publishType === 'Reel' ? 60 : 120,
+        selectionLimit: 1,
+      });
+
+      if (!result.canceled) {
+        await uploadAsset(result.assets?.[0]);
+      }
+    } catch (error) {
+      Alert.alert('Gallery error', 'Could not open your media library.');
+    }
+  }, [publishType, uploadAsset]);
+
+  const captureCamera = useCallback(async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Camera permission', 'Allow camera access to create a Moment.');
+        return;
+      }
+
+      const mediaTypes = publishType === 'Reel' ? ['videos'] : ['images', 'videos'];
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes,
+        cameraType: cameraFacing,
+        quality: 0.82,
+        videoMaxDuration: publishType === 'Reel' ? 60 : 120,
+      });
+
+      if (!result.canceled) {
+        await uploadAsset(result.assets?.[0]);
+      }
+    } catch (error) {
+      Alert.alert('Camera error', 'Could not start the camera on this device.');
+    }
+  }, [cameraFacing, publishType, uploadAsset]);
+
+  const publish = useCallback(async () => {
+    if (uploading) return;
+
+    const text = clampText(creatorText);
+    if (!text && !creatorMedia) {
+      Alert.alert('Nothing to publish', 'Add a message, photo, or video first.');
+      return;
+    }
+
+    if (publishType === 'Reel' && !creatorIsVideo) {
+      Alert.alert('Reel needs a video', 'Choose or record a video for a Reel.');
+      return;
+    }
+
+    if (!currentUser?.uid) {
+      Alert.alert('Sign in required', 'Please sign in before publishing.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const targetCollection = publishType === 'Story' ? 'global_stories' : 'global_moments';
+
+      await addDoc(collection(db, targetCollection), {
+        userId: currentUser.uid,
+        userName: currentUser.displayName || 'User',
+        userImg: safeAvatar(currentUser.displayName || 'User', currentUser.photoURL),
+        text,
+        media: creatorMedia || null,
+        isVideo: creatorIsVideo,
+        isLive: false,
+        audience: 'public',
+        likes: [],
+        savedBy: [],
+        commentsCount: 0,
+        createdAt: serverTimestamp(),
+      });
+
+      fireHaptic('success');
+      closeCreator();
+      await wait(150);
+      setCreatorText('');
+      setCreatorMedia(null);
+      setCreatorIsVideo(false);
+      setUploadProgress(0);
+    } catch (error) {
+      Alert.alert('Publish failed', error?.message || 'Could not publish this Moment.');
+    } finally {
+      setUploading(false);
+    }
+  }, [
+    closeCreator,
+    creatorIsVideo,
+    creatorMedia,
+    creatorText,
+    currentUser?.displayName,
+    currentUser?.photoURL,
+    currentUser?.uid,
+    publishType,
+    uploading,
+  ]);
+
+  const likePost = useCallback(async post => {
+    if (!currentUser?.uid || !post?.id) return;
+    const likes = Array.isArray(post.likes) ? post.likes : [];
+    const hasLiked = likes.includes(currentUser.uid);
+
+    setFeedPosts(items =>
+      items.map(item =>
+        item.id === post.id
+          ? {
+              ...item,
+              likes: hasLiked
+                ? likes.filter(id => id !== currentUser.uid)
+                : [...likes, currentUser.uid],
+            }
+          : item
+      )
+    );
+
+    try {
+      await updateDoc(doc(db, 'global_moments', post.id), {
+        likes: hasLiked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid),
+      });
+    } catch (error) {
+      setFeedPosts(items =>
+        items.map(item =>
+          item.id === post.id ? { ...item, likes } : item
+        )
+      );
+      Alert.alert('Like failed', 'Your change could not be saved.');
+    }
+  }, [currentUser?.uid]);
+
+  const toggleSave = useCallback(async post => {
+    if (!currentUser?.uid || !post?.id) return;
+    const savedBy = Array.isArray(post.savedBy) ? post.savedBy : [];
+    const saved = savedBy.includes(currentUser.uid);
+
+    setFeedPosts(items =>
+      items.map(item =>
+        item.id === post.id
+          ? {
+              ...item,
+              savedBy: saved
+                ? savedBy.filter(id => id !== currentUser.uid)
+                : [...savedBy, currentUser.uid],
+            }
+          : item
+      )
+    );
+
+    try {
+      await updateDoc(doc(db, 'global_moments', post.id), {
+        savedBy: saved ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid),
+      });
+      fireHaptic('selection');
+    } catch (error) {
+      setFeedPosts(items =>
+        items.map(item => (item.id === post.id ? { ...item, savedBy } : item))
+      );
+      Alert.alert('Save failed', 'Could not update your saved Moments.');
+    }
+  }, [currentUser?.uid]);
+
+  const deletePost = useCallback(async post => {
+    if (!post || post.userId !== currentUser?.uid) return;
+
+    Alert.alert(
+      'Delete this Moment?',
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'global_moments', post.id));
+              fireHaptic('success');
+            } catch (error) {
+              Alert.alert('Delete failed', 'Could not remove this Moment.');
+            }
+          },
+        },
+      ]
+    );
+  }, [currentUser?.uid]);
+
+  const postOptions = useCallback(post => {
+    const isOwner = post.userId === currentUser?.uid;
+    Alert.alert(
+      post.userName || 'Moment',
+      '',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        ...(isOwner
+          ? [{ text: 'Delete', style: 'destructive', onPress: () => deletePost(post) }]
+          : []),
+      ]
+    );
+  }, [currentUser?.uid, deletePost]);
+
+  const sharePost = useCallback(async post => {
+    try {
+      await Share.share({
+        message: `${post.userName || 'Someone'} shared a Moment${post.text ? `: ${post.text}` : ''}${post.media ? `\\n${post.media}` : ''}`,
+      });
+    } catch (error) {}
+  }, []);
+
+  const openComments = useCallback(post => {
+    setCommentTarget(post);
+    setCommentText('');
+    fireHaptic('selection');
+  }, []);
+
+  const sendComment = useCallback(async () => {
+    const text = clampText(commentText, 500);
+    if (!text || !currentUser?.uid || !commentTarget?.id) return;
+
+    try {
+      await addDoc(
+        collection(db, 'global_moments', commentTarget.id, 'comments'),
+        {
+          userId: currentUser.uid,
+          userName: currentUser.displayName || 'User',
+          text,
+          createdAt: serverTimestamp(),
+        }
+      );
+      await updateDoc(doc(db, 'global_moments', commentTarget.id), {
+        commentsCount: increment(1),
+      });
+      setCommentText('');
+      fireHaptic('success');
+    } catch (error) {
+      Alert.alert('Comment failed', 'Please try again.');
+    }
+  }, [commentText, commentTarget?.id, currentUser?.displayName, currentUser?.uid]);
+
+  const openStory = useCallback(index => {
+    if (index <= 0) {
+      openCreator('Story');
+      return;
+    }
+    setViewingStoryIndex(index - 1);
+    setStoryReply('');
+    fireHaptic('medium');
+  }, [openCreator]);
+
+  const visibleStory = viewingStoryIndex === null ? null : stories[viewingStoryIndex];
+
+  useEffect(() => {
+    if (!visibleStory) {
+      storyProgressAnim.stopAnimation();
+      storyProgressAnim.setValue(0);
+      return;
+    }
+
+    storyProgressAnim.setValue(0);
+    const anim = Animated.timing(storyProgressAnim, {
+      toValue: 1,
+      duration: 5500,
+      useNativeDriver: false,
+    });
+
+    anim.start(({ finished }) => {
+      if (!finished) return;
+      setViewingStoryIndex(index => {
+        if (index === null) return null;
+        if (index >= stories.length - 1) return null;
+        return index + 1;
+      });
+    });
+
+    return () => storyProgressAnim.stopAnimation();
+  }, [stories.length, visibleStory?.id, storyProgressAnim]);
+
+  const closeStory = useCallback(() => {
+    storyProgressAnim.stopAnimation();
+    setViewingStoryIndex(null);
+    setStoryReply('');
+  }, [storyProgressAnim]);
+
+  const nextStory = useCallback(() => {
+    setViewingStoryIndex(index => {
+      if (index === null) return null;
+      return index >= stories.length - 1 ? null : index + 1;
+    });
+  }, [stories.length]);
+
+  const previousStory = useCallback(() => {
+    setViewingStoryIndex(index => {
+      if (index === null) return null;
+      return Math.max(0, index - 1);
+    });
+  }, []);
+
+  const likeStory = useCallback(async () => {
+    if (!visibleStory?.id || !currentUser?.uid) return;
+    const likes = Array.isArray(visibleStory.likes) ? visibleStory.likes : [];
+    const liked = likes.includes(currentUser.uid);
+
+    setStories(items =>
+      items.map(item =>
+        item.id === visibleStory.id
+          ? {
+              ...item,
+              likes: liked
+                ? likes.filter(id => id !== currentUser.uid)
+                : [...likes, currentUser.uid],
+            }
+          : item
+      )
+    );
+
+    try {
+      await updateDoc(doc(db, 'global_stories', visibleStory.id), {
+        likes: liked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid),
+      });
+    } catch (error) {
+      Alert.alert('Story like failed', 'Please try again.');
+    }
+  }, [currentUser?.uid, visibleStory]);
+
+  const replyToStory = useCallback(async () => {
+    const text = clampText(storyReply, 500);
+    if (!text || !visibleStory?.id || !currentUser?.uid) return;
+
+    try {
+      await addDoc(
+        collection(db, 'global_stories', visibleStory.id, 'replies'),
+        {
+          userId: currentUser.uid,
+          userName: currentUser.displayName || 'User',
+          text,
+          createdAt: serverTimestamp(),
+        }
+      );
+      setStoryReply('');
+      fireHaptic('success');
+    } catch (error) {
+      Alert.alert('Reply failed', 'Please try again.');
+    }
+  }, [currentUser?.displayName, currentUser?.uid, storyReply, visibleStory?.id]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    setLoadError('');
+    setListenerKey(value => value + 1);
+    await wait(650);
+    setRefreshing(false);
+  }, []);
+
+  const openInfo = useCallback(type => {
+    const ownPosts = feedPosts.filter(item => item.userId === currentUser?.uid);
+    const ownStories = stories.filter(item => item.userId === currentUser?.uid);
+    if (type === 'archive') {
+      setInfoModal({
+        title: 'Your Archive',
+        body: `${ownPosts.length} published Moment${ownPosts.length === 1 ? '' : 's'}\\n${ownStories.length} active stor${ownStories.length === 1 ? 'y' : 'ies'}`,
+      });
+    } else {
+      const receivedLikes = ownPosts.reduce((sum, item) => sum + (item.likes?.length || 0), 0);
+      const receivedComments = ownPosts.reduce((sum, item) => sum + Number(item.commentsCount || 0), 0);
+      setInfoModal({
+        title: 'Your Activity',
+        body: `${receivedLikes} likes received\\n${receivedComments} comments received\\n${ownPosts.length} Moments published`,
+      });
+    }
+  }, [currentUser?.uid, feedPosts, stories]);
+
+  const renderEmpty = () => {
+    let title = 'Your space is quiet';
+    let body = 'Share something to start the conversation.';
+    let icon = 'sparkles-outline';
+
+    if (activeTab === 'Following') {
+      title = followingIds.length ? 'Nothing from your circle yet' : 'Follow people to fill this feed';
+      body = followingIds.length
+        ? 'New moments from people you follow will appear here.'
+        : 'Open a profile, follow a person, then come back here.';
+      icon = 'people-outline';
+    } else if (activeTab === 'Live') {
+      title = 'No live Moments';
+      body = 'Live moments will appear here when someone starts one.';
+      icon = 'radio-outline';
+    } else if (activeTab === 'Reels') {
+      title = 'No clips yet';
+      body = 'Short videos from Moments will show up here.';
+      icon = 'play-circle-outline';
+    }
+
+    if (searchText.trim()) {
+      title = 'No results found';
+      body = `Nothing matches “${searchText.trim()}”.`;
+      icon = 'search-outline';
+    }
+
+    return (
+      <View style={styles.emptyState}>
+        <View style={[styles.emptyIcon, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+          <Ionicons name={icon} size={34} color={theme.blue} />
+        </View>
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>{title}</Text>
+        <Text style={[styles.emptyBody, { color: theme.sub }]}>{body}</Text>
+        <TouchableOpacity
+          style={[styles.emptyCta, { backgroundColor: theme.blue }]}
+          onPress={() => openCreator(activeTab === 'Reels' ? 'Reel' : 'Post')}
+          accessibilityRole="button"
+          accessibilityLabel="Create a new Moment"
+        >
+          <Ionicons name="add" size={17} color="#fff" />
+          <Text style={styles.emptyCtaText}>{activeTab === 'Reels' ? 'Create a Reel' : 'Create a Moment'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderHeader = () => (
+    <>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <View style={styles.headerTitleBlock}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Moments</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.sub }]}>
+            Share • Explore • Connect
+          </Text>
+        </View>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => {
+              setSearchOpen(value => !value);
+              fireHaptic('selection');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Search moments"
+          >
+            <Ionicons name={searchOpen ? 'close' : 'search-outline'} size={24} color={theme.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => openInfo('archive')}
+            accessibilityRole="button"
+            accessibilityLabel="Open archive"
+          >
+            <Ionicons name="time-outline" size={25} color={theme.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => openInfo('activity')}
+            accessibilityRole="button"
+            accessibilityLabel="Open activity"
+          >
+            <Ionicons name="heart-outline" size={25} color={theme.text} />
           </TouchableOpacity>
         </View>
-      </Modal>
+      </View>
 
-      {/* ================= REAL PUBLISH CREATOR ================= */}
-      <Modal visible={showCreator} animationType="slide" transparent={false} onRequestClose={() => setShowCreator(false)}>
-        <SafeAreaView style={[styles.creatorContainer, { backgroundColor: '#0A0A0A' }]}>
-          
-          <View style={styles.creatorHeader}>
-            <TouchableOpacity onPress={() => { setShowCreator(false); setCreatorMedia(null); setCreatorText(''); }}><Ionicons name="close" size={32} color="#FFF" /></TouchableOpacity>
-            <TouchableOpacity style={styles.publishBtn} onPress={handlePublish}>
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Publish</Text>
-              <Ionicons name="send" size={16} color="#FFF" style={{ marginLeft: 5 }} />
+      {searchOpen ? (
+        <Animated.View style={[styles.searchWrap, { borderBottomColor: theme.border }]}>
+          <Ionicons name="search-outline" size={19} color={theme.sub} />
+          <TextInput
+            value={searchText}
+            onChangeText={setSearchText}
+            autoFocus
+            placeholder="Search people or moments"
+            placeholderTextColor={theme.sub}
+            style={[styles.searchInput, { color: theme.text }]}
+            returnKeyType="search"
+          />
+          {!!searchText && (
+            <TouchableOpacity
+              onPress={() => setSearchText('')}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons name="close-circle" size={19} color={theme.sub} />
             </TouchableOpacity>
-          </View>
+          )}
+        </Animated.View>
+      ) : null}
 
-          <View style={styles.creatorCanvas}>
-            {creatorMedia ? (creatorIsVideo ? <Video source={{ uri: creatorMedia }} style={{ width: '100%', height: '100%', borderRadius: 30 }} resizeMode="cover" useNativeControls isLooping /> : <Image source={{ uri: creatorMedia }} style={{ width: '100%', height: '100%', borderRadius: 30 }} />) : null}
-            
-            {(creatorMode === 'Text' || creatorText) && (
-              <TextInput 
-                style={[styles.creatorTextInput, creatorMedia ? styles.creatorTextOverlay : {}]} 
-                placeholder="Type your moment..." 
-                placeholderTextColor="rgba(255,255,255,0.5)" 
-                multiline 
-                autoFocus={creatorMode === 'Text'}
-                value={creatorText} 
-                onChangeText={setCreatorText} 
+      <View style={styles.storiesSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.storiesContent}
+        >
+          {freshStories.map((story, index) => (
+            <StoryBubble
+              key={story.id}
+              story={story}
+              isOwn={index === 0}
+              theme={theme}
+              onPress={() => openStory(index)}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={[styles.tabShell, { backgroundColor: isDark ? 'rgba(6, 23, 37, 0.86)' : theme.surface, borderColor: theme.border }]}>
+        <View style={styles.tabRow}>
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.tabIndicator,
+              {
+                backgroundColor: theme.blue,
+                transform: [{
+                  translateX: tabIndicator.interpolate({
+                    inputRange: [0, 1, 2, 3],
+                    outputRange: [0, SCREEN_WIDTH * 0.225, SCREEN_WIDTH * 0.45, SCREEN_WIDTH * 0.675],
+                  }),
+                }],
+              },
+            ]}
+          />
+          {tabs.map(tab => {
+            const active = tab === activeTab;
+            const icon =
+              tab === 'For You' ? 'sparkles-outline' :
+              tab === 'Following' ? 'people-outline' :
+              tab === 'Live' ? 'radio-outline' :
+              'play-circle-outline';
+
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={styles.tabButton}
+                onPress={() => {
+                  setActiveTab(tab);
+                  fireHaptic('selection');
+                }}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={tab}
+              >
+                <Ionicons name={icon} size={18} color={active ? theme.blue : theme.sub} />
+                <Text style={[styles.tabLabel, { color: active ? theme.text : theme.sub }]}>
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </>
+  );
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <GlassScene showBubbles>
+        <FlatList
+          data={filteredPosts}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <FeedCard
+              item={item}
+              currentUser={currentUser}
+              theme={theme}
+              isDark={isDark}
+              onLike={likePost}
+              onComment={openComments}
+              onShare={sharePost}
+              onSave={toggleSave}
+              onDelete={postOptions}
+              onOpenMedia={setMediaTarget}
+            />
+          )}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={!loading ? renderEmpty : null}
+          contentContainerStyle={[
+            styles.listContent,
+            filteredPosts.length === 0 && styles.listEmptyContainer,
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={theme.blue}
+              colors={[theme.blue]}
+              progressBackgroundColor={theme.surface}
+            />
+          }
+        />
+
+        {loading && feedPosts.length === 0 ? (
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <View style={[styles.loadingCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <ActivityIndicator size="small" color={theme.blue} />
+              <Text style={[styles.loadingText, { color: theme.sub }]}>Loading Moments…</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {!!loadError ? (
+          <TouchableOpacity
+            style={[styles.errorBanner, { backgroundColor: theme.surfaceStrong, borderColor: theme.border }]}
+            onPress={refresh}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading Moments"
+          >
+            <Ionicons name="cloud-offline-outline" size={20} color="#FFB020" />
+            <Text style={[styles.errorText, { color: theme.text }]}>{loadError}</Text>
+            <Ionicons name="refresh" size={18} color={theme.blue} />
+          </TouchableOpacity>
+        ) : null}
+
+        <Animated.View style={[styles.fabWrap, { transform: [{ scale: fabScale }] }]}>
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => openCreator('Post')}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel="Create a new Moment"
+          >
+            <Ionicons name="add" size={31} color="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Modal visible={creatorOpen} animationType="none" transparent onRequestClose={closeCreator}>
+          <Animated.View
+            style={[
+              styles.creatorOverlay,
+              {
+                backgroundColor: isDark ? '#07131E' : theme.bg,
+                transform: [{ translateX: creatorTranslate }],
+              },
+            ]}
+          >
+            <SafeAreaView style={styles.creatorSafe}>
+              <View style={styles.creatorHeader}>
+                <TouchableOpacity
+                  onPress={closeCreator}
+                  style={styles.creatorClose}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close creator"
+                >
+                  <Ionicons name="close" size={26} color="#fff" />
+                </TouchableOpacity>
+
+                <View style={styles.creatorTitleWrap}>
+                  <Text style={styles.creatorTitle}>Create</Text>
+                  <Text style={styles.creatorModeText}>{publishType}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.publishButton, uploading && { opacity: 0.5 }]}
+                  onPress={publish}
+                  disabled={uploading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Publish Moment"
+                >
+                  {uploading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Text style={styles.publishButtonText}>Publish</Text>
+                      <Ionicons name="arrow-up" size={16} color="#fff" />
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.typeSelector}>
+                {['Post', 'Story', 'Reel'].map(type => {
+                  const active = publishType === type;
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => {
+                        setPublishType(type);
+                        if (type !== 'Reel' && creatorIsVideo) {
+                          setCreatorIsVideo(false);
+                        }
+                        fireHaptic('selection');
+                      }}
+                      style={[styles.typeChip, active && styles.typeChipActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                    >
+                      <Ionicons
+                        name={
+                          type === 'Post' ? 'document-text-outline' :
+                          type === 'Story' ? 'play-circle-outline' :
+                          'videocam-outline'
+                        }
+                        size={17}
+                        color={active ? '#fff' : '#AFC4D8'}
+                      />
+                      <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <KeyboardAvoidingView
+                style={styles.creatorBody}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              >
+                <View style={styles.creatorCanvas}>
+                  {creatorMedia ? (
+                    creatorIsVideo ? (
+                      <Video
+                        source={{ uri: creatorMedia }}
+                        style={styles.creatorMedia}
+                        resizeMode={ResizeMode.CONTAIN}
+                        useNativeControls
+                      />
+                    ) : (
+                      <Image source={{ uri: creatorMedia }} style={styles.creatorMedia} resizeMode="contain" />
+                    )
+                  ) : (
+                    <View style={styles.creatorPlaceholder}>
+                      <View style={styles.creatorPlaceholderIcon}>
+                        <Ionicons name="sparkles-outline" size={34} color="#65B2FF" />
+                      </View>
+                      <Text style={styles.creatorPlaceholderTitle}>Make it yours</Text>
+                      <Text style={styles.creatorPlaceholderBody}>
+                        Write a thought, add a photo, or record something.
+                      </Text>
+                    </View>
+                  )}
+
+                  <TextInput
+                    value={creatorText}
+                    onChangeText={setCreatorText}
+                    placeholder={
+                      publishType === 'Story'
+                        ? 'Add a story caption…'
+                        : publishType === 'Reel'
+                          ? 'Tell people what this clip is about…'
+                          : 'What’s happening?'
+                    }
+                    placeholderTextColor="rgba(255,255,255,0.52)"
+                    multiline
+                    maxLength={320}
+                    style={styles.creatorTextInput}
+                    textAlignVertical="top"
+                  />
+
+                  {uploading && uploadProgress > 0 ? (
+                    <View style={styles.uploadProgressWrap}>
+                      <View style={styles.uploadProgressTrack}>
+                        <View style={[styles.uploadProgressFill, { width: `${uploadProgress}%` }]} />
+                      </View>
+                      <Text style={styles.uploadProgressText}>{uploadProgress}% uploading</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <View style={styles.creatorTools}>
+                  <TouchableOpacity onPress={pickGallery} style={styles.creatorTool}>
+                    <Ionicons name="images-outline" size={23} color="#fff" />
+                    <Text style={styles.creatorToolText}>Gallery</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={captureCamera} style={styles.captureButton}>
+                    <View style={styles.captureInner} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setCameraFacing(value => (value === 'back' ? 'front' : 'back'))}
+                    style={styles.creatorTool}
+                    accessibilityRole="button"
+                    accessibilityLabel="Switch camera"
+                  >
+                    <Ionicons name="camera-reverse-outline" size={24} color="#fff" />
+                    <Text style={styles.creatorToolText}>Flip</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.creatorHint}>
+                  {publishType === 'Reel'
+                    ? 'Reels support video up to 60 seconds.'
+                    : 'Your Moment will appear instantly in the live feed.'}
+                </Text>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
+          </Animated.View>
+        </Modal>
+
+        <Modal
+          visible={!!commentTarget}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setCommentTarget(null)}
+        >
+          <View style={styles.sheetBackdrop}>
+            <View style={[styles.commentSheet, { backgroundColor: theme.surfaceStrong, borderColor: theme.border }]}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.sheetHeader}>
+                <View>
+                  <Text style={[styles.sheetTitle, { color: theme.text }]}>Comments</Text>
+                  <Text style={[styles.sheetSubtitle, { color: theme.sub }]}>
+                    {commentTarget?.commentsCount || 0} conversations
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setCommentTarget(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close comments"
+                >
+                  <Ionicons name="close-circle" size={27} color={theme.sub} />
+                </TouchableOpacity>
+              </View>
+
+              {commentLoading ? (
+                <View style={styles.centerLoader}>
+                  <ActivityIndicator color={theme.blue} />
+                </View>
+              ) : (
+                <ScrollView
+                  style={{ maxHeight: 360 }}
+                  contentContainerStyle={comments.length ? { paddingBottom: 14 } : styles.commentEmptyWrap}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {comments.length ? (
+                    comments.map(comment => (
+                      <View key={comment.id} style={styles.commentRow}>
+                        <View style={[styles.commentAvatar, { backgroundColor: theme.blue }]}>
+                          <Text style={styles.commentAvatarText}>{initials(comment.userName)}</Text>
+                        </View>
+                        <View style={styles.commentBubble}>
+                          <Text style={[styles.commentUser, { color: theme.text }]}>{comment.userName}</Text>
+                          <Text style={[styles.commentBody, { color: theme.sub }]}>{comment.text}</Text>
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    <View style={styles.commentEmpty}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={30} color={theme.sub} />
+                      <Text style={[styles.commentEmptyTitle, { color: theme.text }]}>Be the first to reply</Text>
+                      <Text style={[styles.commentEmptyText, { color: theme.sub }]}>Start a conversation.</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+
+              <View style={[styles.commentComposer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+                <TextInput
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  placeholder="Write a comment…"
+                  placeholderTextColor={theme.sub}
+                  style={[styles.commentInput, { color: theme.text }]}
+                  maxLength={500}
+                  multiline
+                />
+                <TouchableOpacity
+                  onPress={sendComment}
+                  style={[styles.commentSend, { backgroundColor: theme.blue }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send comment"
+                >
+                  <Ionicons name="arrow-up" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={!!viewingStoryIndex}={false} />
+        <Modal
+          visible={viewingStoryIndex !== null}
+          animationType="fade"
+          onRequestClose={closeStory}
+          statusBarTranslucent
+        >
+          <View style={styles.storyViewer}>
+            {visibleStory?.media ? (
+              visibleStory.isVideo ? (
+                <Video
+                  source={{ uri: visibleStory.media }}
+                  style={styles.storyMedia}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay
+                  isLooping={false}
+                />
+              ) : (
+                <Image source={{ uri: visibleStory.media }} style={styles.storyMedia} />
+              )
+            ) : (
+              <View style={styles.storyTextOnly}>
+                <Ionicons name="sparkles" size={36} color="#65B2FF" />
+                <Text style={styles.storyTextOnlyBody}>{visibleStory?.text || 'A moment worth sharing.'}</Text>
+              </View>
+            )}
+
+            <View style={styles.storyShade} />
+
+            <SafeAreaView style={styles.storyChrome}>
+              <View style={styles.storyProgressTrack}>
+                <Animated.View
+                  style={[
+                    styles.storyProgressFill,
+                    {
+                      width: storyProgressAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                      }),
+                    },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.storyTopRow}>
+                <View style={styles.storyUserWrap}>
+                  <Image source={{ uri: safeAvatar(visibleStory?.userName, visibleStory?.userImg) }} style={styles.storyViewerAvatar} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.storyViewerName}>{visibleStory?.userName || 'User'}</Text>
+                    <Text style={styles.storyViewerTime}>{formatTime(visibleStory?.createdAt)}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={closeStory}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close story"
+                >
+                  <Ionicons name="close" size={29} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </SafeAreaView>
+
+            <View style={styles.storyTapLayer} pointerEvents="box-none">
+              <Pressable style={styles.storyTapSide} onPress={previousStory} />
+              <Pressable style={[styles.storyTapSide, { right: 0, left: undefined }]} onPress={nextStory} />
+              <Pressable style={StyleSheet.absoluteFill} onLongPress={() => storyProgressAnim.stopAnimation()} delayLongPress={180}>
+                {!!visibleStory?.text && visibleStory.media ? (
+                  <View style={styles.storyCaption}>
+                    <Text style={styles.storyCaptionText}>{visibleStory.text}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            </View>
+
+            <SafeAreaView style={styles.storyBottom}>
+              <View style={styles.storyReplyBox}>
+                <TextInput
+                  value={storyReply}
+                  onChangeText={setStoryReply}
+                  placeholder="Reply to story…"
+                  placeholderTextColor="rgba(255,255,255,0.68)"
+                  style={styles.storyReplyInput}
+                  onFocus={() => storyProgressAnim.stopAnimation()}
+                  onBlur={() => {
+                    if (viewingStoryIndex !== null) {
+                      storyProgressAnim.setValue(0);
+                      Animated.timing(storyProgressAnim, {
+                        toValue: 1,
+                        duration: 5500,
+                        useNativeDriver: false,
+                      }).start();
+                    }
+                  }}
+                />
+                <TouchableOpacity
+                  onPress={replyToStory}
+                  accessibilityRole="button"
+                  accessibilityLabel="Reply to story"
+                >
+                  <Ionicons name="send" size={21} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                onPress={likeStory}
+                style={styles.storyRoundButton}
+                accessibilityRole="button"
+                accessibilityLabel="Like story"
+              >
+                <Ionicons
+                  name={visibleStory?.likes?.includes(currentUser?.uid) ? 'heart' : 'heart-outline'}
+                  size={26}
+                  color={visibleStory?.likes?.includes(currentUser?.uid) ? '#FF4F78' : '#fff'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => sharePost(visibleStory || {})}
+                style={styles.storyRoundButton}
+                accessibilityRole="button"
+                accessibilityLabel="Share story"
+              >
+                <Ionicons name="arrow-redo-outline" size={25} color="#fff" />
+              </TouchableOpacity>
+            </SafeAreaView>
+          </View>
+        </Modal>
+
+        <Modal visible={!!mediaTarget} transparent animationType="fade" onRequestClose={() => setMediaTarget(null)}>
+          <View style={styles.mediaViewerBackdrop}>
+            <TouchableOpacity style={styles.mediaViewerClose} onPress={() => setMediaTarget(null)}>
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+            {mediaTarget?.isVideo ? (
+              <Video
+                source={{ uri: mediaTarget?.media }}
+                style={styles.fullMedia}
+                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls
+                shouldPlay
               />
+            ) : (
+              <Image source={{ uri: mediaTarget?.media }} style={styles.fullMedia} resizeMode="contain" />
             )}
           </View>
+        </Modal>
 
-          <View style={styles.creatorFooter}>
-            <View style={styles.modeSelector}>
-              {['Post', 'Story', 'Reel'].map((mode) => (
-                <TouchableOpacity key={mode} onPress={() => setPublishType(mode)} style={{ paddingHorizontal: 15 }}>
-                  <Text style={{ color: publishType === mode ? '#FFF' : '#666', fontWeight: publishType === mode ? 'bold' : 'normal', fontSize: 16 }}>{mode}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.bottomActions}>
-              <TouchableOpacity style={styles.galleryBtn} onPress={pickGallery}><Ionicons name="images-outline" size={24} color="#FFF" /></TouchableOpacity>
-              <TouchableOpacity style={styles.captureBtn} onPress={launchCamera}><View style={styles.captureInner} /></TouchableOpacity>
-              <TouchableOpacity style={styles.flipBtn} onPress={() => setCameraFacing(value => value === 'back' ? 'front' : 'back')}><Ionicons name="camera-reverse-outline" size={28} color="#FFF" /></TouchableOpacity>
-            </View>
-          </View>
-
-        </SafeAreaView>
-      </Modal>
-
-      <Modal visible={!!commentTarget} transparent animationType="slide" onRequestClose={() => setCommentTarget(null)}>
-        <View style={styles.commentBackdrop}>
-          <View style={[styles.commentSheet, { backgroundColor: cardBg, borderColor: glassBorder }]}>
-            <View style={styles.commentHeader}>
-              <Text style={[styles.commentTitle, { color: textMain }]}>Comments</Text>
-              <TouchableOpacity onPress={() => setCommentTarget(null)}><Ionicons name="close" size={24} color={textMain} /></TouchableOpacity>
-            </View>
-            <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ paddingBottom: 10 }}>
-              {comments.length === 0 ? <Text style={{ color: textSub, textAlign: 'center', padding: 24 }}>No comments yet.</Text> : comments.map(item => <View key={item.id} style={styles.commentRow}><Text style={[styles.commentUser, { color: textMain }]}>{item.userName}</Text><Text style={{ color: textSub, flex: 1 }}>{item.text}</Text></View>)}
-            </ScrollView>
-            <View style={styles.commentComposer}>
-              <TextInput value={commentText} onChangeText={setCommentText} placeholder="Write a comment..." placeholderTextColor={textSub} style={[styles.commentInput, { color: textMain, borderColor: glassBorder }]} multiline />
-              <TouchableOpacity onPress={handleCommentSend} style={styles.commentSend}><Feather name="send" size={18} color="#FFF" /></TouchableOpacity>
+        <Modal visible={!!infoModal} transparent animationType="fade" onRequestClose={() => setInfoModal(null)}>
+          <View style={styles.infoBackdrop}>
+            <View style={[styles.infoCard, { backgroundColor: theme.surfaceStrong, borderColor: theme.border }]}>
+              <View style={styles.infoIcon}>
+                <Ionicons name={infoModal?.title === 'Your Archive' ? 'time-outline' : 'heart-outline'} size={26} color={theme.blue} />
+              </View>
+              <Text style={[styles.infoTitle, { color: theme.text }]}>{infoModal?.title}</Text>
+              <Text style={[styles.infoBody, { color: theme.sub }]}>{infoModal?.body}</Text>
+              <TouchableOpacity
+                style={[styles.infoButton, { backgroundColor: theme.blue }]}
+                onPress={() => setInfoModal(null)}
+              >
+                <Text style={styles.infoButtonText}>Done</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-    </GlassScene></SafeAreaView>
+      </GlassScene>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }, 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 10 : 45, paddingBottom: 15, borderBottomWidth: 1 }, 
-  headerTitle: { fontSize: 26, fontWeight: '800', letterSpacing: 0.5 }, 
-  headerIcons: { flexDirection: 'row', alignItems: 'center' }, 
-  iconBtn: { marginLeft: 20 },
+  container: { flex: 1 },
+  listContent: { paddingBottom: 120 },
+  listEmptyContainer: { flexGrow: 1 },
 
-  storySection: { paddingVertical: 18, borderBottomWidth: 1 }, 
-  storyItem: { alignItems: 'center', marginRight: 18 }, 
-  storyRing: { width: 76, height: 76, borderRadius: 38, borderWidth: 2.5, justifyContent: 'center', alignItems: 'center', padding: 3 }, 
-  storyImg: { width: 64, height: 64, borderRadius: 32 }, 
-  addStoryBtn: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#007AFF', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' }, 
-  storyName: { fontSize: 12, marginTop: 8, fontWeight: '600' },
+  header: {
+    minHeight: 86,
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'ios' ? 8 : 18,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitleBlock: { flex: 1 },
+  headerTitle: { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 13, fontWeight: '600', marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  headerIconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
 
-  tabsContainer: { flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1 }, 
-  tabBtn: { paddingVertical: 14, paddingHorizontal: 15 }, 
-  tabText: { fontSize: 15 },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 13,
+    borderBottomWidth: 1,
+  },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 15, paddingVertical: 2 },
 
-  feedCard: { marginHorizontal: 12, marginTop: 15, paddingVertical: 15, borderRadius: 24, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 }, 
-  feedHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, marginBottom: 12 }, 
-  feedAvatar: { width: 42, height: 42, borderRadius: 21 }, 
-  feedUser: { fontSize: 16, fontWeight: '700' }, 
-  feedText: { fontSize: 15, paddingHorizontal: 15, marginBottom: 12, lineHeight: 22, fontWeight: '400' }, 
-  feedMediaPlaceholder: { width: '100%', height: 380, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderLeftWidth: 0, borderRightWidth: 0 }, 
-  feedActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingTop: 15 }, 
-  feedActionBtn: { flexDirection: 'row', alignItems: 'center', marginRight: 22 },
-  actionNum: { marginLeft: 6, fontSize: 14, fontWeight: '500' },
+  storiesSection: { paddingVertical: 15, borderBottomWidth: 0 },
+  storiesContent: { paddingHorizontal: 16 },
+  storyItem: { width: 86, alignItems: 'center', marginRight: 4 },
+  storyRingOuter: {
+    width: STORY_SIZE,
+    height: STORY_SIZE,
+    borderRadius: STORY_SIZE / 2,
+    borderWidth: 2.5,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyImage: { width: 61, height: 61, borderRadius: 31 },
+  storyAdd: {
+    position: 'absolute',
+    right: -1,
+    bottom: -1,
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    backgroundColor: '#087EFF',
+    borderWidth: 2,
+    borderColor: '#07131E',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyLabel: { fontSize: 12, fontWeight: '700', marginTop: 7, maxWidth: 76 },
 
-  fabContainer: { position: 'absolute', bottom: 90, right: 20, alignItems: 'center' }, 
-  fabMini: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 12, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5 }, 
-  fabMain: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 8 },
+  tabShell: {
+    marginHorizontal: 12,
+    marginBottom: 2,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  tabRow: { height: 54, flexDirection: 'row', position: 'relative' },
+  tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  tabLabel: { fontSize: 11, fontWeight: '800' },
+  tabIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 2,
+    width: SCREEN_WIDTH * 0.225 - 4,
+    height: 3,
+    borderRadius: 2,
+  },
 
-  // Viewer Styles
-  viewerContainer: { flex: 1, backgroundColor: '#000' }, 
-  viewerTapArea: { flex: 1 }, 
-  viewerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }, 
-  viewerHeader: { position: 'absolute', top: Platform.OS === 'ios' ? 50 : 20, left: 0, right: 0, zIndex: 10 }, 
-  progressBarBg: { height: 2.5, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 10, borderRadius: 2, overflow: 'hidden' }, 
-  progressBarFill: { height: '100%', backgroundColor: '#FFF' }, 
-  viewerUserInfo: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingTop: 15 }, 
-  viewerAvatar: { width: 36, height: 36, borderRadius: 18, marginRight: 10 }, 
-  viewerName: { color: '#FFF', fontSize: 15, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }, 
-  viewerTime: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginLeft: 10 }, 
-  viewerFooter: { position: 'absolute', bottom: Platform.OS === 'ios' ? 40 : 20, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, zIndex: 10 }, 
-  viewerReplyBox: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', paddingHorizontal: 20, backgroundColor: 'rgba(0,0,0,0.2)' },
-  viewerReplyInput: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 18, color: '#FFF', backgroundColor: 'rgba(0,0,0,0.2)' },
-  storyReplySend: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(8,126,255,0.9)', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  feedCard: {
+    marginHorizontal: 12,
+    marginTop: 14,
+    borderRadius: 24,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  feedHeader: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  feedAvatar: { width: 44, height: 44, borderRadius: 22 },
+  feedIdentity: { flex: 1, marginLeft: 11 },
+  nameRow: { flexDirection: 'row', alignItems: 'center' },
+  feedUser: { fontSize: 16, fontWeight: '800', maxWidth: '80%' },
+  youBadge: {
+    backgroundColor: 'rgba(8,126,255,0.18)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 6,
+  },
+  youBadgeText: { color: '#66B2FF', fontSize: 9, fontWeight: '900' },
+  feedMeta: { fontSize: 12, marginTop: 2, fontWeight: '600' },
+  moreButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  feedText: { paddingHorizontal: 15, paddingBottom: 13, fontSize: 15, lineHeight: 23, fontWeight: '500' },
 
-  // Creator Styles
-  creatorContainer: { flex: 1 }, 
-  creatorHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 50 : 20, zIndex: 10 }, 
-  publishBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
-  creatorCanvas: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#151515', marginVertical: 10, borderRadius: 30, marginHorizontal: 10, overflow: 'hidden', position: 'relative' }, 
-  creatorTextInput: { color: '#FFF', fontSize: 26, fontWeight: 'bold', textAlign: 'center', width: '90%' },
-  creatorTextOverlay: { position: 'absolute', zIndex: 20, backgroundColor: 'rgba(0,0,0,0.4)', padding: 10, borderRadius: 10 },
-  creatorFooter: { paddingBottom: Platform.OS === 'ios' ? 40 : 20, paddingTop: 10 }, 
-  modeSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 25 }, 
-  bottomActions: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: 30 }, 
-  galleryBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center' }, 
-  captureBtn: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center' }, 
-  captureInner: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#FFF' }, 
-  flipBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  commentBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  commentSheet: { maxHeight: '70%', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, padding: 18 },
-  commentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  commentTitle: { fontSize: 20, fontWeight: '800' },
-  commentRow: { paddingVertical: 10, gap: 3 },
-  commentUser: { fontWeight: '700' },
-  commentComposer: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 8 },
-  commentInput: { flex: 1, minHeight: 44, maxHeight: 100, borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-  commentSend: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#087EFF', justifyContent: 'center', alignItems: 'center' }
+  mediaWrap: {
+    height: 370,
+    backgroundColor: '#07131E',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  feedMedia: { width: '100%', height: '100%' },
+  doubleHeart: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    marginLeft: -41,
+    marginTop: -41,
+  },
+  mediaTypePill: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  mediaTypeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+
+  engagementSummary: {
+    paddingHorizontal: 15,
+    paddingTop: 11,
+    paddingBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  engagementLeft: { flexDirection: 'row', alignItems: 'center' },
+  miniHeart: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FF4F78',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  engagementText: { fontSize: 12, fontWeight: '600', marginLeft: 6 },
+  engagementDot: { marginLeft: 8, marginRight: 3 },
+  savedHint: { fontSize: 11, fontWeight: '800' },
+
+  actionBar: {
+    paddingHorizontal: 13,
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    minWidth: 50,
+    height: 44,
+  },
+  actionLabel: { color: '#AFC4D8', fontSize: 11, fontWeight: '800', marginLeft: 4 },
+
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    paddingTop: 60,
+    paddingBottom: 180,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: { fontSize: 19, fontWeight: '900', marginTop: 16 },
+  emptyBody: { textAlign: 'center', fontSize: 13, lineHeight: 20, marginTop: 7, maxWidth: 310 },
+  emptyCta: {
+    marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 15,
+  },
+  emptyCtaText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+
+  loadingOverlay: {
+    position: 'absolute',
+    top: 120,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  loadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 15,
+    borderWidth: 1,
+  },
+  loadingText: { fontSize: 12, fontWeight: '700' },
+
+  errorBanner: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 108,
+    borderRadius: 17,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  errorText: { flex: 1, fontSize: 12, fontWeight: '700' },
+
+  fabWrap: {
+    position: 'absolute',
+    right: 18,
+    bottom: 104,
+  },
+  fab: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: '#087EFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#087EFF',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+
+  creatorOverlay: { flex: 1 },
+  creatorSafe: { flex: 1 },
+  creatorHeader: {
+    height: 70,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  creatorClose: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  creatorTitleWrap: { flex: 1, alignItems: 'center' },
+  creatorTitle: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  creatorModeText: { color: '#77B9F8', fontSize: 11, fontWeight: '800', marginTop: 2 },
+  publishButton: {
+    height: 40,
+    minWidth: 88,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: '#087EFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
+  },
+  publishButtonText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+
+  typeSelector: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 10,
+  },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  typeChipActive: { backgroundColor: '#087EFF', borderColor: '#087EFF' },
+  typeChipText: { color: '#AFC4D8', fontSize: 12, fontWeight: '800' },
+  typeChipTextActive: { color: '#fff' },
+
+  creatorBody: { flex: 1, paddingHorizontal: 12 },
+  creatorCanvas: {
+    flex: 1,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: '#0B1C2B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.09)',
+    position: 'relative',
+  },
+  creatorMedia: { width: '100%', height: '100%' },
+  creatorPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
+  creatorPlaceholderIcon: {
+    width: 70,
+    height: 70,
+    borderRadius: 23,
+    backgroundColor: 'rgba(8,126,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 13,
+  },
+  creatorPlaceholderTitle: { color: '#fff', fontSize: 20, fontWeight: '900' },
+  creatorPlaceholderBody: { color: '#93AABD', fontSize: 13, textAlign: 'center', lineHeight: 20, marginTop: 6 },
+  creatorTextInput: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    top: 18,
+    bottom: 18,
+    color: '#fff',
+    fontSize: 23,
+    lineHeight: 31,
+    fontWeight: '800',
+    textAlignVertical: 'top',
+  },
+  uploadProgressWrap: {
+    position: 'absolute',
+    left: 15,
+    right: 15,
+    bottom: 15,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    borderRadius: 14,
+    padding: 10,
+  },
+  uploadProgressTrack: {
+    height: 5,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  uploadProgressFill: { height: '100%', backgroundColor: '#2D98FF', borderRadius: 3 },
+  uploadProgressText: { color: '#fff', fontSize: 10, fontWeight: '800', marginTop: 5 },
+
+  creatorTools: {
+    height: 86,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  creatorTool: { alignItems: 'center', gap: 4, minWidth: 64 },
+  creatorToolText: { color: '#B8CBDC', fontSize: 10, fontWeight: '800' },
+  captureButton: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 4,
+    borderColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureInner: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff' },
+  creatorHint: {
+    textAlign: 'center',
+    color: '#7E98AD',
+    fontSize: 10,
+    paddingBottom: 12,
+    fontWeight: '600',
+  },
+
+  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.58)', justifyContent: 'flex-end' },
+  commentSheet: {
+    minHeight: 320,
+    maxHeight: '72%',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 14,
+  },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', alignSelf: 'center', marginBottom: 12 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 9 },
+  sheetTitle: { fontSize: 20, fontWeight: '900' },
+  sheetSubtitle: { fontSize: 11, marginTop: 2, fontWeight: '700' },
+  centerLoader: { paddingVertical: 45, alignItems: 'center' },
+  commentEmptyWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
+  commentEmpty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 32 },
+  commentEmptyTitle: { marginTop: 8, fontSize: 15, fontWeight: '900' },
+  commentEmptyText: { fontSize: 12, marginTop: 4 },
+  commentRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 12 },
+  commentAvatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  commentAvatarText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  commentBubble: { flex: 1, marginLeft: 9 },
+  commentUser: { fontSize: 12, fontWeight: '900' },
+  commentBody: { marginTop: 3, fontSize: 13, lineHeight: 18 },
+  commentComposer: {
+    marginTop: 10,
+    minHeight: 50,
+    borderWidth: 1,
+    borderRadius: 17,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 12,
+    paddingRight: 5,
+  },
+  commentInput: { flex: 1, maxHeight: 90, fontSize: 13, paddingVertical: 9 },
+  commentSend: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+
+  storyViewer: { flex: 1, backgroundColor: '#000' },
+  storyMedia: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined },
+  storyTextOnly: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, backgroundColor: '#07131E' },
+  storyTextOnlyBody: { color: '#fff', fontSize: 28, fontWeight: '900', textAlign: 'center', marginTop: 18, lineHeight: 38 },
+  storyShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.16)' },
+  storyChrome: { position: 'absolute', top: 0, left: 0, right: 0 },
+  storyProgressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.28)', marginHorizontal: 10, marginTop: Platform.OS === 'ios' ? 10 : 18, borderRadius: 2, overflow: 'hidden' },
+  storyProgressFill: { height: '100%', backgroundColor: '#fff' },
+  storyTopRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingTop: 13 },
+  storyUserWrap: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  storyViewerAvatar: { width: 38, height: 38, borderRadius: 19, marginRight: 9 },
+  storyViewerName: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  storyViewerTime: { color: 'rgba(255,255,255,0.72)', fontSize: 11, marginTop: 1 },
+  storyTapLayer: { ...StyleSheet.absoluteFillObject },
+  storyTapSide: { position: 'absolute', top: 0, bottom: 0, left: 0, width: '32%' },
+  storyCaption: { position: 'absolute', left: 18, right: 18, bottom: 142, alignItems: 'center' },
+  storyCaptionText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowRadius: 6,
+  },
+  storyBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: Platform.OS === 'ios' ? 18 : 13,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  storyReplyBox: {
+    flex: 1,
+    height: 47,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.38)',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  storyReplyInput: { flex: 1, color: '#fff', fontSize: 13 },
+  storyRoundButton: {
+    width: 43,
+    height: 43,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  mediaViewerBackdrop: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  fullMedia: { width: '100%', height: '82%' },
+  mediaViewerClose: {
+    position: 'absolute',
+    right: 18,
+    top: Platform.OS === 'ios' ? 54 : 30,
+    zIndex: 2,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  infoBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.58)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  infoCard: { width: '100%', maxWidth: 360, borderRadius: 26, borderWidth: 1, padding: 24, alignItems: 'center' },
+  infoIcon: { width: 52, height: 52, borderRadius: 17, backgroundColor: 'rgba(8,126,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  infoTitle: { fontSize: 20, fontWeight: '900', marginTop: 13 },
+  infoBody: { textAlign: 'center', fontSize: 13, lineHeight: 21, marginTop: 8, whiteSpace: 'pre-line' },
+  infoButton: { width: '100%', height: 46, borderRadius: 15, marginTop: 18, alignItems: 'center', justifyContent: 'center' },
+  infoButtonText: { color: '#fff', fontSize: 13, fontWeight: '900' },
 });
