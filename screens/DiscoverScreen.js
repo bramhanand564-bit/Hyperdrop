@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Alert, Image 
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Alert, Linking 
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location'; // 📍 Expo Location API
@@ -8,9 +8,8 @@ import { useTheme } from '../context/ThemeContext';
 import GlassScene from '../components/ui/GlassScene';
 
 // 🔥 REAL FIREBASE IMPORTS
-import { db, auth } from '../firebaseConfig';
+import { auth } from '../firebaseConfig';
 import { DiscoverService } from '../discover/DiscoverService';
-import * as Linking from 'expo-linking';
 
 export default function DiscoverScreen({ navigation }) {
   const { isDark, theme } = useTheme();
@@ -55,10 +54,9 @@ export default function DiscoverScreen({ navigation }) {
         }
         
         setLocationStatus('granted');
-        setCoords({ lat: location.coords.latitude, lng: location.coords.longitude });
         
         // Step 2: Get Real Device Coordinates
-        let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         
         // Step 3: Reverse Geocoding (Lat/Lng to City Name)
         let geocode = await Location.reverseGeocodeAsync({
