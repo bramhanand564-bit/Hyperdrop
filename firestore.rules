@@ -1,0 +1,92 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsExisting() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function ownsIncoming() {
+      return signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    function validMomentUpdate() {
+      return signedIn() && (
+        ownsExisting()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'likes',
+          'savedBy'
+        ])
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'commentsCount'
+          ])
+          && request.resource.data.commentsCount == resource.data.commentsCount + 1
+        )
+      );
+    }
+
+    function validStoryUpdate() {
+      return signedIn() && (
+        ownsExisting()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'likes'
+        ])
+      );
+    }
+
+    match /global_moments/{momentId} {
+      allow read: if signedIn();
+      allow create: if ownsIncoming()
+        && request.resource.data.userId is string
+        && request.resource.data.createdAt != null;
+      allow update: if validMomentUpdate();
+      allow delete: if ownsExisting();
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
+        allow update: if signedIn()
+          && resource.data.userId == request.auth.uid;
+        allow delete: if signedIn()
+          && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    match /global_stories/{storyId} {
+      allow read: if signedIn();
+      allow create: if ownsIncoming()
+        && request.resource.data.userId is string
+        && request.resource.data.createdAt != null;
+      allow update: if validStoryUpdate();
+      allow delete: if ownsExisting();
+
+      match /replies/{replyId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
+        allow update: if signedIn()
+          && resource.data.userId == request.auth.uid;
+        allow delete: if signedIn()
+          && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == userId;
+    }
+  }
+}
