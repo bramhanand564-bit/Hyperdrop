@@ -70,8 +70,8 @@ export default function ChatRoomScreen({route,navigation}){
      if(activeFilter==='media_only') return ['image','video'].includes(m.type);
      if(activeFilter==='long') return String(m.text||'').length>120;
      if(activeFilter==='short') return String(m.text||'').length<40;
-     if(activeFilter==='emoji') return /[\\u{1F300}-\\u{1FAFF}]/u.test(String(m.text||''));
-     if(activeFilter==='digits') return /\\d/.test(String(m.text||''));
+     if(activeFilter==='emoji') return /[\u{1F300}-\u{1FAFF}]/u.test(String(m.text||''));
+     if(activeFilter==='digits') return /\d/.test(String(m.text||''));
      if(activeFilter==='today') { const d=m.createdAt?.toDate?m.createdAt.toDate():new Date(m.createdAt||0); const n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
      if(activeFilter==='week') return Date.now()-(m.createdAt?.toDate?m.createdAt.toDate():new Date(m.createdAt||0)).getTime()<=604800000;
      if(activeFilter==='older') return Date.now()-(m.createdAt?.toDate?m.createdAt.toDate():new Date(m.createdAt||0)).getTime()>604800000;
@@ -103,16 +103,16 @@ export default function ChatRoomScreen({route,navigation}){
    const jump=index=>{try{listRef.current?.scrollToIndex?.({index:Math.max(0,index),animated:true})}catch(e){listRef.current?.scrollToOffset?.({offset:Math.max(0,index*72),animated:true})}};
    const lastOf=type=>{const i=messages.findIndex(m=>m.type===type);if(i>=0)jump(i);else Alert.alert('Chat','No matching message found in the loaded chat.')};
    switch(a){
-    case'normalize':transform(draft.replace(/\\s+/g,' ').trim());break;
+    case'normalize':transform(draft.replace(/\s+/g,' ').trim());break;
     case'capitalize':transform(draft.replace(/^\\s*(.)/,(_,x)=>x.toUpperCase()));break;
     case'upper':transform(draft.toUpperCase());break;
     case'lower':transform(draft.toLowerCase());break;
     case'reverse':transform(draft.split('').reverse().join(''));break;
-    case'bullets':transform(draft.split(/\\n/).filter(Boolean).map(x=>'• '+x.replace(/^[-•]\\s*/,'' )).join('\\n')||'• ');break;
-    case'numbers':transform(draft.split(/\\n/).filter(Boolean).map((x,i)=>(i+1)+'. '+x.replace(/^\\d+\\.\\s*/,'' )).join('\\n')||'1. ');break;
-    case'checklist':transform(draft.split(/\\n/).filter(Boolean).map(x=>'☐ '+x).join('\\n')||'☐ ');break;
-    case'code':transform('```\\n'+draft+'\\n```');break;
-    case'quote':transform(draft.split(/\\n/).map(x=>'> '+x).join('\\n'));break;
+    case'bullets':transform(draft.split(/\n/).filter(Boolean).map(x=>'• '+x.replace(/^[-•]\\s*/,'' )).join('\n')||'• ');break;
+    case'numbers':transform(draft.split(/\n/).filter(Boolean).map((x,i)=>(i+1)+'. '+x.replace(/^\d+\\.\\s*/,'' )).join('\n')||'1. ');break;
+    case'checklist':transform(draft.split(/\n/).filter(Boolean).map(x=>'☐ '+x).join('\n')||'☐ ');break;
+    case'code':transform('```\n'+draft+'\n```');break;
+    case'quote':transform(draft.split(/\n/).map(x=>'> '+x).join('\n'));break;
     case'timestamp':append(new Date().toLocaleTimeString());break;
     case'date':append(new Date().toLocaleDateString());break;
     case'meeting':transform('Meeting: Topic — Time — Place/Link');break;
@@ -168,11 +168,11 @@ export default function ChatRoomScreen({route,navigation}){
     case'send_voice':handleVoiceRecord();break;
     case'send_location':handleLocationPick();break;
     case'send_contact':handleContactPick();break;
-    case'word_count':Alert.alert('Word count',String(draft.trim()?draft.trim().split(/\\s+/).length:0)+' words');break;
+    case'word_count':Alert.alert('Word count',String(draft.trim()?draft.trim().split(/\s+/).length:0)+' words');break;
     case'char_count':Alert.alert('Character count',String(draft.length)+' characters');break;
-    case'reading_time':{const words=draft.trim()?draft.trim().split(/\\s+/).length:0;Alert.alert('Reading time',words?'About '+Math.max(1,Math.ceil(words/200))+' minute(s)':'0 minutes')}break;
+    case'reading_time':{const words=draft.trim()?draft.trim().split(/\s+/).length:0;Alert.alert('Reading time',words?'About '+Math.max(1,Math.ceil(words/200))+' minute(s)':'0 minutes')}break;
     case'divider':append('────────────');break;
-    case'emoji_bullets':transform(draft.split(/\\n/).filter(Boolean).map(x=>'🔹 '+x).join('\\n')||'🔹 ');break;
+    case'emoji_bullets':transform(draft.split(/\n/).filter(Boolean).map(x=>'🔹 '+x).join('\n')||'🔹 ');break;
     case'status_line':transform('Status: ');break;
     case'question':transform((draft.replace(/[.!?]+$/,'')||'Your question')+'?');break;
     case'cta':transform((draft||'Let me know what you think')+' — reply now.');break;
@@ -191,14 +191,15 @@ export default function ChatRoomScreen({route,navigation}){
    <ChatHeader chatName={chatName}friendAvatar={friendAvatar}isGlobal={isGlobal}onBack={()=>navigation.goBack()}onInfoPress={()=>navigation.navigate('ChatSettings',{chatId,friendId,chatName,messageTTL})}onCall={()=>initiateCall('voice')}onVideoCall={()=>initiateCall('video')}onFeatures={()=>setFeaturesOpen(true)}typing={typingUsers.length>0}isOnline={friendOnline}statusText={friendOnline?'online':friendLastSeen?'last seen recently':'offline'}/>
    {activeFilter!=='all'?<View style={[s.filterBar,{backgroundColor:isDark?'rgba(8,126,255,.12)':'rgba(8,126,255,.07)',borderBottomColor:themeBorder(isDark)}]}><Text style={{color:'#087EFF',fontWeight:'900',flex:1}}>{activeFilter==='search'?(`Search: ${messageSearch}`):activeFilter.replace('_',' ')}</Text><TouchableOpacity onPress={()=>{setActiveFilter('all');setMessageSearch('')}}><Text style={{color:'#087EFF',fontWeight:'900'}}>Clear</Text></TouchableOpacity></View>:null}
    {uploadProgress>0&&uploadProgress<100?<GlassSurface radius={16}style={s.progress}><Text style={s.progressText}>Uploading… {uploadProgress}%</Text><View style={s.bar}><View style={[s.fill,{width:uploadProgress+'%'}]}/></View></GlassSurface>:null}
-   <View style={s.area}>{loading?<ActivityIndicator size="large"color="#087EFF"style={{marginTop:30}}/>:<FlatList ref={listRef}data={visibleMessages}keyExtractor={m=>m.id}renderItem={renderMessage}inverted contentContainerStyle={s.list}showsVerticalScrollIndicator={false}initialNumToRender={15}maxToRenderPerBatch={10}windowSize={10}removeClippedSubviews/>}</View>
+   <View style={s.area}>{loading?<ActivityIndicator size="large"color="#087EFF"style={{marginTop:30}}/>:<FlatList ref={listRef}data={visibleMessages}keyExtractor={m=>m.id}renderItem={renderMessage}inverted contentContainerStyle={[s.list,density==='compact'?s.compactList:null]}showsVerticalScrollIndicator={false}initialNumToRender={15}maxToRenderPerBatch={10}windowSize={10}removeClippedSubviews/>}</View>
    {activeFilter!=='all'&&visibleMessages.length===0?<View pointerEvents="none"style={s.noResults}><Ionicons name="search-outline"size={28}color="#087EFF"/><Text style={s.noResultsText}>No matching messages</Text></View>:null}
    {replyingTo?<GlassSurface radius={18}style={s.replyBar}><View style={{flex:1}}><Text style={s.replyTitle}>Replying to {replyingTo.senderName||'message'}</Text><Text style={{color:isDark?'#FFF':'#333'}}numberOfLines={1}>{replyingTo.text||'Media'}</Text></View><TouchableOpacity onPress={()=>setReplyingTo(null)}><Text style={{fontSize:22}}>×</Text></TouchableOpacity></GlassSurface>:null}
-   <ChatInput inputRef={inputRef}value={inputText}onChangeText={setInputText}onSend={handleSend}sending={sending}onAttachImage={()=>handleMediaPick('image')}onAttachVideo={()=>handleMediaPick('video')}onAttachDocument={handleDocumentPick}onAttachVoice={handleVoiceRecord}onAttachLocation={handleLocationPick}onAttachContact={handleContactPick}onPoll={handlePoll}/>
+   <View style={composerSize==='large'?{transform:[{scaleY:1.06}],marginBottom:4}:composerSize==='minimal'?{transform:[{scaleY:.93}],marginBottom:-4}:null}><ChatInput inputRef={inputRef}value={inputText}onChangeText={setInputText}onSend={handleSend}sending={sending}onAttachImage={()=>handleMediaPick('image')}onAttachVideo={()=>handleMediaPick('video')}onAttachDocument={handleDocumentPick}onAttachVoice={handleVoiceRecord}onAttachLocation={handleLocationPick}onAttachContact={handleContactPick}onPoll={handlePoll}/></View>
   </View></GlassScene>
 
-  <ChatFeatureHub visible={featuresOpen}onClose={()=>setFeaturesOpen(false)}activeFilter={activeFilter}onFilter={applyFilter}onSearch={runSearch}muted={muted}onMute={toggleMute}onTimer={setTimer}onMarkRead={markAllRead}onExport={exportChat}onJumpLatest={()=>listRef.current?.scrollToOffset?.({offset:0,animated:true})}onFocusComposer={()=>{setFeaturesOpen(false);setTimeout(()=>inputRef.current?.focus?.(),220)}}onSettings={()=>navigation.navigate('ChatSettings',{chatId,friendId,chatName,messageTTL})}/>
+  <ChatFeatureHub visible={featuresOpen}onClose={()=>setFeaturesOpen(false)}activeFilter={activeFilter}onFilter={applyFilter}onSearch={runSearch}muted={muted}onMute={toggleMute}onTimer={setTimer}onMarkRead={markAllRead}onExport={exportChat}onJumpLatest={()=>listRef.current?.scrollToOffset?.({offset:0,animated:true})}onFocusComposer={()=>{setFeaturesOpen(false);setTimeout(()=>inputRef.current?.focus?.(),220)}}onSettings={()=>navigation.navigate('ChatSettings',{chatId,friendId,chatName,messageTTL})} onMegaFeatures={()=>{setFeaturesOpen(false);setMegaOpen(true)}}/>
+  <ChatMegaFeatures visible={megaOpen}onClose={()=>setMegaOpen(false)}onAction={handleMegaFeature}/>
  </SafeAreaView>;
 }
 const themeBorder=isDark=>isDark?'rgba(255,255,255,.10)':'rgba(0,0,0,.08)';
-const s=StyleSheet.create({container:{flex:1},area:{flex:1},list:{paddingHorizontal:15,paddingBottom:15,paddingTop:10},progress:{padding:8,backgroundColor:'rgba(8,126,255,.1)',alignItems:'center'},progressText:{fontSize:12,fontWeight:'700',color:'#087EFF'},bar:{width:'80%',height:4,backgroundColor:'rgba(8,126,255,.2)',borderRadius:2},fill:{height:'100%',backgroundColor:'#087EFF',borderRadius:2},filterBar:{minHeight:38,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:14},noResults:{position:'absolute',top:'46%',alignSelf:'center',alignItems:'center',opacity:.85},noResultsText:{marginTop:7,color:'#7A8EA3',fontWeight:'800'},replyBar:{flexDirection:'row',alignItems:'center',paddingHorizontal:14,paddingVertical:8,borderTopWidth:1,borderTopColor:'rgba(128,128,128,.15)'},replyTitle:{fontSize:11,fontWeight:'800',color:'#087EFF',marginBottom:2}});
+const s=StyleSheet.create({container:{flex:1},area:{flex:1},list:{paddingHorizontal:15,paddingBottom:15,paddingTop:10},compactList:{paddingTop:4,paddingBottom:8},progress:{padding:8,backgroundColor:'rgba(8,126,255,.1)',alignItems:'center'},progressText:{fontSize:12,fontWeight:'700',color:'#087EFF'},bar:{width:'80%',height:4,backgroundColor:'rgba(8,126,255,.2)',borderRadius:2},fill:{height:'100%',backgroundColor:'#087EFF',borderRadius:2},filterBar:{minHeight:38,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:14},noResults:{position:'absolute',top:'46%',alignSelf:'center',alignItems:'center',opacity:.85},noResultsText:{marginTop:7,color:'#7A8EA3',fontWeight:'800'},replyBar:{flexDirection:'row',alignItems:'center',paddingHorizontal:14,paddingVertical:8,borderTopWidth:1,borderTopColor:'rgba(128,128,128,.15)'},replyTitle:{fontSize:11,fontWeight:'800',color:'#087EFF',marginBottom:2}});
