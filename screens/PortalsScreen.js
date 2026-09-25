@@ -1,182 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { db } from '../firebaseConfig';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { MiniAppAPI } from '../api/MiniAppAPI';
+import { BotAPI } from '../api/BotAPI';
+import GlassScene from '../components/ui/GlassScene';
 
 export default function PortalsScreen({ navigation }) {
-  const { isDark } = useTheme();
-  const [ecosystemItems, setEcosystemItems] = useState([]);
+  const { isDark, theme } = useTheme();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Super Glassy, No-Neon, Futuristic Palette
-  const bg = isDark ? '#0A0A0C' : '#F2F2F7';
-  const textMain = isDark ? '#F5F5F7' : '#1C1C1E';
-  const textSub = isDark ? '#8E8E93' : '#6C6C70';
-  const cardBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.85)';
-  const cardBorder = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.04)';
-  const actionBg = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 122, 255, 0.1)';
-  const actionText = isDark ? '#FFFFFF' : '#007AFF';
+  const bg = theme.bg;
+  const textMain = theme.text;
+  const textSub = theme.sub;
+  const cardBg = theme.surface;
+  const cardBorder = theme.border;
+  const blue = theme.blue || '#087EFF';
 
-  // Firebase से रियल डेटा मंगाना (जैसे 'Ee', 'Hi', 'Generated App' आदि)[span_6](start_span)[span_6](end_span)[span_7](start_span)[span_7](end_span)
-  useEffect(() => {
-    const q = query(collection(db, 'portals'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEcosystemItems(items);
-    });
-    return unsubscribe;
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [apps, bots] = await Promise.all([
+        MiniAppAPI.getPublicMiniApps().catch(() => []),
+        BotAPI.searchBots('').catch(() => []),
+      ]);
+      setItems([
+        ...(Array.isArray(bots) ? bots : []).map(bot => ({ ...bot, type: 'Bot', entryType: 'bot' })),
+        ...(Array.isArray(apps) ? apps : []).map(app => ({
+          ...app,
+          type: 'MiniApp',
+          entryType: app.entryType || (app.htmlCode ? 'html' : (app.url ? 'web' : 'declarative')),
+        })),
+      ]);
+    } catch (error) {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleItemPress = (item) => {
-    if (item.type === 'bot' || item.isBot) {
-      navigation.navigate('BotChat', { botData: item });
-    } else {
-      navigation.navigate('WebPortal', { 
-        title: item.name || 'Generated App', 
-        url: item.url || 'https://html5games.com/' 
-      });
+  useEffect(() => { loadItems(); }, [loadItems]);
+
+  const handleItemPress = item => {
+    if (item.type === 'Bot' || item.type === 'bot' || item.isBot || item.entryType === 'bot') {
+      navigation.navigate('BotChat', { botData: item, botId: item.id });
+      return;
     }
+    navigation.navigate('MiniAppInstall', { app: item });
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: bg }]}>
-      
-      {/* Sleek Futuristic Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: textMain }]}>Nax Portal</Text>
-          <Text style={[styles.headerSubtitle, { color: textSub }]}>Apps, Bots, Games & Tools</Text>
-        </View>
-        <TouchableOpacity 
-          style={[styles.refreshIconBtn, { backgroundColor: cardBg, borderColor: cardBorder }]}
-          onPress={() => {/* Refresh logic agar ho */}}
-        >
-          <Ionicons name="reload" size={16} color={textMain} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
-        
-        {/* Filter Pills Grid (Search, Categories, Featured, Trending) */}
-        <View style={styles.filterGrid}>
-          {['Search', 'Categories', 'Featured', 'Trending', 'Store'].map((filter, index) => (
-            <TouchableOpacity key={index} onPress={() => filter === 'Store' ? navigation.navigate('PortalStore') : filter === 'Search' ? navigation.navigate('PortalSearch') : filter === 'Categories' ? navigation.navigate('PortalCategories') : filter === 'Featured' ? navigation.navigate('PortalFeatured') : navigation.navigate('PortalTrending')} style={[styles.filterPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-              <Text style={[styles.filterText, { color: textMain }]}>{filter}</Text>
-            </TouchableOpacity>
-          ))}
+    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]}>
+      <GlassScene>
+        <View style={[styles.header, { borderBottomColor: cardBorder, backgroundColor: cardBg }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.headerTitle, { color: textMain }]}>Nax Portal</Text>
+            <Text style={[styles.headerSubtitle, { color: textSub }]}>Apps, Bots, Games & Tools</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.refreshBtn, { borderColor: cardBorder, backgroundColor: cardBg }]}
+            onPress={loadItems}
+            accessibilityLabel="Refresh portal"
+          >
+            <Ionicons name="reload" size={18} color={textMain} />
+          </TouchableOpacity>
         </View>
 
-        {/* Nax Studio Banner */}
-        <TouchableOpacity 
-          style={[styles.studioBanner, { backgroundColor: isDark ? '#141416' : '#1C1C1E' }]}
-          onPress={() => navigation.navigate('NaxStudio')}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.studioTitle}>Nax Studio</Text>
-          <Text style={styles.studioDesc}>Create your own Mini-App with AI</Text>
-        </TouchableOpacity>
-
-        {/* Latest Ecosystem Header */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: textMain }]}>Latest Ecosystem</Text>
-          <Text style={[styles.itemCountText, { color: textSub }]}>{ecosystemItems.length || 5} items</Text>
-        </View>
-
-        {/* Ecosystem Dynamic List */}
-        {ecosystemItems.length === 0 ? (
-          // Fallback UI matching your exact screenshot structure if firebase data is empty
-          [
-            { id: '1', name: 'Ee', creator: 'ree', desc: 'Rr', type: 'bot' },
-            { id: '2', name: 'Hi', creator: 'helloboy', desc: 'Anything', type: 'bot' },
-            { id: '3', name: 'Big', creator: 'red', desc: 'Ffrr', type: 'bot' },
-            { id: '4', name: 'Generated App', creator: 'Productivity', desc: '', type: 'app' },
-            { id: '5', name: 'Generated App', creator: 'Games', desc: '', type: 'app' },
-          ].map((item, idx) => (
-            <View key={idx} style={[styles.ecosystemCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-              <View style={styles.cardLeft}>
-                <View style={styles.avatarBox}>
-                  <Text style={styles.avatarText}>{item.name.substring(0, 2).toUpperCase()}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <View style={styles.titleRow}>
-                    <Text style={[styles.cardName, { color: textMain }]}>{item.name}</Text>
-                    <Ionicons name="checkmark-circle" size={14} color="#007AFF" style={{ marginLeft: 4 }} />
-                  </View>
-                  <Text style={[styles.cardCreator, { color: textSub }]}>{item.creator}</Text>
-                  {item.desc ? <Text style={[styles.cardDesc, { color: textSub }]} numberOfLines={1}>{item.desc}</Text> : null}
-                </View>
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.actionBtn, { backgroundColor: actionBg }]}
-                onPress={() => handleItemPress(item)}
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.filterGrid}>
+            {[
+              ['Search', 'PortalSearch', 'search-outline'],
+              ['Categories', 'PortalCategories', 'grid-outline'],
+              ['Featured', 'PortalFeatured', 'star-outline'],
+              ['Trending', 'PortalTrending', 'trending-up-outline'],
+              ['Store', 'PortalStore', 'storefront-outline'],
+            ].map(([label, routeName, icon]) => (
+              <TouchableOpacity
+                key={routeName}
+                onPress={() => navigation.navigate(routeName)}
+                style={[styles.filter, { borderColor: cardBorder, backgroundColor: cardBg }]}
               >
-                <Text style={[styles.actionBtnText, { color: actionText }]}>
-                  {item.type === 'bot' ? 'Chat' : 'Open'}
-                </Text>
+                <Ionicons name={icon} size={16} color={blue} />
+                <Text style={[styles.filterText, { color: textMain }]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.studioBanner, { backgroundColor: blue }]}
+            onPress={() => navigation.navigate('StudioHome')}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.studioTitle}>Nax Studio</Text>
+              <Text style={styles.studioSubtitle}>Create and publish Mini-Apps with AI</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color="#FFF" />
+          </TouchableOpacity>
+
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: textMain }]}>Latest Ecosystem</Text>
+            <Text style={[styles.countText, { color: textSub }]}>{items.length} items</Text>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator size="large" color={blue} style={{ marginTop: 30 }} />
+          ) : items.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+              <Ionicons name="cube-outline" size={44} color={textSub} />
+              <Text style={[styles.emptyTitle, { color: textMain }]}>No public apps or bots yet</Text>
+              <Text style={[styles.emptyText, { color: textSub }]}>Publish from Nax Studio and your creation will appear here.</Text>
+              <TouchableOpacity style={[styles.emptyAction, { backgroundColor: textMain }]} onPress={() => navigation.navigate('StudioHome')}>
+                <Text style={{ color: isDark ? '#000' : '#FFF', fontWeight: '800' }}>Open Studio</Text>
               </TouchableOpacity>
             </View>
-          ))
-        ) : (
-          ecosystemItems.map((item) => (
-            <View key={item.id} style={[styles.ecosystemCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-              <View style={styles.cardLeft}>
-                <View style={styles.avatarBox}>
-                  <Text style={styles.avatarText}>{(item.name || 'App').substring(0, 2).toUpperCase()}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={[styles.cardName, { color: textMain }]}>{item.name}</Text>
-                  <Text style={[styles.cardCreator, { color: textSub }]}>{item.creator || item.category || 'Ecosystem'}</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.actionBtn, { backgroundColor: actionBg }]}
+          ) : (
+            items.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.itemCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
                 onPress={() => handleItemPress(item)}
+                activeOpacity={0.82}
               >
-                <Text style={[styles.actionBtnText, { color: actionText }]}>
-                  {item.isBot ? 'Chat' : 'Open'}
-                </Text>
+                <View style={[styles.avatar, { backgroundColor: item.type === 'Bot' ? 'rgba(52,199,89,0.14)' : 'rgba(8,126,255,0.12)' }]}>
+                  <Ionicons name={item.type === 'Bot' ? 'robot-outline' : 'apps-outline'} size={23} color={item.type === 'Bot' ? '#34C759' : blue} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 13, marginRight: 10 }}>
+                  <Text style={[styles.itemName, { color: textMain }]} numberOfLines={1}>{item.name || 'Untitled'}</Text>
+                  <Text style={[styles.itemMeta, { color: textSub }]} numberOfLines={1}>{item.type} · {item.category || item.username || 'Ecosystem'}</Text>
+                  {item.description ? <Text style={[styles.itemDesc, { color: textSub }]} numberOfLines={2}>{item.description}</Text> : null}
+                </View>
+                <View style={[styles.openPill, { backgroundColor: isDark ? '#FFF' : '#1C1C1E' }]}>
+                  <Text style={{ color: isDark ? '#000' : '#FFF', fontWeight: '800', fontSize: 12 }}>{item.type === 'Bot' ? 'Chat' : 'Install'}</Text>
+                </View>
               </TouchableOpacity>
-            </View>
-          ))
-        )}
-
-      </ScrollView>
-    </View>
+            ))
+          )}
+        </ScrollView>
+      </GlassScene>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 45 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 12 },
-  headerTitle: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5, marginBottom: 2 },
-  headerSubtitle: { fontSize: 13, fontWeight: '500' },
-  refreshIconBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-
-  filterGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, justifyContent: 'space-between', marginBottom: 16 },
-  filterPill: { width: '48%', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1, marginBottom: 10, alignItems: 'center' },
-  filterText: { fontSize: 14, fontWeight: '600' },
-
-  studioBanner: { marginHorizontal: 20, padding: 20, borderRadius: 20, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
-  studioTitle: { color: '#FFF', fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  studioDesc: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '500' },
-
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
-  itemCountText: { fontSize: 12, fontWeight: '600' },
-
-  ecosystemCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, marginHorizontal: 20, marginBottom: 12, borderRadius: 20, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 1 },
-  cardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
-  avatarBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#007AFF', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  avatarText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
-  cardInfo: { flex: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center' },
-  cardName: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
-  cardCreator: { fontSize: 12, fontWeight: '500', marginTop: 2 },
-  cardDesc: { fontSize: 11, fontWeight: '400', marginTop: 1, opacity: 0.7 },
-
-  actionBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 12 },
-  actionBtnText: { fontWeight: '700', fontSize: 13 }
+  safe: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14, borderBottomWidth: 1 },
+  headerTitle: { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 13, marginTop: 3, fontWeight: '500' },
+  refreshBtn: { width: 42, height: 42, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { padding: 18, paddingBottom: 110 },
+  filterGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  filter: { width: '48%', minHeight: 46, borderRadius: 15, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  filterText: { fontSize: 13, fontWeight: '700' },
+  studioBanner: { padding: 18, borderRadius: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 22 },
+  studioTitle: { color: '#FFF', fontSize: 19, fontWeight: '900' },
+  studioSubtitle: { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 4 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '800' },
+  countText: { fontSize: 12, fontWeight: '700' },
+  itemCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 20, padding: 14, marginBottom: 11 },
+  avatar: { width: 50, height: 50, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  itemName: { fontSize: 16, fontWeight: '800' },
+  itemMeta: { fontSize: 11, marginTop: 3, fontWeight: '600' },
+  itemDesc: { fontSize: 12, marginTop: 4, lineHeight: 17 },
+  openPill: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 12 },
+  emptyCard: { borderWidth: 1, borderRadius: 22, padding: 30, alignItems: 'center' },
+  emptyTitle: { fontSize: 17, fontWeight: '800', marginTop: 10 },
+  emptyText: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 6 },
+  emptyAction: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 14, marginTop: 16 },
 });
