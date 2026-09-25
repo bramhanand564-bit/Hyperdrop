@@ -251,8 +251,8 @@ export default function MomentsScreen() {
       <View style={[styles.header, { backgroundColor: glassPanelBg, borderBottomColor: glassBorder }]}>
         <Text style={[styles.headerTitle, { color: textMain }]}>Moments</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert('Archive', 'Saved Memories')}><Ionicons name="time-outline" size={26} color={textMain} /></TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert('Activity', 'Likes & Mentions')}><Ionicons name="heart-outline" size={26} color={textMain} /></TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert('Your Archive', `You have ${feedPosts.filter(post => post.userId === currentUser?.uid).length} published moments and ${stories.filter(story => story.userId === currentUser?.uid).length} stories in your account.`)} accessibilityLabel="View archive summary"><Ionicons name="time-outline" size={26} color={textMain} /></TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => { const own = feedPosts.filter(post => post.userId === currentUser?.uid); const likes = own.reduce((sum, post) => sum + (post.likes?.length || 0), 0); const comments = own.reduce((sum, post) => sum + Number(post.commentsCount || 0), 0); Alert.alert('Your Activity', `${likes} likes and ${comments} comments received across your moments.`); }} accessibilityLabel="View activity summary"><Ionicons name="heart-outline" size={26} color={textMain} /></TouchableOpacity>
         </View>
       </View>
 
