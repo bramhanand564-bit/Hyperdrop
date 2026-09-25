@@ -63,7 +63,6 @@ export default function useCallLogic(route, navigation) {
   // UI STATE
   // ==========================================
   const [remoteStream, setRemoteStream] = useState(null);
-  const [remoteStreamVersion, setRemoteStreamVersion] = useState(0);
 
   const [status, setStatus] = useState(
     isCaller ? 'Calling...' : 'Incoming...'
@@ -117,6 +116,18 @@ export default function useCallLogic(route, navigation) {
 
   // Prevent offer from being processed more than once
   const offerProcessedRef = useRef(false);
+
+  // Diagnostics for future call debugging without another full repo scan.
+  const localIceCandidateCountRef = useRef(0);
+  const remoteIceCandidateCountRef = useRef(0);
+
+  const hasMediaSection = (sdp, media) =>
+    new RegExp(`(?:^|\\r?\\n)m=${media} `, 'i').test(sdp || '');
+
+  const getCandidateType = (candidate) => {
+    const value = candidate?.candidate || '';
+    return value.match(/ typ ([a-z0-9]+)/i)?.[1] || 'unknown';
+  };
 
   // ==========================================
   // TIMER
@@ -200,6 +211,16 @@ export default function useCallLogic(route, navigation) {
           await pc.addIceCandidate(
             new RTCIceCandidate(candidateData)
           );
+
+          remoteIceCandidateCountRef.current += 1;
+
+          console.log(
+            '✅ Remote ICE candidate added:',
+            {
+              type: getCandidateType(candidateData),
+              count: remoteIceCandidateCountRef.current,
+            }
+          );
         } catch (error) {
           console.log(
             '❌ Remote ICE Candidate Error:',
@@ -234,10 +255,22 @@ export default function useCallLogic(route, navigation) {
         }
 
         remoteStreamRef.current = remote;
+
+        const videoTracks = remote.getVideoTracks?.() || [];
+        const audioTracks = remote.getAudioTracks?.() || [];
+
+        console.log(
+          '🎥 Remote stream accepted:',
+          {
+            audio: audioTracks.length,
+            video: videoTracks.length,
+            streamUrl: remote.toURL?.(),
+          }
+        );
+
+        // webrtcHelper only publishes a video-call stream once a video track
+        // exists, so RTCView mounts against a stream that is already drawable.
         setRemoteStream(remote);
-        // Force RTCView to remount when audio/video tracks arrive
-        // separately (common on Android WebRTC).
-        setRemoteStreamVersion((value) => value + 1);
         setBusy(false);
       },
 
@@ -256,6 +289,10 @@ export default function useCallLogic(route, navigation) {
             ? 'offerCandidates'
             : 'answerCandidates';
 
+          const candidateData = candidate.toJSON();
+
+          localIceCandidateCountRef.current += 1;
+
           await addDoc(
             collection(
               db,
@@ -263,11 +300,15 @@ export default function useCallLogic(route, navigation) {
               callId,
               collectionName
             ),
-            candidate.toJSON()
+            candidateData
           );
 
           console.log(
-            `🧊 Local ICE candidate saved: ${collectionName}`
+            `🧊 Local ICE candidate saved: ${collectionName}`,
+            {
+              type: getCandidateType(candidateData),
+              count: localIceCandidateCountRef.current,
+            }
           );
         } catch (error) {
           console.log(
@@ -300,6 +341,23 @@ export default function useCallLogic(route, navigation) {
         setConnected(true);
         setBusy(false);
         setStatus('Connected');
+
+        try {
+          const receivers = pc.getReceivers?.() || [];
+          console.log(
+            '🎬 Remote receivers at ICE connected:',
+            receivers.map((receiver) => ({
+              kind: receiver?.track?.kind,
+              readyState: receiver?.track?.readyState,
+              enabled: receiver?.track?.enabled,
+            }))
+          );
+        } catch (error) {
+          console.log(
+            'ℹ️ Receiver diagnostics unavailable:',
+            error?.message || error
+          );
+        }
 
         // Tell the other side that WebRTC is actually connected.
         updateConnectedStatus();
@@ -674,8 +732,17 @@ export default function useCallLogic(route, navigation) {
     );
 
     console.log(
-      '📤 Local offer created'
+      '📤 Local offer created',
+      {
+        hasAudio: hasMediaSection(offer.sdp, 'audio'),
+        hasVideo: hasMediaSection(offer.sdp, 'video'),
+        sdpLength: offer.sdp?.length || 0,
+      }
     );
+
+    if (type === 'video' && !hasMediaSection(offer.sdp, 'video')) {
+      throw new Error('Video offer was created without an m=video section.');
+    }
 
     // ----------------------------------------
     // SAVE OFFER
@@ -771,8 +838,22 @@ export default function useCallLogic(route, navigation) {
           answerAppliedRef.current = true;
 
           console.log(
-            '📥 Applying remote answer'
+            '📥 Applying remote answer',
+            {
+              hasAudio: hasMediaSection(data.answer?.sdp, 'audio'),
+              hasVideo: hasMediaSection(data.answer?.sdp, 'video'),
+              sdpLength: data.answer?.sdp?.length || 0,
+            }
           );
+
+          if (
+            type === 'video' &&
+            !hasMediaSection(data.answer?.sdp, 'video')
+          ) {
+            throw new Error(
+              'Remote answer was created without an m=video section.'
+            );
+          }
 
           await pc.setRemoteDescription(
             new RTCSessionDescription(
@@ -1038,8 +1119,22 @@ export default function useCallLogic(route, navigation) {
       // SET REMOTE OFFER
       // ----------------------------------------
       console.log(
-        '📥 Applying caller offer'
+        '📥 Applying caller offer',
+        {
+          hasAudio: hasMediaSection(data.offer?.sdp, 'audio'),
+          hasVideo: hasMediaSection(data.offer?.sdp, 'video'),
+          sdpLength: data.offer?.sdp?.length || 0,
+        }
       );
+
+      if (
+        type === 'video' &&
+        !hasMediaSection(data.offer?.sdp, 'video')
+      ) {
+        throw new Error(
+          'Caller offer was created without an m=video section.'
+        );
+      }
 
       await pc.setRemoteDescription(
         new RTCSessionDescription(
@@ -1076,8 +1171,17 @@ export default function useCallLogic(route, navigation) {
       );
 
       console.log(
-        '📤 Local answer created'
+        '📤 Local answer created',
+        {
+          hasAudio: hasMediaSection(answer.sdp, 'audio'),
+          hasVideo: hasMediaSection(answer.sdp, 'video'),
+          sdpLength: answer.sdp?.length || 0,
+        }
       );
+
+      if (type === 'video' && !hasMediaSection(answer.sdp, 'video')) {
+        throw new Error('Video answer was created without an m=video section.');
+      }
 
       // ----------------------------------------
       // SAVE ANSWER
@@ -1288,6 +1392,10 @@ export default function useCallLogic(route, navigation) {
     // ICE QUEUE
     // ----------------------------------------
     iceCandidateQueue.current = [];
+    localIceCandidateCountRef.current = 0;
+    remoteIceCandidateCountRef.current = 0;
+    answerAppliedRef.current = false;
+    offerProcessedRef.current = false;
 
     // ----------------------------------------
     // RESET ICE PROCESSING
@@ -1345,7 +1453,6 @@ export default function useCallLogic(route, navigation) {
 
     if (mountedRef.current) {
       setRemoteStream(null);
-      setRemoteStreamVersion(0);
       setConnected(false);
       setBusy(false);
     }
@@ -1392,7 +1499,7 @@ export default function useCallLogic(route, navigation) {
     localStreamRef,
 
     remoteStream,
-    remoteStreamVersion,
+
 
     isMuted,
     isCameraOff,
