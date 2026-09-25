@@ -42,42 +42,42 @@ export default function DiscoverScreen({ navigation }) {
   ];
 
   // 🚀 1. REQUEST REAL GPS PERMISSION & FETCH LOCAL APPS
-  useEffect(() => {
-    (async () => {
-      try {
-        // Step 1: Request Permission (As per your Blueprint rule)
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setLocationStatus('denied');
-          setLoading(false);
-          return;
-        }
-        
-        setLocationStatus('granted');
-        
-        // Step 2: Get Real Device Coordinates
-        const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        
-        // Step 3: Reverse Geocoding (Lat/Lng to City Name)
-        let geocode = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
-        });
-        
-        if (geocode.length > 0) {
-          // It will detect your real location (e.g., Salempur Mahdood, Uttarakhand)
-          setCurrentCity(`${geocode[0].city || geocode[0].district || geocode[0].name}, ${geocode[0].region}`);
-        }
-
-
-      } catch (error) {
-        Alert.alert("GPS Error", "Failed to fetch device location.");
+  const loadLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
         setLocationStatus('denied');
         setLoading(false);
+        return;
       }
-    })();
-  }, []);
 
+      setLocationStatus('granted');
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setCoords({ lat: location.coords.latitude, lng: location.coords.longitude });
+
+      const geocode = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      if (geocode.length > 0) {
+        const place = geocode[0];
+        const city = place.city || place.district || place.name || 'Nearby';
+        setCurrentCity(city + (place.region ? ', ' + place.region : ''));
+      }
+    } catch (error) {
+      console.log('GPS error:', error);
+      Alert.alert('GPS Error', 'Failed to fetch device location.');
+      setLocationStatus('denied');
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLocation();
+  }, []);
   const fetchNearbyEcosystem = async (lat, lng) => {
     try {
       const results = await DiscoverService.nearby({ lat, lng, radiusKm });
@@ -119,7 +119,7 @@ export default function DiscoverScreen({ navigation }) {
         <Text style={{ color: textSub, textAlign: 'center', marginBottom: 30 }}>
           Nax Discover needs your GPS permission to find Mini-Apps, Bots, and Stores near you.
         </Text>
-        <TouchableOpacity style={[styles.permissionBtn, { backgroundColor: naxBlue }]} onPress={async () => { const r = await Location.requestForegroundPermissionsAsync(); if (r.granted) { setLocationStatus('requesting'); setLoading(true); } else { await Linking.openSettings(); } }}>
+        <TouchableOpacity style={[styles.permissionBtn, { backgroundColor: naxBlue }]} onPress={async () => { const r = await Location.requestForegroundPermissionsAsync(); if (r.granted) { setLoading(true); await loadLocation(); } else { await Linking.openSettings(); } }}>
           <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Enable Location</Text>
         </TouchableOpacity>
         <TouchableOpacity style={{ marginTop: 20 }} onPress={() => navigation.goBack()}>
