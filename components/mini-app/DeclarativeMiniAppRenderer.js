@@ -2,30 +2,36 @@
 // FILE: components/mini-app/DeclarativeMiniAppRenderer.js
 // ==========================================
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, ScrollView, Share } from 'react-native';
 
-export default function DeclarativeMiniAppRenderer({ components, themeColor, isTestMode = false }) {
+export default function DeclarativeMiniAppRenderer({ components, themeColor, isTestMode = false, navigation }) {
   const [inputs, setInputs] = useState({});
 
   // 🛡️ SAFE ACTION HANDLER (No eval allowed)
-  const handleAction = (action, componentLabel) => {
+  const handleAction = async (action, componentLabel) => {
     if (!action) return;
-    
+
     if (isTestMode) {
       Alert.alert("Test Mode", `Button '${componentLabel}' clicked!\nAction: ${action}`);
       return;
     }
 
-    // Real safe actions
     if (action === 'alert') {
       Alert.alert("Action", `You clicked: ${componentLabel}`);
+    } else if (action === 'continue' || action === 'submit') {
+      const values = Object.values(inputs).filter(Boolean);
+      Alert.alert("Done", values.length ? `Saved: ${values.join(', ')}` : "Action completed.");
+    } else if (action === 'share') {
+      await Share.share({ message: `Check out this mini-app: ${componentLabel}` });
     } else if (action === 'add_expense') {
-      Alert.alert("Success", "Expense added to your tracker!");
+      Alert.alert("Expense", "Expense action completed. Connect a wallet transaction from the host app when payment is required.");
     } else if (action.startsWith('navigate:')) {
-      const target = action.split(':')[1];
-      console.log("Safe Navigation triggered to:", target);
+      const target = action.slice('navigate:'.length).trim();
+      const allowedTargets = new Set(['MainTabs', 'PortalHome', 'MiniAppHome', 'Discover', 'Moments', 'Settings', 'Wallet', 'DeveloperDashboard']);
+      if (navigation && allowedTargets.has(target)) navigation.navigate(target);
+      else Alert.alert("Navigation", "That destination is not available from this app.");
     } else {
-      console.log("Unhandled safe action:", action);
+      Alert.alert("Action", `Completed: ${action}`);
     }
   };
 
@@ -52,7 +58,7 @@ export default function DeclarativeMiniAppRenderer({ components, themeColor, isT
                 placeholderTextColor="#6C8494"
                 value={inputs[`input_${index}`] || ''}
                 onChangeText={(text) => setInputs({ ...inputs, [`input_${index}`]: text })}
-                editable={!isTestMode} // If in preview, it might be disabled, but let's keep it simple
+                editable={true} // If in preview, it might be disabled, but let's keep it simple
               />
             );
           
