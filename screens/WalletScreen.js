@@ -22,11 +22,12 @@ export default function WalletScreen({ navigation, route }) {
 
   useEffect(() => {
     const scannedRecipient = route?.params?.transactionId;
+    const suggestedAmount = route?.params?.suggestedAmount;
     if (scannedRecipient) {
       setRecipientId(String(scannedRecipient));
-      setAmount('');
+      setAmount(suggestedAmount ? String(suggestedAmount) : '');
       setSendOpen(true);
-      navigation?.setParams?.({ transactionId: undefined });
+      navigation?.setParams?.({ transactionId: undefined, suggestedAmount: undefined });
     }
   }, [route?.params?.transactionId, navigation]);
 
