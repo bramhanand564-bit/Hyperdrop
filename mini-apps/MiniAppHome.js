@@ -13,11 +13,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { MiniAppAPI } from '../api/MiniAppAPI';
+import GlassScene from '../components/ui/GlassScene';
+import GlassSurface from '../components/ui/GlassSurface';
+import GlassButton from '../components/ui/GlassButton';
 
 const CATEGORIES = ['All', 'Games', 'Tools', 'Productivity'];
 
 export default function MiniAppHome({ navigation }) {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
@@ -37,15 +40,15 @@ export default function MiniAppHome({ navigation }) {
     return () => { mounted = false; };
   }, []);
 
-  // --- COLORS ---
-  const bg = isDark ? '#050A10' : '#F3F7FA';
-  const headerBg = isDark ? '#0B1824' : '#FFFFFF';
-  const cardBg = isDark ? '#101A26' : '#FFFFFF';
-  const inputBg = isDark ? '#14202E' : '#EEF3F7';
-  const textMain = isDark ? '#F4F7FA' : '#142532';
-  const textSub = isDark ? '#8FA6B9' : '#6C8494';
-  const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const blue = '#087EFF';
+  // --- CRYSTAL THEME ---
+  const bg = theme.bg;
+  const headerBg = theme.surface;
+  const cardBg = theme.surfaceStrong;
+  const inputBg = theme.input;
+  const textMain = theme.text;
+  const textSub = theme.sub;
+  const border = theme.border;
+  const blue = theme.blue;
 
   // --- FILTER APPS ---
   const filteredApps = apps.filter(app => {
@@ -73,6 +76,7 @@ export default function MiniAppHome({ navigation }) {
     <TouchableOpacity 
       activeOpacity={0.8} 
       style={[styles.appCard, { backgroundColor: cardBg, borderColor: border }]}
+      
       onPress={() => handleOpenApp(item)}
     >
       <View style={[styles.iconBox, { backgroundColor: `${item.color}20` }]}>
@@ -85,17 +89,13 @@ export default function MiniAppHome({ navigation }) {
         <Text style={[styles.appDesc, { color: textSub }]} numberOfLines={2}>{item.description || item.desc || ''}</Text>
       </View>
 
-      <TouchableOpacity 
-        style={[styles.openBtn, { backgroundColor: `${blue}15` }]}
-        onPress={() => handleOpenApp(item)}
-      >
-        <Text style={[styles.openBtnText, { color: blue }]}>Open</Text>
-      </TouchableOpacity>
+      <GlassButton title="Open" icon="play" compact onPress={() => handleOpenApp(item)} />
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
+      <GlassScene showBubbles={true}>
       
       {/* HEADER */}
       <View style={[styles.header, { backgroundColor: headerBg, borderBottomColor: border }]}>
@@ -177,7 +177,7 @@ export default function MiniAppHome({ navigation }) {
         }
       />
 
-    </SafeAreaView>
+    </GlassScene></SafeAreaView>
   );
 }
 
