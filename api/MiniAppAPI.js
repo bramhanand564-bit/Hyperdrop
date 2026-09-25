@@ -3,7 +3,7 @@
 // ==========================================
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
-import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc, runTransaction } from 'firebase/firestore';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
 
@@ -96,16 +96,26 @@ export const MiniAppAPI = {
         savedData.appConfig = app;
       }
 
-      await setDoc(installRef, savedData);
+      let created = false;
+      await runTransaction(db, async (tx) => {
+        const [installSnap, globalSnap] = await Promise.all([
+          tx.get(installRef),
+          tx.get(doc(db, 'mini_apps', app.id)),
+        ]);
 
-      // Step B: Increment global install count for the app (Trending logic)
-      const globalAppRef = doc(db, 'mini_apps', app.id);
-      await updateDoc(globalAppRef, {
-        installs: increment(1)
-      }).catch(e => console.log("Silent error updating global install count:", e));
+        if (!installSnap.exists()) {
+          tx.set(installRef, savedData);
+          created = true;
+          if (globalSnap.exists()) {
+            tx.update(doc(db, 'mini_apps', app.id), { installs: increment(1), updatedAt: serverTimestamp() });
+          }
+        }
+      });
 
-      EventBus.emit(EventTypes.MINIAPP_INSTALLED, { appId: app.id, userId: user.uid });
-      return true;
+      if (created) {
+        EventBus.emit(EventTypes.MINIAPP_INSTALLED, { appId: app.id, userId: user.uid });
+      }
+      return created;
     } catch (error) {
       console.log("Install Error:", error);
       throw error;
