@@ -12,6 +12,9 @@ import CloudApiSettings from '../components/studio/CloudApiSettings';
 
 // 🔥 REAL FIREBASE IMPORTS
 import { db, auth } from '../firebaseConfig';
+import OnDeviceAIService from '../ai/on-device/OnDeviceAIService';
+import { SEED_MODELS } from '../ai/on-device/OnDeviceModelCatalog';
+import AIService from '../ai/AIService';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function NaxStudioScreen({ navigation }) {
@@ -27,8 +30,15 @@ export default function NaxStudioScreen({ navigation }) {
   const [aiMode, setAiMode] = useState('local'); 
   
   // Local Settings
-  const [selectedLocalModel, setSelectedLocalModel] = useState('phi-3-mini');
-  const [downloadedModels, setDownloadedModels] = useState([]); 
+  const [selectedLocalModel, setSelectedLocalModel] = useState(SEED_MODELS[0].id);
+  const [downloadedModels, setDownloadedModels] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all(SEED_MODELS.map(async model => ((await OnDeviceAIService.isInstalled(model).catch(() => false)) ? model.id : null)))
+      .then(ids => { if (mounted) setDownloadedModels(ids.filter(Boolean)); });
+    return () => { mounted = false; };
+  }, []);
 
   // API/Cloud Settings
   const [selectedProvider, setSelectedProvider] = useState('gemini');
@@ -46,12 +56,27 @@ export default function NaxStudioScreen({ navigation }) {
   const buttonText = isDark ? '#000000' : '#FFFFFF';
 
   // 🔥 Handlers for In-App Download (Props for LocalEngineSettings)
-  const handleDownloadModel = (modelName) => {
-    Alert.alert("Downloading...", `${modelName} is downloading to local storage.`);
-    setTimeout(() => { setDownloadedModels(prev => [...prev, selectedLocalModel]); }, 2000);
+  const handleDownloadModel = async (model) => {
+    if (!model?.id) return;
+    try {
+      setLoading(true);
+      await OnDeviceAIService.downloadModel(model);
+      setDownloadedModels(prev => [...new Set([...prev, model.id])]);
+      Alert.alert('Ready', `${model.name} is downloaded for offline AI.`);
+    } catch (error) {
+      Alert.alert('Download failed', error?.message || 'Could not download the model.');
+    } finally {
+      setLoading(false);
+    }
   };
-  const handleDeleteModel = () => {
-    setDownloadedModels(prev => prev.filter(m => m !== selectedLocalModel));
+  const handleDeleteModel = async (model) => {
+    if (!model?.id) return;
+    try {
+      await OnDeviceAIService.removeModel(model);
+      setDownloadedModels(prev => prev.filter(m => m !== model.id));
+    } catch (error) {
+      Alert.alert('Remove failed', error?.message || 'Could not remove the model.');
+    }
   };
 
   // 🔥 100% REAL BOT PUBLISHING LOGIC
@@ -73,6 +98,19 @@ export default function NaxStudioScreen({ navigation }) {
 
     setLoading(true);
     try {
+      let aiConnectionId = null;
+      if (aiMode === 'local') {
+        const selectedModel = SEED_MODELS.find(model => model.id === selectedLocalModel);
+        if (!selectedModel) throw new Error('Selected offline model is unavailable.');
+        const connection = await AIService.saveConnection({
+          name: `Nax Offline • ${botName.trim()}`,
+          type: 'on-device',
+          baseUrl: 'on-device://',
+          model: JSON.stringify(selectedModel),
+          models: [JSON.stringify(selectedModel)],
+        });
+        aiConnectionId = connection.id;
+      }
       // 🚀 Save Real AI Agent Configuration to Firebase
       await addDoc(collection(db, 'custom_bots'), {
         botName: botName,
@@ -84,7 +122,8 @@ export default function NaxStudioScreen({ navigation }) {
           provider: aiMode === 'local' ? selectedLocalModel : selectedProvider,
           endpoint: customEndpoint || null,
           // Note: Real apps me API Key ko backend encryption ke saath save karte hain
-          apiKey: apiKey || null 
+          aiConnectionId,
+          // API secrets stay in local AI settings; never persist raw keys in bot records.
         },
         type: 'ai-agent',
         installs: 0,
