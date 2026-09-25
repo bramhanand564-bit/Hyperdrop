@@ -1,17 +1,17 @@
-import React,{useState}from'react';
+import React,{useRef,useState,useImperativeHandle}from'react';
 import{View,TextInput,TouchableOpacity,StyleSheet,Platform,KeyboardAvoidingView,Modal,Text,Alert}from'react-native';
 import{Ionicons}from'@expo/vector-icons';
 import{useTheme}from'../../context/ThemeContext';
 import AttachmentMenu from './AttachmentMenu';
 
-export default function ChatInput({value,onChangeText,onSend,sending,onAttachImage,onAttachVideo,onAttachDocument,onAttachVoice,onAttachLocation,onAttachContact,onPoll}){
- const{theme}=useTheme();const[showMenu,setShowMenu]=useState(false);const[pollOpen,setPollOpen]=useState(false);const[q,setQ]=useState('');const[o1,setO1]=useState('');const[o2,setO2]=useState('');
+export default function ChatInput({value,onChangeText,onSend,sending,onAttachImage,onAttachVideo,onAttachDocument,onAttachVoice,onAttachLocation,onAttachContact,onPoll,inputRef}){
+ const{theme}=useTheme();const[showMenu,setShowMenu]=useState(false);const nativeInputRef=useRef(null);useImperativeHandle(inputRef,()=>({focus:()=>nativeInputRef.current?.focus(),blur:()=>nativeInputRef.current?.blur()}),[]);const[pollOpen,setPollOpen]=useState(false);const[q,setQ]=useState('');const[o1,setO1]=useState('');const[o2,setO2]=useState('');
  const canSend=value.trim().length>0&&!sending;const close=()=>setShowMenu(false);
  return <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} keyboardVerticalOffset={Platform.OS==='ios'?0:25}>
   <AttachmentMenu isVisible={showMenu} onImage={()=>{close();onAttachImage?.()}} onVideo={()=>{close();onAttachVideo?.()}} onDocument={()=>{close();onAttachDocument?.()}} onVoice={()=>{close();onAttachVoice?.()}} onLocation={()=>{close();onAttachLocation?.()}} onContact={()=>{close();onAttachContact?.()}} onPoll={()=>{close();setPollOpen(true)}}/>
   <View style={[s.row,{backgroundColor:theme.surface,borderTopColor:theme.border}]}>
    <TouchableOpacity style={[s.attach,{backgroundColor:theme.input,borderColor:theme.border}]} onPress={()=>setShowMenu(v=>!v)}><Ionicons name={showMenu?'close':'add'} size={25} color={theme.blue}/></TouchableOpacity>
-   <View style={[s.box,{backgroundColor:theme.input,borderColor:theme.border}]}><TextInput style={[s.text,{color:theme.text}]} placeholder="Write something…" placeholderTextColor={theme.sub} value={value} onChangeText={onChangeText} multiline onFocus={close}/></View>
+   <View style={[s.box,{backgroundColor:theme.input,borderColor:theme.border}]}><TextInput style={[s.text,{color:theme.text}]} placeholder="Write something…" placeholderTextColor={theme.sub} value={value} onChangeText={onChangeText} ref={nativeInputRef} multiline onFocus={close}/></View>
    <TouchableOpacity style={[s.send,{backgroundColor:canSend?theme.blue:theme.input,borderColor:theme.border}]} onPress={()=>{close();onSend()}} disabled={!canSend}><Ionicons name="arrow-up" size={18} color={canSend?'#FFF':theme.sub}/></TouchableOpacity>
   </View>
   <Modal visible={pollOpen} transparent animationType="fade" onRequestClose={()=>setPollOpen(false)}>
