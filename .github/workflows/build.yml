@@ -3,13 +3,22 @@ name: Build APK
 on:
   push:
     branches:
-      - main
+      - "**"
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: Build release APK
     runs-on: ubuntu-latest
 
     env:
@@ -23,6 +32,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "18"
+          cache: npm
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -35,17 +45,26 @@ jobs:
         with:
           distribution: "zulu"
           java-version: "17"
+          cache: gradle
 
       - name: Build Release APK
         working-directory: android
         run: |
+          chmod +x ./gradlew
           ./gradlew assembleRelease \
             --no-daemon \
             --stacktrace \
             -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
 
-      - name: Upload APK
+      - name: Verify APK
+        run: |
+          test -s android/app/build/outputs/apk/release/app-release.apk
+          ls -lh android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: hyperdrop-release-apk-${{ github.run_number }}
           path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
