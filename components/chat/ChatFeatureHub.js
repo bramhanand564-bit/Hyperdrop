@@ -25,7 +25,7 @@ const FEATURES = [
   ['media','All media','Show every media message','albums-outline'],
 ];
 
-export default function ChatFeatureHub({ visible, onClose, onFilter, activeFilter='all', onSearch, onMute, muted=false, onTimer, onMarkRead, onExport, onJumpLatest, onFocusComposer, onSettings }) {
+export default function ChatFeatureHub({ visible, onClose, onFilter, activeFilter='all', onSearch, onMute, muted=false, onTimer, onMarkRead, onExport, onJumpLatest, onFocusComposer, onSettings, onMegaFeatures }) {
   const { theme } = useTheme();
   const [search, setSearch] = useState('');
 
@@ -59,6 +59,8 @@ export default function ChatFeatureHub({ visible, onClose, onFilter, activeFilte
     <Modal visible={!!visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={s.backdrop}>
         <View style={[s.sheet,{backgroundColor:theme.surfaceStrong,borderColor:theme.border}]}>
+          <TouchableOpacity onPress={onMegaFeatures} style={[s.megaButton,{backgroundColor:'rgba(8,126,255,.10)',borderColor:'rgba(8,126,255,.28)'}]}><View style={s.megaIcon}><Ionicons name="flash" size={18} color={theme.blue}/></View><View style={{flex:1}}><Text style={[s.megaTitle,{color:theme.text}]}>Open 100 new features</Text><Text style={[s.megaSub,{color:theme.sub}]}>Power tools, composer actions, navigation and productivity</Text></View><Ionicons name="chevron-forward" size={18} color={theme.blue}/></TouchableOpacity>
+
           <View style={s.header}>
             <View>
               <Text style={[s.title,{color:theme.text}]}>Chat Toolkit</Text>
@@ -130,5 +132,8 @@ const s=StyleSheet.create({
   cardTitle:{fontSize:12,fontWeight:'900'},cardDesc:{fontSize:9,lineHeight:13,marginTop:3,fontWeight:'600'},
   utilityList:{borderTopWidth:1},
   utility:{minHeight:52,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:3},
-  utilityText:{flex:1,fontSize:14,fontWeight:'800',marginLeft:11}
+  utilityText:{flex:1,fontSize:14,fontWeight:'800',marginLeft:11},
+  megaButton:{flexDirection:'row',alignItems:'center',minHeight:58,borderWidth:1,borderRadius:17,paddingHorizontal:11,marginBottom:4},
+  megaIcon:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(8,126,255,.16)',marginRight:10},
+  megaTitle:{fontSize:13,fontWeight:'900'},megaSub:{fontSize:9,fontWeight:'600',marginTop:2}
 });
