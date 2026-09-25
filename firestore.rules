@@ -3,90 +3,290 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function ownsExisting() {
-      return signedIn() && resource.data.userId == request.auth.uid;
-    }
-
-    function ownsIncoming() {
-      return signedIn() && request.resource.data.userId == request.auth.uid;
-    }
-
-    function validMomentUpdate() {
-      return signedIn() && (
-        ownsExisting()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'likes',
-          'savedBy'
-        ])
-        || (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'commentsCount'
-          ])
-          && request.resource.data.commentsCount == resource.data.commentsCount + 1
-        )
-      );
-    }
-
-    function validStoryUpdate() {
-      return signedIn() && (
-        ownsExisting()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'likes'
-        ])
-      );
-    }
-
-    match /global_moments/{momentId} {
-      allow read: if signedIn();
-      allow create: if ownsIncoming()
-        && request.resource.data.userId is string
-        && request.resource.data.createdAt != null;
-      allow update: if validMomentUpdate();
-      allow delete: if ownsExisting();
-
-      match /comments/{commentId} {
-        allow read: if signedIn();
-        allow create: if signedIn()
-          && request.resource.data.userId == request.auth.uid
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 500;
-        allow update: if signedIn()
-          && resource.data.userId == request.auth.uid;
-        allow delete: if signedIn()
-          && resource.data.userId == request.auth.uid;
-      }
-    }
-
-    match /global_stories/{storyId} {
-      allow read: if signedIn();
-      allow create: if ownsIncoming()
-        && request.resource.data.userId is string
-        && request.resource.data.createdAt != null;
-      allow update: if validStoryUpdate();
-      allow delete: if ownsExisting();
-
-      match /replies/{replyId} {
-        allow read: if signedIn();
-        allow create: if signedIn()
-          && request.resource.data.userId == request.auth.uid
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 500;
-        allow update: if signedIn()
-          && resource.data.userId == request.auth.uid;
-        allow delete: if signedIn()
-          && resource.data.userId == request.auth.uid;
-      }
-    }
-
+    // =========================================================
+    // 1. USERS & SUBCOLLECTIONS
+    // =========================================================
     match /users/{userId} {
-      allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == userId;
+      // Public profile read
+      allow read: if true;
+
+      // User can modify only their own profile
+      allow write: if request.auth != null
+                    && request.auth.uid == userId;
+
+      // User-owned subcollections
+      match /{document=**} {
+        allow read, write: if request.auth != null
+                          && request.auth.uid == userId;
+      }
+    }
+
+
+    // =========================================================
+    // 2. USERNAMES
+    // =========================================================
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /Usernames/{username} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+
+    // =========================================================
+    // 3. MINI APPS
+    // =========================================================
+    match /mini_apps/{appId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+
+    // =========================================================
+    // 4. BOTS
+    // =========================================================
+    match /bots/{botId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+
+    // =========================================================
+    // 5. CHATS & MESSAGES
+    // =========================================================
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+
+    // =========================================================
+    // 6. CALLS & WEBRTC
+    // =========================================================
+    match /calls/{callId} {
+      allow create: if request.auth != null
+                    && request.resource.data.callerId == request.auth.uid
+                    && request.resource.data.receiverId is string
+                    && request.resource.data.receiverId != request.auth.uid;
+
+      allow read: if request.auth != null
+                  && (
+                    resource.data.callerId == request.auth.uid
+                    || resource.data.receiverId == request.auth.uid
+                  );
+
+      allow update: if request.auth != null
+                    && (
+                      resource.data.callerId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    )
+                    && request.resource.data.callerId == resource.data.callerId
+                    && request.resource.data.receiverId == resource.data.receiverId;
+
+      allow delete: if request.auth != null
+                    && (
+                      resource.data.callerId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    );
+
+      match /offerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.callerId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+
+      match /answerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.callerId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+    }
+
+
+    // =========================================================
+    // 7. P2P FILE TRANSFERS
+    // =========================================================
+    match /file_transfers/{transferId} {
+      allow create: if request.auth != null
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.receiverId is string
+                    && request.resource.data.receiverId != request.auth.uid;
+
+      allow read: if request.auth != null
+                  && (
+                    resource.data.senderId == request.auth.uid
+                    || resource.data.receiverId == request.auth.uid
+                  );
+
+      allow update: if request.auth != null
+                    && (
+                      resource.data.senderId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    )
+                    && request.resource.data.senderId == resource.data.senderId
+                    && request.resource.data.receiverId == resource.data.receiverId;
+
+      allow delete: if request.auth != null
+                    && (
+                      resource.data.senderId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    );
+
+      match /offerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.senderId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+
+      match /answerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.senderId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+    }
+
+
+    // =========================================================
+    // 8. MOMENTS / POSTS / REELS
+    // =========================================================
+    match /global_moments/{momentId} {
+
+      // Authenticated users can see the Moments feed.
+      allow read: if request.auth != null;
+
+      // A user may publish only as themselves.
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.userId is string
+                    && request.resource.data.createdAt != null;
+
+      // Owner can update their own post.
+      // Other authenticated users may only change likes/saves,
+      // or increment commentsCount by exactly one.
+      allow update: if request.auth != null
+                    && (
+                      resource.data.userId == request.auth.uid
+                      ||
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'likes',
+                        'savedBy'
+                      ])
+                      ||
+                      (
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                          'commentsCount'
+                        ])
+                        && request.resource.data.commentsCount
+                           == resource.data.commentsCount + 1
+                      )
+                    );
+
+      // Only the original author can delete a Moment.
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+
+      // -------------------------
+      // Moment comments
+      // -------------------------
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500;
+
+        allow update: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+
+        allow delete: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+      }
+    }
+
+
+    // =========================================================
+    // 9. STORIES
+    // =========================================================
+    match /global_stories/{storyId} {
+
+      allow read: if request.auth != null;
+
+      // A user may publish only their own Story.
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.userId is string
+                    && request.resource.data.createdAt != null;
+
+      // Owner can update their own Story.
+      // Everyone else may only modify likes.
+      allow update: if request.auth != null
+                    && (
+                      resource.data.userId == request.auth.uid
+                      ||
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'likes'
+                      ])
+                    );
+
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+
+      // -------------------------
+      // Story replies
+      // -------------------------
+      match /replies/{replyId} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500;
+
+        allow update: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+
+        allow delete: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+      }
     }
   }
 }
