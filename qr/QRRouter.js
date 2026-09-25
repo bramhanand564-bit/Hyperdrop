@@ -1,5 +1,5 @@
 import QRParser from './QRParser';
-import { URLValidator } from '../security/BotValidator';
+import { URLValidator } from '../security/URLValidator';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
 import { MiniAppAPI } from '../api/MiniAppAPI';
@@ -9,7 +9,7 @@ export const QRRouter = {
   resolve(value) {
     const target = QRParser.parse(value);
     if (!target) throw new Error('Invalid Nax QR code.');
-    if (target.type === 'external' && !URLValidator.scanMiniAppUrl(target.url).isSafe) {
+    if (target.type === 'external' && !URLValidator.validateExternalLink(target.url).valid) {
       throw new Error('External URL blocked.');
     }
     EventBus.emit(EventTypes.QR_SCANNED, { target });
