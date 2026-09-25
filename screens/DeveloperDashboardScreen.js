@@ -113,7 +113,7 @@ export default function DeveloperDashboardScreen({ navigation }) {
           <Text style={[styles.headerTitle, { color: textMain }]}>Dashboard</Text>
         </View>
 
-        <TouchableOpacity style={styles.backBtn}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => Alert.alert('Dashboard metrics', 'Views are summed from published Mini-App/Bot usage fields. Revenue reflects creator revenue recorded on each item.') } accessibilityLabel="Dashboard help">
           <Ionicons name="help-circle-outline" size={26} color={textMain} />
         </TouchableOpacity>
       </View>
