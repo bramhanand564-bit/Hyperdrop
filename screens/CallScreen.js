@@ -13,7 +13,7 @@ export default function CallScreen({ route, navigation }) {
   // 🧠 Fetching all the Logic and States from our Hook
   const {
     type, name, isCaller,
-    localStream, remoteStream, remoteStreamVersion, isMuted, isCameraOff, facing, status, connected, timer, busy,
+    localStream, remoteStream, isMuted, isCameraOff, facing, status, connected, timer, busy,
     acceptCall, declineCall, endCall, toggleMute, toggleCamera, switchCamera, formatTime
   } = useCallLogic(route, navigation);
 
@@ -66,7 +66,6 @@ export default function CallScreen({ route, navigation }) {
         {/* Remote Video (Friend) */}
         {remoteStream ? (
           <RTCView
-            key={`remote-video-${remoteStreamVersion}`}
             streamURL={remoteStream.toURL()}
             style={styles.remoteVideo}
             objectFit="cover"
