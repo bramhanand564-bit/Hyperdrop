@@ -11,7 +11,7 @@ import WalletDashboard from '../components/wallet/WalletDashboard';
 import BackupSection from '../components/settings/BackupSection';
 import AdvancedSettings from '../components/settings/AdvancedSettings';
 
-export default function WalletScreen() {
+export default function WalletScreen({ navigation }) {
   const { isDark, theme } = useTheme();
   const bg = theme.bg;
   const textMain = theme.text;
@@ -36,7 +36,7 @@ export default function WalletScreen() {
 
         {/* 3. Wallet & Earnings Section */}
         <Text style={[styles.sectionTitle, { color: textSub, marginTop: 15 }]}>WALLET & EARNINGS</Text>
-        <WalletDashboard />
+        <WalletDashboard navigation={navigation} />
 
         {/* 4. Settings Section */}
         <Text style={[styles.sectionTitle, { color: textSub, marginTop: 25 }]}>SYSTEM SETTINGS</Text>
