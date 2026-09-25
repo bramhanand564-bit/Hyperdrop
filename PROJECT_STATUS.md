@@ -18,7 +18,7 @@ Build a stable Nax Chat / Hyperdrop app with reliable private chat and media mes
 | Chat core | WORKING | Existing messaging/media/reply/forward flows retained. |
 | Chat Power Center | NEW | 100 additional actions added; needs regression testing. |
 | Voice call | PARTIAL | Signalling/media pipeline exists; audio cleanup was explicitly handled. |
-| Video call | BROKEN / PRIMARY BLOCKER | Local preview appears but remote video is not reliably received; UI stays Connecting. |
+| Video call | HARDENED / DEVICE VERIFICATION PENDING | Remote RTCView no longer force-remounts; video-call remote stream is published only after a video track exists; SDP/ICE diagnostics added. Still needs two-device APK verification. |
 | Call cleanup / speaker restore | FIXED IN CODE | WebRTC tracks and Expo audio mode are restored on cleanup. |
 | P2P transfer | PRESENT | Dedicated transfer rules/manager exist; full regression not completed in this scan. |
 
@@ -34,6 +34,14 @@ The screenshots show the small top-right preview, which is the local stream. The
 3. Remote-track arrival: ontrack is wired, but we need diagnostics for video-track count, ICE state, SDP media sections and candidate types before changing RTCView again.
 4. Android RTCView lifecycle: upstream has Android black-screen reports involving remote streams, ICE failure, z-order and lifecycle/re-render behavior. Rendering should be changed only after confirming that a remote video track exists.
 5. Native build parity: react-native-webrtc contains native code and needs a custom/development native build, not Expo Go. Native dependency/config changes require a fresh build.
+
+### Fixes applied in latest pass
+
+- utils/webrtcHelper.js: video calls now wait for an actual remote video track before publishing the native stream to RTCView; ICE candidate type logging was added.
+- screens/CallScreen.js: removed the forced remote RTCView remount key, reducing Android black/freeze risk during track arrival.
+- hooks/useCallLogic.js: added offer/answer m=audio / m=video checks, local/remote ICE counters and candidate-type diagnostics, plus receiver diagnostics when ICE connects.
+- No Firebase rules, auth, Moments, Stories, or chat-core code was changed in this pass.
+- CI APK build was triggered automatically from commit febd7a13a7ba5f993ba246f5f7035c269837f706; runtime two-device verification is still required.
 
 ## Change lock
 LOCKED — do not modify unless the task specifically concerns it:
