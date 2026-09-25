@@ -183,6 +183,8 @@ function FeedCard({
   onSave,
   onDelete,
   onOpenMedia,
+  isConnected = false,
+  onConnect,
 }) {
   const entrance = useRef(new Animated.Value(0)).current;
   const isReel = item.contentType === 'reel' || item.type === 'reel';
@@ -244,18 +246,42 @@ function FeedCard({
           </Text>
         </View>
 
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="More options"
-          hitSlop={10}
-          onPress={() => {
-            fireHaptic('selection');
-            onDelete?.(item);
-          }}
-          style={styles.moreButton}
-        >
-          <Ionicons name="ellipsis-horizontal" size={22} color={theme.sub} />
-        </TouchableOpacity>
+        <View style={styles.feedHeaderActions}>
+          {item.userId !== currentUser?.uid ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={isConnected ? 'In Circle' : 'Connect'}
+              hitSlop={8}
+              onPress={() => onConnect?.(item)}
+              style={[
+                styles.connectButton,
+                isConnected && styles.connectButtonActive,
+                { borderColor: isConnected ? theme.blue : theme.border },
+              ]}
+            >
+              <Ionicons
+                name={isConnected ? 'checkmark' : 'person-add-outline'}
+                size={14}
+                color={isConnected ? theme.blue : theme.text}
+              />
+              <Text style={[styles.connectButtonText, { color: isConnected ? theme.blue : theme.text }]}>
+                {isConnected ? 'In Circle' : 'Connect'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="More options"
+            hitSlop={10}
+            onPress={() => {
+              fireHaptic('selection');
+              onDelete?.(item);
+            }}
+            style={styles.moreButton}
+          >
+            <Ionicons name="ellipsis-horizontal" size={22} color={theme.sub} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {!!item.text && (
@@ -878,6 +904,30 @@ export default function MomentsScreen({ navigation }) {
     }
   }, [currentUser?.uid]);
 
+  const toggleConnection = useCallback(async post => {
+    const targetId = post?.userId;
+    const uid = currentUser?.uid;
+    if (!uid || !targetId || uid === targetId) return;
+
+    const connected = followingIds.includes(targetId);
+    const previous = followingIds;
+    const next = connected
+      ? followingIds.filter(id => id !== targetId)
+      : [...followingIds, targetId];
+
+    setFollowingIds(next);
+    fireHaptic(connected ? 'light' : 'success');
+
+    try {
+      await updateDoc(doc(db, 'users', uid), {
+        followingIds: connected ? arrayRemove(targetId) : arrayUnion(targetId),
+      });
+    } catch (error) {
+      setFollowingIds(previous);
+      Alert.alert('Connection failed', 'Could not update your Circle right now.');
+    }
+  }, [currentUser?.uid, followingIds]);
+
   const toggleSave = useCallback(async post => {
     if (!currentUser?.uid || !post?.id) return;
     const savedBy = Array.isArray(post.savedBy) ? post.savedBy : [];
@@ -1330,6 +1380,8 @@ export default function MomentsScreen({ navigation }) {
               onSave={toggleSave}
               onDelete={postOptions}
               onOpenMedia={openMediaViewer}
+              isConnected={followingIds.includes(item.userId)}
+              onConnect={toggleConnection}
             />
           )}
           ListHeaderComponent={renderHeader}
@@ -1978,6 +2030,19 @@ const styles = StyleSheet.create({
   },
   youBadgeText: { color: '#66B2FF', fontSize: 9, fontWeight: '900' },
   feedMeta: { fontSize: 12, marginTop: 2, fontWeight: '600' },
+  feedHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  connectButton: {
+    height: 32,
+    paddingHorizontal: 9,
+    borderRadius: 11,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  connectButtonActive: { backgroundColor: 'rgba(8,126,255,0.10)' },
+  connectButtonText: { fontSize: 10, fontWeight: '900' },
   moreButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   feedText: { paddingHorizontal: 15, paddingBottom: 13, fontSize: 15, lineHeight: 23, fontWeight: '500' },
 
