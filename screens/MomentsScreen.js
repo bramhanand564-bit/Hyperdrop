@@ -334,11 +334,11 @@ export default function MomentsScreen() {
                       <Ionicons name={hasLiked ? "heart" : "heart-outline"} size={26} color={hasLiked ? "#FF3B30" : textMain} />
                       <Text style={[styles.actionNum, { color: hasLiked ? "#FF3B30" : textMain }]}>{post.likes?.length || 0}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.feedActionBtn}>
+                    <TouchableOpacity style={styles.feedActionBtn} onPress={() => handleCommentOpen(post)}>
                       <Ionicons name="chatbubble-outline" size={24} color={textMain} />
                       <Text style={[styles.actionNum, { color: textMain }]}>{post.commentsCount || 0}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.feedActionBtn}>
+                    <TouchableOpacity style={styles.feedActionBtn} onPress={() => handleSharePost(post)}>
                       <Feather name="send" size={24} color={textMain} />
                     </TouchableOpacity>
                   </View>
