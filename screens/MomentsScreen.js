@@ -183,6 +183,7 @@ function FeedCard({
   onSave,
   onDelete,
   onOpenMedia,
+  pauseMedia = false,
 }) {
   const entrance = useRef(new Animated.Value(0)).current;
   const videoRef = useRef(null);
