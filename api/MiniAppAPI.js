@@ -4,7 +4,7 @@
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
 import { validateRequestedPermissions } from '../security/PermissionManager';
-import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc, runTransaction } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc, runTransaction, query, where } from 'firebase/firestore';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
 
@@ -55,6 +55,13 @@ export const MiniAppAPI = {
       console.error('MiniAppAPI.getMiniApp:', error);
       return null;
     }
+  },
+
+  getUserMiniApps: async (userId = auth.currentUser?.uid) => {
+    if (!userId) return [];
+    const q = query(collection(db, 'mini_apps'), where('creatorId', '==', userId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
 
   // 3. SEARCH (For PortalSearch)

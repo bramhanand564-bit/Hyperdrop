@@ -38,7 +38,7 @@ export default function DeveloperDashboardScreen({ navigation }) {
     (async () => {
       try {
         const [allApps, bots] = await Promise.all([
-          MiniAppAPI.getPublicMiniApps().catch(() => []),
+          MiniAppAPI.getUserMiniApps(user.uid).catch(() => []),
           BotAPI.getUserBots(user.uid).catch(() => []),
         ]);
         const apps = (allApps || []).filter(item => item.creatorId === user.uid || item.ownerId === user.uid);
