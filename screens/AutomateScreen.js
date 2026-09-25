@@ -10,7 +10,7 @@ import EventBus from '../event-bus/EventBus';
 const starterWorkflow = (ownerId) => ({
   ownerId,
   title: 'Starter workflow',
-  enabled: false,
+  enabled: true,
   trigger: { event: 'automation.manual' },
   condition: null,
   actions: [{ type: 'log', message: 'Starter workflow executed' }],
@@ -44,14 +44,14 @@ export default function AutomateScreen({ navigation }) {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((x,y) => (y.createdAt?.toMillis?.() || 0) - (x.createdAt?.toMillis?.() || 0));
       setExecutions(items.slice(0, 20));
     } catch (error) { console.error('Automation executions load error', error); }
-  }, [loadExecutions]);
+  }, []);
 
   const loadWorkflows = useCallback(async () => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
     const snap = await getDocs(query(collection(db, 'automations'), where('ownerId', '==', uid)));
     setWorkflows(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  }, []);
+  });
 
   useEffect(() => {
     const engine = new AutomationEngine();
