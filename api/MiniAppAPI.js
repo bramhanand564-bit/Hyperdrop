@@ -3,6 +3,7 @@
 // ==========================================
 import { auth, db } from '../firebaseConfig';
 import { MiniAppFirebase } from '../firebase/miniApps';
+import { validateRequestedPermissions } from '../security/PermissionManager';
 import { doc, setDoc, serverTimestamp, increment, updateDoc, collection, getDocs, getDoc, runTransaction } from 'firebase/firestore';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
@@ -14,6 +15,8 @@ export const MiniAppAPI = {
     const user = auth.currentUser;
     if (!user || !user.uid) throw new Error("Authentication required.");
     if (!name || !category) throw new Error("App name and category are required.");
+    const permissionCheck = validateRequestedPermissions(appConfig?.permissions || []);
+    if (!permissionCheck.valid) throw new Error(`Requested permissions are not publishable: ${[...(permissionCheck.invalid || []), ...(permissionCheck.restricted || [])].join(', ')}`);
 
     const newAppSchema = {
       ownerId: user.uid,
@@ -128,6 +131,8 @@ export const MiniAppAPI = {
     const user = auth.currentUser;
     if (!user?.uid) throw new Error('Authentication required.');
     if (!app?.htmlCode) throw new Error('Imported app HTML is missing.');
+    const permissionCheck = validateRequestedPermissions(app.permissions || []);
+    if (!permissionCheck.valid) throw new Error(`Requested permissions are not publishable: ${[...(permissionCheck.invalid || []), ...(permissionCheck.restricted || [])].join(', ')}`);
     if (String(app.htmlCode).length > 900000) throw new Error('Imported app is too large for the public catalog.');
 
     const newAppSchema = {
