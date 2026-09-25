@@ -16,7 +16,7 @@ export const TransactionService={
     const type=status==='succeeded'?EventTypes.PAYMENT_RECEIVED:EventTypes.PAYMENT_FAILED;
     EventBus.emit(type,{transactionId,status,...details});
     return {id:transactionId,status};
-  }
+  },
   async transferTokens({ senderId, recipientId, amount }) {
     if (!senderId || !recipientId) throw new Error('Sender and recipient are required.');
     if (senderId === recipientId) throw new Error('You cannot send tokens to yourself.');
