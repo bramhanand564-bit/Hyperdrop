@@ -19,7 +19,7 @@ export default function PortalCard({ item, navigation, variant = 'default', rank
 
   const isBot = item.type === 'Bot' || item.entryType === 'bot';
   const subtitle = isBot ? (item.username || '@bot') : (item.category || 'Mini App');
-  const actionText = isBot ? 'Chat' : 'Open';
+  const actionText = isBot ? 'Chat' : 'Install';
 
   // 🚀 NAVIGATION ROUTER
   const handlePress = () => {
@@ -30,12 +30,7 @@ export default function PortalCard({ item, navigation, variant = 'default', rank
         botUsername: item.username
       });
     } else {
-      navigation.navigate('MiniAppViewer', {
-        title: item.name,
-        url: item.url,
-        appConfig: item,
-        entryType: item.entryType || (item.url ? 'web' : 'declarative')
-      });
+      navigation.navigate('MiniAppInstall', { app: item });
     }
   };
 
