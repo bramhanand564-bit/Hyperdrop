@@ -818,6 +818,14 @@ export default function MomentsScreen({ navigation }) {
     );
   }, [currentUser?.uid]);
 
+  const sharePost = useCallback(async post => {
+    try {
+      await Share.share({
+        message: `${post.userName || 'Someone'} shared a Moment${post.text ? `: ${post.text}` : ''}${post.media ? `\\n${post.media}` : ''}`,
+      });
+    } catch (error) {}
+  }, []);
+
   const postOptions = useCallback(post => {
     const isOwner = post.userId === currentUser?.uid;
     Alert.alert(
@@ -826,21 +834,16 @@ export default function MomentsScreen({ navigation }) {
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Share', onPress: () => sharePost(post) },
-        { text: post.savedBy?.includes(currentUser?.uid) ? 'Remove from Saved' : 'Save Moment', onPress: () => toggleSave(post) },
+        {
+          text: post.savedBy?.includes(currentUser?.uid) ? 'Remove from Saved' : 'Save Moment',
+          onPress: () => toggleSave(post),
+        },
         ...(isOwner
           ? [{ text: 'Delete', style: 'destructive', onPress: () => deletePost(post) }]
           : []),
       ]
     );
   }, [currentUser?.uid, deletePost, sharePost, toggleSave]);
-
-  const sharePost = useCallback(async post => {
-    try {
-      await Share.share({
-        message: `${post.userName || 'Someone'} shared a Moment${post.text ? `: ${post.text}` : ''}${post.media ? `\\n${post.media}` : ''}`,
-      });
-    } catch (error) {}
-  }, []);
 
   const openComments = useCallback(post => {
     setCommentTarget(post);
