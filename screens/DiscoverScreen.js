@@ -103,9 +103,9 @@ export default function DiscoverScreen({ navigation }) {
   // 🖱️ SMART ROUTER
   const handleOpenItem = (item) => {
     if (item.type === 'bot') {
-      navigation.navigate('BotChatScreen', { botData: { botName: item.name, systemPrompt: `You are a helpful local guide for ${item.name}.` } });
+      navigation.navigate('BotChat', { botData: { botName: item.name, systemPrompt: `You are a helpful local guide for ${item.name}.` } });
     } else {
-      if (item.url) navigation.navigate('WebPortalScreen', { title: item.name, url: item.url });
+      if (item.url) navigation.navigate('WebPortal', { title: item.name, url: item.url });
       else Alert.alert('Not available yet', 'This ecosystem item has no launch target.');
     }
   };
