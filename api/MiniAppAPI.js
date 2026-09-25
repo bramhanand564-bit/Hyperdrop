@@ -102,11 +102,10 @@ export const MiniAppAPI = {
           tx.get(doc(db, 'mini_apps', app.id)),
         ]);
 
-        if (!installSnap.exists()) {
-          tx.set(installRef, savedData);
-          if (globalSnap.exists()) {
-            tx.update(doc(db, 'mini_apps', app.id), { installs: increment(1), updatedAt: serverTimestamp() });
-          }
+        if (installSnap.exists()) return false;
+        tx.set(installRef, savedData);
+        if (globalSnap.exists()) {
+          tx.update(doc(db, 'mini_apps', app.id), { installs: increment(1), updatedAt: serverTimestamp() });
         }
         return true;
       });
