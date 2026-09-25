@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import DeclarativeMiniAppRenderer from '../components/mini-app/DeclarativeMiniAppRenderer';
-import { URLValidator } from '../security/BotValidator';
+import { URLValidator } from '../security/URLValidator';
 import RateLimiter from '../security/RateLimiter';
 import AuditLogger from '../security/AuditLogger';
 import LocalMiniAppStore from './LocalMiniAppStore';
@@ -235,7 +235,7 @@ export default function MiniAppViewer({ route, navigation }) {
               style={styles.webview}
               javaScriptEnabled
               domStorageEnabled
-              originWhitelist={['https://*','data:*']}
+              originWhitelist={['https://*','about:blank']}
               injectedJavaScriptBeforeContentLoaded={injectedCode}
               onMessage={handleMessage}
               onLoadStart={() => setLoading(true)}
