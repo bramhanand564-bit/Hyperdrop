@@ -39,7 +39,7 @@ export default function StudioHome({ navigation }) {
         const uid = auth.currentUser?.uid;
         if (!uid) return;
         const [apps, bots] = await Promise.all([
-          MiniAppAPI.getPublicMiniApps().catch(() => []),
+          MiniAppAPI.getUserMiniApps(uid).catch(() => []),
           BotAPI.getUserBots(uid).catch(() => []),
         ]);
         const mineApps = (apps || []).filter(item => item.creatorId === uid || item.ownerId === uid).map(item => ({ ...item, kind: 'Mini App', type: 'miniapp', dateValue: item.updatedAt || item.createdAt }));
