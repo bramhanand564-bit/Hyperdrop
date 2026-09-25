@@ -112,9 +112,9 @@ function pickerErrorMessage(error, fallback) {
 function getPickerMediaTypes(type) {
   const legacyEnum = ImagePicker.MediaTypeOptions;
   if (legacyEnum) {
-    return type === 'Reel' ? legacyEnum.Videos : legacyEnum.All;
+    return type === Reel ? legacyEnum.Videos : legacyEnum.All;
   }
-  return type === 'Reel' ? ['videos'] : ['images', 'videos'];
+  return type === Reel ? ['videos'] : ['images', 'videos'];
 }
 
 function getPickerCameraType(facing) {
@@ -183,11 +183,8 @@ function FeedCard({
   onSave,
   onDelete,
   onOpenMedia,
-  pauseMedia = false,
 }) {
   const entrance = useRef(new Animated.Value(0)).current;
-  const videoRef = useRef(null);
-  const [videoPlaying, setVideoPlaying] = useState(false);
   const isReel = item.contentType === 'reel' || item.type === 'reel';
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
@@ -202,27 +199,6 @@ function FeedCard({
       bounciness: 6,
     }).start();
   }, [entrance]);
-
-  useEffect(() => {
-    if (!pauseMedia || !videoRef.current) return;
-    videoRef.current.pauseAsync?.().catch(() => {});
-    setVideoPlaying(false);
-  }, [pauseMedia]);
-
-  const toggleVideo = async () => {
-    if (!videoRef.current) return;
-    try {
-      const status = await videoRef.current.getStatusAsync();
-      if (!status?.isLoaded) return;
-      if (status.isPlaying) {
-        await videoRef.current.pauseAsync();
-        setVideoPlaying(false);
-      } else {
-        await videoRef.current.playAsync();
-        setVideoPlaying(true);
-      }
-    } catch (e) {}
-  };
 
   const doubleTap = () => {
     if (!liked) onLike(item);
@@ -290,23 +266,17 @@ function FeedCard({
         <Pressable onPress={doubleTap} onLongPress={onOpenMedia ? () => onOpenMedia(item) : undefined}>
           <View style={styles.mediaWrap}>
             {item.isVideo ? (
-              <Pressable style={styles.videoPressArea} onPress={toggleVideo}>
+              <Pressable style={styles.videoPressArea} onPress={() => openMediaViewer(item)}>
                 <Video
-                  ref={videoRef}
                   source={{ uri: item.media }}
                   style={styles.feedMedia}
                   resizeMode={isReel ? ResizeMode.COVER : ResizeMode.CONTAIN}
                   shouldPlay={false}
                   isLooping
-                  onPlaybackStatusUpdate={status => {
-                    if (status?.isLoaded) setVideoPlaying(!!status.isPlaying);
-                  }}
                 />
-                {!videoPlaying ? (
-                  <View style={styles.inlinePlayButton} pointerEvents="none">
-                    <Ionicons name="play" size={25} color="#fff" />
-                  </View>
-                ) : null}
+                <View style={styles.inlinePlayButton} pointerEvents="none">
+                  <Ionicons name="expand" size={25} color="#fff" />
+                </View>
               </Pressable>
             ) : (
               <Image source={{ uri: item.media }} style={styles.feedMedia} />
@@ -326,9 +296,15 @@ function FeedCard({
             </Animated.View>
 
             {item.isVideo ? (
+              <View style={styles.mediaExpandHint} pointerEvents="none">
+                <Ionicons name="expand-outline" size={15} color="#fff" />
+              </View>
+            ) : null}
+
+            {item.isVideo ? (
               <View style={styles.mediaTypePill}>
                 <Ionicons name={isReel ? 'flash' : 'play'} size={13} color="#fff" />
-                <Text style={styles.mediaTypeText}>{isReel ? 'REEL' : 'VIDEO'}</Text>
+                <Text style={styles.mediaTypeText}>{isReel ? 'CLIP' : 'VIDEO'}</Text>
               </View>
             ) : null}
           </View>
@@ -469,6 +445,7 @@ export default function MomentsScreen({ navigation }) {
   const storyVideoRef = useRef(null);
 
   const [mediaTarget, setMediaTarget] = useState(null);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
   const [infoModal, setInfoModal] = useState(null);
 
   const tabIndicator = useRef(new Animated.Value(0)).current;
@@ -476,7 +453,7 @@ export default function MomentsScreen({ navigation }) {
   const creatorTranslate = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const storyProgressAnim = useRef(new Animated.Value(0)).current;
 
-  const tabs = ['For You', 'Following', 'Live', 'Reels'];
+  const tabs = ['For You', 'Circle', 'Live', 'Clips'];
 
   // Android may destroy MainActivity while the system picker is open.
   // Expo exposes getPendingResultAsync so the selected media can be recovered.
@@ -641,9 +618,9 @@ export default function MomentsScreen({ navigation }) {
   const filteredPosts = useMemo(() => {
     let next = [...feedPosts];
 
-    if (activeTab === 'Following') {
+    if (activeTab === 'Circle') {
       next = next.filter(item => followingIds.includes(item.userId));
-    } else if (activeTab === 'Reels') {
+    } else if (activeTab === 'Clips') {
       next = next.filter(item => item.isVideo === true && (item.contentType === 'reel' || item.type === 'reel' || !item.contentType));
     } else if (activeTab === 'Live') {
       next = next.filter(item => item.isLive === true);
@@ -658,6 +635,15 @@ export default function MomentsScreen({ navigation }) {
 
     return next;
   }, [activeTab, feedPosts, followingIds, searchText]);
+
+  const mediaItems = useMemo(() => filteredPosts.filter(item => !!item.media), [filteredPosts]);
+
+  const openMediaViewer = useCallback(item => {
+    const index = mediaItems.findIndex(media => media.id === item?.id);
+    setMediaViewerIndex(index >= 0 ? index : 0);
+    setMediaTarget(item || null);
+    fireHaptic('selection');
+  }, [mediaItems]);
 
   const openCreator = useCallback(type => {
     setPublishType(type);
@@ -726,7 +712,7 @@ export default function MomentsScreen({ navigation }) {
         mediaTypes: getPickerMediaTypes(publishType),
         quality: 0.82,
         allowsEditing: false,
-        videoMaxDuration: publishType === 'Reel' ? 60 : 120,
+        videoMaxDuration: publishType === Reel ? 60 : 120,
         allowsMultipleSelection: false,
         legacy: Platform.OS === 'android',
       });
@@ -777,7 +763,7 @@ export default function MomentsScreen({ navigation }) {
         mediaTypes: getPickerMediaTypes(publishType),
         cameraType: getPickerCameraType(cameraFacing),
         quality: 0.82,
-        videoMaxDuration: publishType === 'Reel' ? 60 : 120,
+        videoMaxDuration: publishType === Reel ? 60 : 120,
       });
 
       if (result.canceled) return;
@@ -806,7 +792,7 @@ export default function MomentsScreen({ navigation }) {
       return;
     }
 
-    if (publishType === 'Reel' && !creatorIsVideo) {
+    if (publishType === Reel && !creatorIsVideo) {
       Alert.alert('Reel needs a video', 'Choose or record a video for a Reel.');
       return;
     }
@@ -1150,17 +1136,17 @@ export default function MomentsScreen({ navigation }) {
     let body = 'Share something to start the conversation.';
     let icon = 'sparkles-outline';
 
-    if (activeTab === 'Following') {
-      title = followingIds.length ? 'Nothing from your circle yet' : 'Follow people to fill this feed';
+    if (activeTab === 'Circle') {
+      title = followingIds.length ? 'Nothing from your circle yet' : 'Build your circle to fill this feed';
       body = followingIds.length
-        ? 'New moments from people you follow will appear here.'
-        : 'Open a profile, follow a person, then come back here.';
+        ? 'New moments from your circle will appear here.'
+        : 'Connect with people, then come back here.';
       icon = 'people-outline';
     } else if (activeTab === 'Live') {
       title = 'No live Moments';
       body = 'Live moments will appear here when someone starts one.';
       icon = 'radio-outline';
-    } else if (activeTab === 'Reels') {
+    } else if (activeTab === 'Clips') {
       title = 'No clips yet';
       body = 'Short videos from Moments will show up here.';
       icon = 'play-circle-outline';
@@ -1181,12 +1167,12 @@ export default function MomentsScreen({ navigation }) {
         <Text style={[styles.emptyBody, { color: theme.sub }]}>{body}</Text>
         <TouchableOpacity
           style={[styles.emptyCta, { backgroundColor: theme.blue }]}
-          onPress={() => openCreator(activeTab === 'Reels' ? 'Reel' : 'Post')}
+          onPress={() => openCreator(activeTab === 'Clips' ? Reel : 'Post')}
           accessibilityRole="button"
           accessibilityLabel="Create a new Moment"
         >
           <Ionicons name="add" size={17} color="#fff" />
-          <Text style={styles.emptyCtaText}>{activeTab === 'Reels' ? 'Create a Reel' : 'Create a Moment'}</Text>
+          <Text style={styles.emptyCtaText}>{activeTab === 'Clips' ? 'Create a Clip' : 'Create a Moment'}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1343,8 +1329,7 @@ export default function MomentsScreen({ navigation }) {
               onShare={sharePost}
               onSave={toggleSave}
               onDelete={postOptions}
-              onOpenMedia={setMediaTarget}
-              pauseMedia={viewingStoryIndex !== null}
+              onOpenMedia={openMediaViewer}
             />
           )}
           ListHeaderComponent={renderHeader}
@@ -1422,7 +1407,7 @@ export default function MomentsScreen({ navigation }) {
 
                 <View style={styles.creatorTitleWrap}>
                   <Text style={styles.creatorTitle}>Create</Text>
-                  <Text style={styles.creatorModeText}>{publishType}</Text>
+                  <Text style={styles.creatorModeText}>{publishType === 'Reel' ? 'Clip' : publishType}</Text>
                 </View>
 
                 <TouchableOpacity
@@ -1444,14 +1429,14 @@ export default function MomentsScreen({ navigation }) {
               </View>
 
               <View style={styles.typeSelector}>
-                {['Post', 'Story', 'Reel'].map(type => {
+                {['Post', 'Story', Reel].map(type => {
                   const active = publishType === type;
                   return (
                     <TouchableOpacity
                       key={type}
                       onPress={() => {
                         setPublishType(type);
-                        if (type !== 'Reel' && creatorIsVideo) {
+                        if (type !== Reel && creatorIsVideo) {
                           setCreatorIsVideo(false);
                         }
                         fireHaptic('selection');
@@ -1470,7 +1455,7 @@ export default function MomentsScreen({ navigation }) {
                         color={active ? '#fff' : '#AFC4D8'}
                       />
                       <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {type}
+                        {type === 'Reel' ? 'Clip' : type}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1511,7 +1496,7 @@ export default function MomentsScreen({ navigation }) {
                     placeholder={
                       publishType === 'Story'
                         ? 'Add a story caption…'
-                        : publishType === 'Reel'
+                        : publishType === Reel
                           ? 'Tell people what this clip is about…'
                           : 'What’s happening?'
                     }
@@ -1554,7 +1539,7 @@ export default function MomentsScreen({ navigation }) {
                 </View>
 
                 <Text style={styles.creatorHint}>
-                  {publishType === 'Reel'
+                  {publishType === Reel
                     ? 'Reels support video up to 60 seconds.'
                     : 'Your Moment will appear instantly in the live feed.'}
                 </Text>
@@ -1781,22 +1766,71 @@ export default function MomentsScreen({ navigation }) {
           </View>
         </Modal>
 
-        <Modal visible={!!mediaTarget} transparent animationType="fade" onRequestClose={() => setMediaTarget(null)}>
+        <Modal
+          visible={!!mediaTarget}
+          animationType="fade"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setMediaTarget(null)}
+        >
           <View style={styles.mediaViewerBackdrop}>
-            <TouchableOpacity style={styles.mediaViewerClose} onPress={() => setMediaTarget(null)}>
+            <FlatList
+              data={mediaItems}
+              keyExtractor={item => `viewer-${item.id}`}
+              pagingEnabled
+              showsVerticalScrollIndicator={false}
+              initialScrollIndex={Math.min(mediaViewerIndex, Math.max(0, mediaItems.length - 1))}
+              getItemLayout={(_, index) => ({
+                length: Dimensions.get('window').height,
+                offset: Dimensions.get('window').height * index,
+                index,
+              })}
+              onMomentumScrollEnd={event => {
+                const height = Dimensions.get('window').height || 1;
+                const nextIndex = Math.round(event.nativeEvent.contentOffset.y / height);
+                setMediaViewerIndex(nextIndex);
+              }}
+              renderItem={({ item, index }) => (
+                <View style={styles.fullMediaPage}>
+                  {item.isVideo ? (
+                    <Video
+                      source={{ uri: item.media }}
+                      style={styles.fullMedia}
+                      resizeMode={ResizeMode.CONTAIN}
+                      shouldPlay={index === mediaViewerIndex}
+                      isLooping
+                    />
+                  ) : (
+                    <Image source={{ uri: item.media }} style={styles.fullMedia} resizeMode="contain" />
+                  )}
+                  <View style={styles.fullMediaTop} pointerEvents="none">
+                    <View style={styles.fullMediaBadge}>
+                      <Ionicons name={item.isVideo ? 'videocam-outline' : 'image-outline'} size={15} color="#fff" />
+                      <Text style={styles.fullMediaBadgeText}>
+                        {item.isVideo ? (item.contentType === 'reel' ? 'CLIP' : 'VIDEO') : 'PHOTO'}
+                      </Text>
+                    </View>
+                    <Text style={styles.fullMediaCounter}>
+                      {index + 1} / {mediaItems.length}
+                    </Text>
+                  </View>
+                  <View style={styles.fullMediaBottom} pointerEvents="none">
+                    <Text style={styles.fullMediaUser} numberOfLines={1}>{item.userName || 'User'}</Text>
+                    {!!item.text && (
+                      <Text style={styles.fullMediaCaption} numberOfLines={3}>{item.text}</Text>
+                    )}
+                    <Text style={styles.fullMediaHint}>Swipe up or down • tap video to pause</Text>
+                  </View>
+                </View>
+              )}
+            />
+            <TouchableOpacity
+              style={styles.mediaViewerClose}
+              onPress={() => setMediaTarget(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close full screen media"
+            >
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
-            {mediaTarget?.isVideo ? (
-              <Video
-                source={{ uri: mediaTarget?.media }}
-                style={styles.fullMedia}
-                resizeMode={ResizeMode.CONTAIN}
-                useNativeControls
-                shouldPlay
-              />
-            ) : (
-              <Image source={{ uri: mediaTarget?.media }} style={styles.fullMedia} resizeMode="contain" />
-            )}
           </View>
         </Modal>
 
@@ -1974,6 +2008,17 @@ const styles = StyleSheet.create({
     top: '50%',
     marginLeft: -41,
     marginTop: -41,
+  },
+  mediaExpandHint: {
+    position: 'absolute',
+    left: 12,
+    top: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mediaTypePill: {
     position: 'absolute',
@@ -2336,8 +2381,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  mediaViewerBackdrop: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
-  fullMedia: { width: '100%', height: '82%' },
+  mediaViewerBackdrop: { flex: 1, backgroundColor: '#000' },
+  fullMediaPage: {
+    width: '100%',
+    height: Dimensions.get('window').height,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullMedia: { width: '100%', height: '100%' },
+  fullMediaTop: {
+    position: 'absolute',
+    left: 16,
+    right: 70,
+    top: Platform.OS === 'ios' ? 54 : 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fullMediaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+  },
+  fullMediaBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  fullMediaCounter: { color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: '800' },
+  fullMediaBottom: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    bottom: Platform.OS === 'ios' ? 42 : 28,
+  },
+  fullMediaUser: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  fullMediaCaption: { color: 'rgba(255,255,255,0.9)', fontSize: 13, lineHeight: 19, marginTop: 5 },
+  fullMediaHint: { color: 'rgba(255,255,255,0.58)', fontSize: 10, fontWeight: '700', marginTop: 9 },
   mediaViewerClose: {
     position: 'absolute',
     right: 18,
