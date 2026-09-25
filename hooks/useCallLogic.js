@@ -929,6 +929,11 @@ export default function useCallLogic(route, navigation) {
         '🎥 Incoming local camera + microphone ready'
       );
 
+      if (mountedRef.current) {
+        setBusy(false);
+        setStatus('Connecting...');
+      }
+
       // ----------------------------------------
       // CREATE PEER
       // ----------------------------------------
@@ -945,34 +950,68 @@ export default function useCallLogic(route, navigation) {
       );
 
       // ----------------------------------------
-      // GET CALL DOCUMENT
+      // WAIT FOR CALLER OFFER
       // ----------------------------------------
-      const snap =
-        await getDoc(callDoc);
+      // The receiver can tap Accept before the caller's
+      // Firestore offer update arrives. Do not fail the
+      // call in that race; wait for the offer briefly.
+      const data = await new Promise((resolve, reject) => {
+        let settled = false;
+        let unsubscribe = () => {};
+        const timeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          try { unsubscribe(); } catch (_) {}
+          reject(new Error('Caller offer timed out. Please try again.'));
+        }, 15000);
 
-      const data =
-        snap.data();
+        unsubscribe = onSnapshot(
+          callDoc,
+          snapshot => {
+            const next = snapshot.data();
 
-      if (!data) {
-        throw new Error(
-          'Call no longer exists.'
+            if (!next) {
+              clearTimeout(timeout);
+              settled = true;
+              try { unsubscribe(); } catch (_) {}
+              reject(new Error('Call no longer exists.'));
+              return;
+            }
+
+            if (next.status === 'ended' || next.status === 'rejected') {
+              clearTimeout(timeout);
+              settled = true;
+              try { unsubscribe(); } catch (_) {}
+              reject(new Error('Call has ended.'));
+              return;
+            }
+
+            if (next.offer && !settled) {
+              clearTimeout(timeout);
+              settled = true;
+              try { unsubscribe(); } catch (_) {}
+              resolve(next);
+            }
+          },
+          error => {
+            clearTimeout(timeout);
+            settled = true;
+            try { unsubscribe(); } catch (_) {}
+            reject(error);
+          }
         );
-      }
 
-      if (!data.offer) {
-        throw new Error(
-          'Caller offer not found.'
-        );
-      }
+        cleanupListenersRef.current.push(() => {
+          clearTimeout(timeout);
+          try { unsubscribe(); } catch (_) {}
+        });
+      });
 
-      if (
-        offerProcessedRef.current
-      ) {
+      if (offerProcessedRef.current) {
         return;
       }
 
-      offerProcessedRef.current =
-        true;
+      offerProcessedRef.current = true;
 
       // ----------------------------------------
       // SET REMOTE OFFER
