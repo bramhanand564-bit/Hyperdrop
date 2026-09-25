@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -32,6 +32,7 @@ export default function AutomateScreen({ navigation }) {
 
   const [workflows, setWorkflows] = useState([]);
   const [busy, setBusy] = useState(false);
+  const engineRef = useRef(null);
 
   const loadWorkflows = useCallback(async () => {
     const uid = auth.currentUser?.uid;
@@ -42,6 +43,7 @@ export default function AutomateScreen({ navigation }) {
 
   useEffect(() => {
     const engine = new AutomationEngine();
+    engineRef.current = engine;
     let mounted = true;
     (async () => {
       try {
@@ -56,7 +58,7 @@ export default function AutomateScreen({ navigation }) {
         console.error('Automate load error', error);
       }
     })();
-    return () => { mounted = false; engine.stop(); };
+    return () => { mounted = false; engine.stop(); engineRef.current = null; };
   }, []);
 
   const createWorkflow = async () => {
@@ -80,7 +82,12 @@ export default function AutomateScreen({ navigation }) {
         enabled,
         updatedAt: serverTimestamp(),
       });
-      setWorkflows(items => items.map(item => item.id === workflow.id ? { ...item, enabled } : item));
+      setWorkflows(items => {
+        const next = items.map(item => item.id === workflow.id ? { ...item, enabled } : item);
+        engineRef.current?.stop();
+        engineRef.current?.registerWorkflows(next.filter(item => item.enabled !== false));
+        return next;
+      });
     } catch (error) {
       Alert.alert('Could not update workflow', error?.message || 'Please try again.');
     }
