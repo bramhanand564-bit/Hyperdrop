@@ -236,36 +236,8 @@ export function createPeerConnection(
     );
   };
 
-  // ========================================
-  // ICE CONNECTION STATE
-  // ========================================
-  pc.oniceconnectionstatechange = () => {
-    console.log(
-      '🧊 ICE Connection State:',
-      pc.iceConnectionState
-    );
-  };
-
-  // ========================================
-  // CONNECTION STATE
-  // ========================================
-  pc.onconnectionstatechange = () => {
-    console.log(
-      '📡 WebRTC Connection State:',
-      pc.connectionState
-    );
-  };
-
-  // ========================================
-  // SIGNALING STATE
-  // ========================================
-  pc.onsignalingstatechange = () => {
-    console.log(
-      '📶 Signaling State:',
-      pc.signalingState
-    );
-  };
-
+  // Connection/signaling state handlers are intentionally owned by
+  // useCallLogic so a single listener updates call UI state.
   // ========================================
   // ICE CANDIDATE ERROR
   // ========================================
