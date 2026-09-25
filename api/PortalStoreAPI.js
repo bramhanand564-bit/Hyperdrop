@@ -1,6 +1,7 @@
 // api/PortalStoreAPI.js
 import { db, auth } from '../firebaseConfig';
 import { collection, addDoc, getDocs, getDoc, doc, query, where, orderBy, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { URLValidator } from '../security/URLValidator';
 
 const storeRef = collection(db, 'portalStore');
 
@@ -43,6 +44,7 @@ const PortalStoreAPI = {
       updatedAt: serverTimestamp(),
     };
     if (!payload.name || !payload.url || !payload.description) throw new Error('Name, URL and description are required.');
+    if (!URLValidator.validateExternalLink(payload.url).valid) throw new Error('Only valid HTTPS URLs can be published.');
     const created = await addDoc(storeRef, payload);
     return { id: created.id, ...payload };
   },
