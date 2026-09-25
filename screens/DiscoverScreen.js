@@ -9,7 +9,8 @@ import GlassScene from '../components/ui/GlassScene';
 
 // 🔥 REAL FIREBASE IMPORTS
 import { db, auth } from '../firebaseConfig';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { DiscoverService } from '../discover/DiscoverService';
+import * as Linking from 'expo-linking';
 
 export default function DiscoverScreen({ navigation }) {
   const { isDark, theme } = useTheme();
@@ -21,6 +22,7 @@ export default function DiscoverScreen({ navigation }) {
   const [nearbyApps, setNearbyApps] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [radiusKm, setRadiusKm] = useState(10);
 
   // 🎨 Super Glassy, Zero-Neon Palette
   const bg = theme.bg;
@@ -80,24 +82,17 @@ export default function DiscoverScreen({ navigation }) {
 
   const fetchNearbyEcosystem = async (lat, lng) => {
     try {
-      // In a production app, you'd use GeoFirestore for radius queries.
-      // Here we fetch apps tagged with "local" and simulate distance.
-      const q = query(collection(db, 'portals'), where('isLocal', '==', true));
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-        setNearbyApps(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } else {
-        // 🧩 FALLBACK MOCK DATA (If Firebase has no local apps yet)
-        setNearbyApps([
-          { id: '1', name: 'Sharma Sweets Order App', type: 'app', category: 'Restaurants', distance: '0.4 km', rating: 4.8 },
-          { id: '2', name: 'Haridwar City Guide', type: 'bot', category: 'Local Bots', distance: '1.2 km', rating: 4.9 },
-          { id: '3', name: 'Local Cineplex Tickets', type: 'app', category: 'Events', distance: '2.5 km', rating: 4.5 },
-          { id: '4', name: 'Grocery Express', type: 'app', category: 'Shops', distance: '0.8 km', rating: 4.2 }
-        ]);
-      }
+      const results = await DiscoverService.nearby({ lat, lng, radiusKm });
+      setNearbyApps(results.map(item => ({
+        ...item,
+        type: item.type || 'app',
+        category: item.category || 'Tools',
+        rating: Number(item.rating || 0),
+        distance: item.distanceKm < 1 ? `${Math.round(item.distanceKm * 1000)} m` : `${item.distanceKm.toFixed(1)} km`,
+      })));
     } catch (error) {
-      console.log("Error fetching nearby apps:", error);
+      console.log('Discover query failed:', error);
+      setNearbyApps([]);
     } finally {
       setLoading(false);
     }
@@ -121,7 +116,7 @@ export default function DiscoverScreen({ navigation }) {
         <Text style={{ color: textSub, textAlign: 'center', marginBottom: 30 }}>
           Nax Discover needs your GPS permission to find Mini-Apps, Bots, and Stores near you.
         </Text>
-        <TouchableOpacity style={[styles.permissionBtn, { backgroundColor: naxBlue }]} onPress={() => Location.requestForegroundPermissionsAsync()}>
+        <TouchableOpacity style={[styles.permissionBtn, { backgroundColor: naxBlue }]} onPress={async () => { const r = await Location.requestForegroundPermissionsAsync(); if (r.granted) { setLocationStatus('requesting'); setLoading(true); } else { await Linking.openSettings(); } }}>
           <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Enable Location</Text>
         </TouchableOpacity>
         <TouchableOpacity style={{ marginTop: 20 }} onPress={() => navigation.goBack()}>
@@ -148,7 +143,12 @@ export default function DiscoverScreen({ navigation }) {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.backBtn} onPress={() => Alert.alert("Filters", "Filter by Radius (e.g. 5km)")}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => Alert.alert('Search radius', 'Choose how far Nax should search.', [
+            { text: '5 km', onPress: () => setRadiusKm(5) },
+            { text: '10 km', onPress: () => setRadiusKm(10) },
+            { text: '25 km', onPress: () => setRadiusKm(25) },
+            { text: 'Cancel', style: 'cancel' },
+          ])}>
           <Ionicons name="options-outline" size={24} color={textMain} />
         </TouchableOpacity>
       </View>
@@ -160,7 +160,7 @@ export default function DiscoverScreen({ navigation }) {
           <View style={styles.radarCircle}>
             <MaterialCommunityIcons name="radar" size={50} color={naxBlue} style={{ opacity: 0.8 }} />
           </View>
-          <Text style={[styles.mapBannerText, { color: textMain }]}>Scanning your area...</Text>
+          <Text style={[styles.mapBannerText, { color: textMain }]}>Scanning within {radiusKm} km...</Text>
           <Text style={{ color: textSub, fontSize: 12 }}>{nearbyApps.length} ecosystem items found nearby</Text>
         </View>
 
