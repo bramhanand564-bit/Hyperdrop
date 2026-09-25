@@ -1,18 +1,23 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { getNaxTheme } from '../../theme/NaxTheme';
 
 export default function GlassSurface({ children, style, strong = false, radius = 24 }) {
-  const { isDark } = useTheme();
-  const t = getNaxTheme(isDark);
+  const { theme } = useTheme();
+  const innerRadius = Math.max(1, radius - 1);
   return (
     <View style={[
       styles.base,
-      { backgroundColor: strong ? t.surfaceStrong : t.surface, borderColor: t.border, borderRadius: radius, shadowColor: t.shadow },
+      {
+        backgroundColor: strong ? theme.surfaceStrong : theme.surface,
+        borderColor: theme.border,
+        borderRadius: radius,
+        shadowColor: theme.shadow,
+      },
       style,
     ]}>
-      <View pointerEvents="none" style={[styles.highlight, { borderRadius: radius - 1 }]} />
+      <View pointerEvents="none" style={[styles.sheen, { borderRadius: innerRadius }]} />
+      <View pointerEvents="none" style={[styles.glow, { borderRadius: innerRadius }]} />
       {children}
     </View>
   );
@@ -21,15 +26,24 @@ export default function GlassSurface({ children, style, strong = false, radius =
 const styles = StyleSheet.create({
   base: {
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 5,
     overflow: 'hidden',
   },
-  highlight: {
+  sheen: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.20)',
+  },
+  glow: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: 0,
+    height: 28,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
   },
 });
