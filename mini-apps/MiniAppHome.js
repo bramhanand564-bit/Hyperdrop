@@ -26,6 +26,7 @@ export default function MiniAppHome({ navigation }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [installedIds, setInstalledIds] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -33,6 +34,10 @@ export default function MiniAppHome({ navigation }) {
       try {
         const data = await MiniAppAPI.getPublicMiniApps();
         if (mounted) setApps(Array.isArray(data) ? data : []);
+        if (mounted) {
+          const installed = await MiniAppAPI.getInstalledApps().catch(() => []);
+          setInstalledIds((installed || []).map(item => item.appId || item.id));
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -57,10 +62,13 @@ export default function MiniAppHome({ navigation }) {
     return matchesSearch && matchesCategory;
   });
 
-  // --- OPEN MINI APP ---
+  // --- OPEN / INSTALL MINI APP ---
   const handleOpenApp = (app) => {
     Keyboard.dismiss();
-    // Navigates to the MiniAppViewer we created earlier
+    if (!installedIds.includes(app.id)) {
+      navigation.navigate('MiniAppInstall', { app });
+      return;
+    }
     navigation.navigate('MiniAppViewer', {
       title: app.name,
       url: app.url,
@@ -89,7 +97,7 @@ export default function MiniAppHome({ navigation }) {
         <Text style={[styles.appDesc, { color: textSub }]} numberOfLines={2}>{item.description || item.desc || ''}</Text>
       </View>
 
-      <GlassButton title="Open" icon="play" compact onPress={() => handleOpenApp(item)} />
+      <GlassButton title={installedIds.includes(item.id) ? "Open" : "Install"} icon={installedIds.includes(item.id) ? "play" : "download"} compact onPress={() => handleOpenApp(item)} />
     </TouchableOpacity>
   );
 
