@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
   viewerFooter: { position: 'absolute', bottom: Platform.OS === 'ios' ? 40 : 20, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, zIndex: 10 }, 
   viewerReplyBox: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', paddingHorizontal: 20, backgroundColor: 'rgba(0,0,0,0.2)' },
   viewerReplyInput: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 18, color: '#FFF', backgroundColor: 'rgba(0,0,0,0.2)' },
-  storyReplySend: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(8,126,255,0.9)', justifyContent: 'center', alignItems: 'center', marginLeft: 8 }
+  storyReplySend: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(8,126,255,0.9)', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
 
   // Creator Styles
   creatorContainer: { flex: 1 }, 
