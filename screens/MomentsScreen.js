@@ -819,7 +819,7 @@ export default function MomentsScreen({ navigation }) {
     }
 
     if (publishType === 'Reel' && !creatorIsVideo) {
-      Alert.alert('Reel needs a video', 'Choose or record a video for a Reel.');
+      Alert.alert('Clip needs a video', 'Choose or record a video for a Clip.');
       return;
     }
 
@@ -1592,7 +1592,7 @@ export default function MomentsScreen({ navigation }) {
 
                 <Text style={styles.creatorHint}>
                   {publishType === 'Reel'
-                    ? 'Reels support video up to 60 seconds.'
+                    ? 'Clips support video up to 60 seconds.'
                     : 'Your Moment will appear instantly in the live feed.'}
                 </Text>
               </KeyboardAvoidingView>
