@@ -3,6 +3,7 @@
 // ==========================================
 import { useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
+import { Audio } from 'expo-av';
 import {
   RTCSessionDescription,
   RTCIceCandidate,
@@ -76,6 +77,7 @@ export default function useCallLogic(route, navigation) {
   // REFS
   // ==========================================
   const peerRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const callRef = useRef(null);
 
   const cleanupListenersRef = useRef([]);
@@ -85,6 +87,24 @@ export default function useCallLogic(route, navigation) {
   const navigationHandledRef = useRef(false);
 
   const timerRef = useRef(null);
+
+  // Android WebRTC can leave the global audio route in communication mode
+  // after a call. Keep the app audio session explicitly on the main speaker
+  // and restore it when the call is finished.
+  const setCallAudioMode = async (active) => {
+    try {
+      await Audio.setIsEnabledAsync(true);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: active,
+        playsInSilentModeIOS: false,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: active,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (error) {
+      console.log('🔊 Audio mode update error:', error);
+    }
+  };
 
   // ICE candidates received before remote SDP
   const iceCandidateQueue = useRef([]);
@@ -213,6 +233,7 @@ export default function useCallLogic(route, navigation) {
           return;
         }
 
+        remoteStreamRef.current = remote;
         setRemoteStream(remote);
         // Force RTCView to remount when audio/video tracks arrive
         // separately (common on Android WebRTC).
@@ -1146,6 +1167,7 @@ export default function useCallLogic(route, navigation) {
   // ==========================================
   const startCall = async () => {
     try {
+      await setCallAudioMode(true);
       if (!currentUser?.uid) {
         throw new Error(
           'Login required.'
@@ -1310,12 +1332,26 @@ export default function useCallLogic(route, navigation) {
     // ----------------------------------------
     // REMOTE STREAM
     // ----------------------------------------
+    try {
+      if (remoteStreamRef.current) {
+        remoteStreamRef.current.getTracks?.().forEach((track) => {
+          try { track.stop(); } catch (_) {}
+        });
+        remoteStreamRef.current = null;
+      }
+    } catch (error) {
+      console.log('❌ Remote media cleanup error:', error);
+    }
+
     if (mountedRef.current) {
       setRemoteStream(null);
       setRemoteStreamVersion(0);
       setConnected(false);
       setBusy(false);
     }
+
+    // Explicitly restore normal app audio/speaker routing after WebRTC.
+    setCallAudioMode(false);
 
     // ----------------------------------------
     // NAVIGATION
