@@ -50,8 +50,10 @@ export default function AutomateScreen({ navigation }) {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
     const snap = await getDocs(query(collection(db, 'automations'), where('ownerId', '==', uid)));
-    setWorkflows(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setWorkflows(items);
+    return items;
+  }, []);
 
   useEffect(() => {
     const engine = new AutomationEngine();
@@ -80,7 +82,9 @@ export default function AutomateScreen({ navigation }) {
     setBusy(true);
     try {
       await addDoc(collection(db, 'automations'), starterWorkflow(uid));
-      await loadWorkflows();
+      const items = await loadWorkflows();
+      engineRef.current?.stop();
+      engineRef.current?.registerWorkflows(items.filter(item => item.enabled !== false));
     } catch (error) {
       Alert.alert('Could not create workflow', error?.message || 'Please try again.');
     } finally {
