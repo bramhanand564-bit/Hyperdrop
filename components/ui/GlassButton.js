@@ -1,35 +1,48 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { getNaxTheme } from '../../theme/NaxTheme';
 
-export default function GlassButton({ title, icon, onPress, variant = 'blue', compact = false, style }) {
-  const { isDark } = useTheme();
-  const t = getNaxTheme(isDark);
-  const float = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(float, { toValue: -2, duration: 1800, useNativeDriver: true }),
-        Animated.timing(float, { toValue: 0, duration: 1800, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [float]);
-  const fill = variant === 'green' ? t.green : variant === 'clear' ? t.surface : t.blue;
-  const textColor = variant === 'clear' ? t.text : '#FFFFFF';
+export default function GlassButton({
+  title,
+  icon,
+  onPress,
+  variant = 'primary',
+  disabled = false,
+  compact = false,
+}) {
+  const { theme } = useTheme();
+  const scale = useRef(new Animated.Value(1)).current;
+  const primary = variant === 'primary';
+  const danger = variant === 'danger';
+
+  const pressIn = () => Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 30 }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 8 }).start();
+
   return (
-    <Animated.View style={{ transform: [{ translateY: float }] }}>
-      <TouchableOpacity activeOpacity={0.86} onPress={onPress} style={[
-        styles.button,
-        compact && styles.compact,
-        { backgroundColor: fill, borderColor: variant === 'clear' ? t.border : 'rgba(255,255,255,0.28)' },
-        style,
-      ]}>
-        {icon ? <Ionicons name={icon} size={compact ? 18 : 20} color={textColor} /> : null}
-        {title ? <Text style={[styles.title, { color: textColor }]}>{title}</Text> : null}
+    <Animated.View style={{ transform: [{ scale }], opacity: disabled ? 0.5 : 1 }}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        disabled={disabled}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        onPress={onPress}
+        style={[
+          styles.button,
+          compact && styles.compact,
+          {
+            backgroundColor: primary ? theme.blue : danger ? 'rgba(255,59,48,0.12)' : theme.surfaceStrong,
+            borderColor: primary ? 'rgba(255,255,255,0.28)' : danger ? 'rgba(255,59,48,0.25)' : theme.border,
+          },
+        ]}
+      >
+        <View style={styles.row}>
+          {icon ? <Ionicons name={icon} size={compact ? 18 : 19} color={primary ? '#FFF' : danger ? '#FF3B30' : theme.text} /> : null}
+          <Text style={[styles.text, { color: primary ? '#FFF' : danger ? '#FF3B30' : theme.text, marginLeft: icon ? 7 : 0 }]}>
+            {title}
+          </Text>
+        </View>
+        <View pointerEvents="none" style={styles.highlight} />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -37,19 +50,24 @@ export default function GlassButton({ title, icon, onPress, variant = 'blue', co
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 46,
-    paddingHorizontal: 18,
-    borderRadius: 18,
+    minHeight: 48,
+    paddingHorizontal: 17,
+    borderRadius: 17,
     borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
-    shadowRadius: 14,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 3,
+    overflow: 'hidden',
   },
-  compact: { minHeight: 40, paddingHorizontal: 14, borderRadius: 15 },
-  title: { fontSize: 14, fontWeight: '800' },
+  compact: { minHeight: 40, paddingHorizontal: 14, borderRadius: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  text: { fontSize: 14, fontWeight: '800' },
+  highlight: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+  },
 });
