@@ -139,12 +139,16 @@ export default function ExperienceBuilder({ route, navigation }) {
         <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Gateway enabled</Text><Text style={[styles.rowSub,{color:theme.sub}]}>One Experience identity can open from Chat, Discover, Moments, Settings and full screen.</Text></View>
         <Switch value={gatewayEnabled} onValueChange={setGatewayEnabled}/>
       </View>
-      {gatewayEnabled?<><View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border,marginTop:8}]}>
-        <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Chat surface</Text><Text style={[styles.rowSub,{color:theme.sub}]}>Keep a compact interactive card in Chat while the same session can open full screen.</Text></View>
-        <Switch value={chatEnabled} onValueChange={setChatEnabled}/>
-      </View>
-      <View style={styles.chips}>{['card','large','alert'].map(mode=><TouchableOpacity key={mode} onPress={()=>setChatPresentation(mode)} style={[styles.option,{backgroundColor:chatPresentation===mode?theme.blue:theme.surface,borderColor:chatPresentation===mode?theme.blue:theme.border}]}><Text style={{color:chatPresentation===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>{mode}</Text></TouchableOpacity>)}</View>
-      <View style={styles.chips}>{['public','private','invite-only'].map(mode=><TouchableOpacity key={mode} onPress={()=>setVisibility(mode)} style={[styles.option,{backgroundColor:visibility===mode?theme.blue:theme.surface,borderColor:visibility===mode?theme.blue:theme.border}]}><Text style={{color:visibility===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>Visibility: {mode}</Text></TouchableOpacity>)}</View></>:null>
+      {gatewayEnabled ? (
+        <View>
+          <View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border,marginTop:8}]}>
+            <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Chat surface</Text><Text style={[styles.rowSub,{color:theme.sub}]}>Keep a compact interactive card in Chat while the same session can open full screen.</Text></View>
+            <Switch value={chatEnabled} onValueChange={setChatEnabled}/>
+          </View>
+          <View style={styles.chips}>{['card','large','alert'].map(mode=><TouchableOpacity key={mode} onPress={()=>setChatPresentation(mode)} style={[styles.option,{backgroundColor:chatPresentation===mode?theme.blue:theme.surface,borderColor:chatPresentation===mode?theme.blue:theme.border}]}><Text style={{color:chatPresentation===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>{mode}</Text></TouchableOpacity>)}</View>
+          <View style={styles.chips}>{['public','private','invite-only'].map(mode=><TouchableOpacity key={mode} onPress={()=>setVisibility(mode)} style={[styles.option,{backgroundColor:visibility===mode?theme.blue:theme.surface,borderColor:visibility===mode?theme.blue:theme.border}]}><Text style={{color:visibility===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>Visibility: {mode}</Text></TouchableOpacity>)}</View>
+        </View>
+      ) : null}
 
       <Text style={[styles.label,{color:theme.text}]}>Full experience URL (optional)</Text>
       <TextInput value={webUrl} onChangeText={setWebUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="https://your-experience.example" placeholderTextColor={theme.sub}/>
