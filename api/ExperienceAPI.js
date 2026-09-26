@@ -1,8 +1,7 @@
 import { auth, db } from '../firebaseConfig';
 import { DEFAULT_GATEWAY, normalizeGateway, createGatewayId } from './ExperienceGateway';
 import {
-  addDoc,
-  collection,
+    collection,
   deleteDoc,
   doc,
   getDoc,
@@ -143,6 +142,7 @@ const ExperienceAPI = {
     const schema = input.schema || EMPTY_SCHEMA;
     if (JSON.stringify(schema).length > 250000) throw new Error('Experience configuration is too large.');
     if (!Array.isArray(schema.fields) || !Array.isArray(schema.actions)) throw new Error('Invalid Experience configuration.');
+    const experienceRef = doc(experiencesRef);
     const payload = {
       name,
       description: String(input.description || '').trim().slice(0, 500),
@@ -155,14 +155,14 @@ const ExperienceAPI = {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       gateway: normalizeGateway(schema.gateway),
-      gatewayId: createGatewayId(),
+      gatewayId: createGatewayId(experienceRef.id),
       package: { type: 'experience', sourceId: null, version: 1 },
     };
 
-    const created = await addDoc(experiencesRef, payload);
-    const gatewayId = createGatewayId(created.id);
-    await updateDoc(created, { gatewayId });
-    return { id: created.id, ...payload };
+    // Keep publish to one Firestore create. This avoids a second immediate
+    // update that can be rejected when a deployed ruleset only permits create.
+    await setDoc(experienceRef, payload);
+    return { id: experienceRef.id, ...payload };
   },
 
   async update(id, input = {}) {
