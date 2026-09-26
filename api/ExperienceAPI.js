@@ -316,6 +316,7 @@ const ExperienceAPI = {
       transaction.set(participantRef, {
         userId: uid,
         status: status === 'completed' ? 'completed' : 'active',
+        ...(lowerLabel === 'join' ? { joinedAt: serverTimestamp() } : {}),
         lastActionId: actionId,
         lastActionLabel: label,
         lastActionAt: serverTimestamp(),
