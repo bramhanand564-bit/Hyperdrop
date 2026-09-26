@@ -6,6 +6,8 @@ import GlassScene from '../components/ui/GlassScene';
 import GlassSurface from '../components/ui/GlassSurface';
 
 const ROWS = [
+  { id: 'ExperienceStore', title: 'Experience Store', subtitle: 'Discover, install, and customize creator-made tools', icon: 'storefront-outline' },
+  { id: 'ExperienceDashboard', title: 'Experience Dashboard', subtitle: 'Your apps, growth, audience, and activity', icon: 'analytics-outline' },
   { id: 'AISettings', title: 'AI & Models', subtitle: 'Connect APIs, multiple models, or local AI', icon: 'sparkles-outline' },
   { id: 'SecurityPermissions', title: 'Security & Permissions', subtitle: 'Control apps, wallet, camera, and location', icon: 'shield-checkmark-outline' },
   { id: 'Wallet', title: 'Wallet', subtitle: 'Tokens and transaction history', icon: 'wallet-outline' },
