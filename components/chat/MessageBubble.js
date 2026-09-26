@@ -32,7 +32,7 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
  }catch(e){Alert.alert('Message',e.message||'Action failed.')}};
  const runExperienceAction=async action=>{
   if(!item.experienceId||!action||experienceBusy)return;
-  const missing=(item.experienceSchema?.fields||[]).find(f=>f.required&&(experienceValues[f.id]===undefined||experienceValues[f.id]===''));
+  const missing=(item.experienceSchema?.fields||[]).find(f=>f.required&&(experienceValues[f.id]===undefined||experienceValues[f.id]===null||experienceValues[f.id]===''||(f.type==='Checkbox'&&experienceValues[f.id]===false)));
   if(missing&&['complete','submit','claim','book','pay','approve'].includes(String(action.label||'').toLowerCase())){
    return Alert.alert('Required field',`Please complete: ${missing.label||missing.id}`);
   }
