@@ -70,17 +70,22 @@ service cloud.firestore {
     // 6. CALLS & WEBRTC
     // =========================================================
     match /calls/{callId} {
+
+      // Caller creates the call.
       allow create: if request.auth != null
                     && request.resource.data.callerId == request.auth.uid
                     && request.resource.data.receiverId is string
                     && request.resource.data.receiverId != request.auth.uid;
 
+      // Only caller or receiver can read the call document.
       allow read: if request.auth != null
                   && (
                     resource.data.callerId == request.auth.uid
                     || resource.data.receiverId == request.auth.uid
                   );
 
+      // Only caller or receiver can update a call, and the
+      // immutable participant IDs cannot be changed.
       allow update: if request.auth != null
                     && (
                       resource.data.callerId == request.auth.uid
@@ -95,6 +100,7 @@ service cloud.firestore {
                       || resource.data.receiverId == request.auth.uid
                     );
 
+      // IMPORTANT: these names must exactly match useCallLogic.js.
       match /offerCandidates/{candidateId} {
         allow read, write: if request.auth != null
                            && (
