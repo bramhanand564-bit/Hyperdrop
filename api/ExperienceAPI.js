@@ -354,9 +354,9 @@ const ExperienceAPI = {
         updatedAt: serverTimestamp(),
       }, { merge: true });
 
-      return result;
+      return { status, points: nextPoints };
     });
-    return { eventId: eventRef.id, actionId, label, status, points: nextPoints, pointsDelta };
+    return { eventId: eventRef.id, actionId, label, status: result.status, points: result.points, pointsDelta };
   },
 
   async cloneFromStore(sourceId) {
