@@ -33,7 +33,6 @@ const CallScreen = lazyRequire(() => require('./screens/CallScreen').default);
 const AutomateScreen = lazyRequire(() => require('./screens/AutomateScreen').default);
 const DiscoverScreen = lazyRequire(() => require('./screens/DiscoverScreen').default);
 const MomentsScreen = lazyRequire(() => require('./screens/MomentsScreen').default);
-const PortalsScreen = lazyRequire(() => require('./screens/PortalsScreen').default);
 const QRHubScreen = lazyRequire(() => require('./screens/QRHubScreen').default);
 const SecurityPermissionsScreen = lazyRequire(() => require('./screens/SecurityPermissionsScreen').default);
 const WalletScreen = lazyRequire(() => require('./screens/WalletScreen').default);
@@ -42,19 +41,15 @@ const AISettingsScreen = lazyRequire(() => require('./screens/AISettingsScreen')
 const OnDeviceAISettingsScreen = lazyRequire(() => require('./screens/OnDeviceAISettingsScreen').default);
 const DeveloperDashboardScreen = lazyRequire(() => require('./screens/DeveloperDashboardScreen').default);
 const TelegramBotFeaturesScreen = lazyRequire(() => require('./screens/TelegramBotFeaturesScreen').default);
-const PortalStoreScreen = lazyRequire(() => require('./screens/PortalStoreScreen').default);
-const AppPublishScreen = lazyRequire(() => require('./screens/portal/AppPublishScreen').default);
 const BotEdit = lazyRequire(() => require('./bots/BotEdit').default);
 const BotCommands = lazyRequire(() => require('./bots/BotCommands').default);
 const WebPortalScreen = lazyRequire(() => require('./screens/WebPortalScreen').default);
 const ChatSettingsScreen = lazyRequire(() => require('./screens/ChatSettingsScreen').default);
 const MessagingHubScreen = lazyRequire(() => require('./screens/MessagingHubScreen').default);
 const ForwardPickerScreen = lazyRequire(() => require('./screens/ForwardPickerScreen').default);
-const PortalHome = lazyRequire(() => require('./portal/PortalHome').default);
-const PortalSearch = lazyRequire(() => require('./portal/PortalSearch').default);
-const PortalCategories = lazyRequire(() => require('./portal/PortalCategories').default);
-const PortalFeatured = lazyRequire(() => require('./portal/PortalFeatured').default);
-const PortalTrending = lazyRequire(() => require('./portal/PortalTrending').default);
+const ExperienceHome = lazyRequire(() => require('./screens/ExperienceHome').default);
+const ExperienceBuilder = lazyRequire(() => require('./screens/ExperienceBuilder').default);
+const ExperienceRuntime = lazyRequire(() => require('./screens/ExperienceRuntime').default);
 const MiniAppHome = lazyRequire(() => require('./mini-apps/MiniAppHome').default);
 const MiniAppViewer = lazyRequire(() => require('./mini-apps/MiniAppViewer').default);
 const MiniAppInstall = lazyRequire(() => require('./mini-apps/MiniAppInstall').default);
@@ -126,7 +121,7 @@ function AppNavigator() {
             <Stack.Screen name="Automate" component={AutomateScreen} />
             <Stack.Screen name="Discover" component={DiscoverScreen} />
             <Stack.Screen name="Moments" component={MomentsScreen} />
-            <Stack.Screen name="Portals" component={PortalsScreen} />
+            <Stack.Screen name="Portals" component={ExperienceHome} />
             <Stack.Screen name="QRHub" component={QRHubScreen} />
             <Stack.Screen name="SecurityPermissions" component={SecurityPermissionsScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -136,14 +131,10 @@ function AppNavigator() {
             <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
             <Stack.Screen name="WebPortal" component={WebPortalScreen} />
 
-            <Stack.Screen name="PortalHome" component={PortalHome} />
-            <Stack.Screen name="PortalSearch" component={PortalSearch} />
-            <Stack.Screen name="PortalCategories" component={PortalCategories} />
-            <Stack.Screen name="PortalFeatured" component={PortalFeatured} />
-            <Stack.Screen name="PortalTrending" component={PortalTrending} />
-            <Stack.Screen name="PortalStore" component={PortalStoreScreen} />
-            <Stack.Screen name="AppPublish" component={AppPublishScreen} />
 
+            <Stack.Screen name="ExperienceHome" component={ExperienceHome} />
+            <Stack.Screen name="ExperienceBuilder" component={ExperienceBuilder} />
+            <Stack.Screen name="ExperienceRuntime" component={ExperienceRuntime} />
             <Stack.Screen name="MiniAppHome" component={MiniAppHome} />
             <Stack.Screen name="MiniAppViewer" component={MiniAppViewer} />
             <Stack.Screen name="MiniAppInstall" component={MiniAppInstall} />
