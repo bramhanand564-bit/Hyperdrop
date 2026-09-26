@@ -469,7 +469,9 @@ Never include API keys/secrets.
       const html = validateSingleHtml(draft.html || project.html || DEFAULT_HTML(project.name));
       files = { ...(project.files || {}), 'index.html': html };
     } else {
-      files = { ...(project.files || {}), ...(draft.files || {}) };
+      const seed = project.target === 'SINGLE_HTML' ? advancedSeed(project.name) : {};
+      files = { ...seed, ...(project.files || {}), ...(draft.files || {}) };
+      if (!files['src/index.html'] && files['index.html']) files['src/index.html'] = files['index.html'];
     }
     const nextVersion = (project.versions?.[project.versions.length - 1]?.version || 0) + 1;
     const memory = {
