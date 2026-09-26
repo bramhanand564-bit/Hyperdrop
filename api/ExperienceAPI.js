@@ -190,7 +190,7 @@ const ExperienceAPI = {
     return true;
   },
 
-  async performAction(id, action, values = {}) {
+  async performAction(id, action, values = {}, context = {}) {
     const uid = requireUser();
     if (!id || !action) throw new Error('Experience action is required.');
 
@@ -219,6 +219,7 @@ const ExperienceAPI = {
       actionLabel: label,
       userId: uid,
       values,
+      chatId: context.chatId || null,
       pointsDelta,
       createdAt: serverTimestamp(),
     });
