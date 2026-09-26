@@ -509,7 +509,7 @@ Never include API keys/secrets.
         ].join('\n\n'),
       }],
       temperature: 0.12,
-      maxTokens: 16000,
+      maxTokens: 24000,
     });
     return extractJson(result);
   },
