@@ -268,6 +268,18 @@ const ExperienceAPI = {
 
     if (!definition) throw new Error('This action is not available in the Experience.');
 
+    const access = String(definition.access || 'anyone').toLowerCase();
+    if (access === 'creator' && experience.creatorId !== uid) {
+      throw new Error('Creator permission required for this action.');
+    }
+    if (access === 'admin') {
+      if (!context.chatId) throw new Error('Admin actions must be used from a group chat.');
+      const chatSnap = await getDoc(doc(db, 'chats', context.chatId));
+      const chat = chatSnap.exists() ? chatSnap.data() : {};
+      const admins = Array.isArray(chat.admins) ? chat.admins : [];
+      if (!admins.includes(uid)) throw new Error('Group admin permission required for this action.');
+    }
+
     const actionId = definition.id;
     const label = definition.label;
     const participantRef = doc(db, 'experiences', id, 'participants', uid);
