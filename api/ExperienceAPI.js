@@ -1,4 +1,5 @@
 import { auth, db } from '../firebaseConfig';
+import { DEFAULT_GATEWAY, normalizeGateway, createGatewayId } from './ExperienceGateway';
 import {
   addDoc,
   collection,
@@ -43,6 +44,9 @@ const normalize = (id, data = {}) => ({
   schema: data.schema || EMPTY_SCHEMA,
   createdAt: data.createdAt || null,
   updatedAt: data.updatedAt || null,
+  gateway: normalizeGateway(data.gateway),
+  gatewayId: data.gatewayId || createGatewayId(id),
+  package: data.package || { type: 'experience', sourceId: null, version: 1 },
 });
 
 const sanitizeValues = (fields, values = {}) => {
@@ -150,9 +154,14 @@ const ExperienceAPI = {
       status: 'published',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      gateway: normalizeGateway(schema.gateway),
+      gatewayId: createGatewayId(),
+      package: { type: 'experience', sourceId: null, version: 1 },
     };
 
     const created = await addDoc(experiencesRef, payload);
+    const gatewayId = createGatewayId(created.id);
+    await updateDoc(created, { gatewayId });
     return { id: created.id, ...payload };
   },
 
@@ -174,6 +183,8 @@ const ExperienceAPI = {
       ...(input.template !== undefined ? { template: String(input.template).slice(0, 40) } : {}),
       ...(input.schema !== undefined ? { schema: input.schema } : {}),
       ...(input.status !== undefined ? { status: String(input.status).slice(0, 20) } : {}),
+      ...(input.gateway !== undefined ? { gateway: normalizeGateway(input.gateway) } : {}),
+      ...(input.package !== undefined ? { package: input.package } : {}),
       updatedAt: serverTimestamp(),
       updatedBy: uid,
     };
@@ -346,6 +357,33 @@ const ExperienceAPI = {
       return result;
     });
     return { eventId: eventRef.id, actionId, label, status, points: nextPoints, pointsDelta };
+  },
+
+  async cloneFromStore(sourceId) {
+    const uid = requireUser();
+    const source = await this.get(sourceId);
+    if (!source) throw new Error('Store Experience not found.');
+    if (source.status === 'disabled') throw new Error('This Experience is unavailable.');
+    const cloneSchema = JSON.parse(JSON.stringify(source.schema || EMPTY_SCHEMA));
+    const payload = {
+      name: source.name + ' — My Version',
+      description: source.description,
+      template: source.template,
+      icon: source.icon,
+      schema: cloneSchema,
+      creatorId: uid,
+      creatorName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'Creator',
+      status: 'published',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      gateway: normalizeGateway(source.gateway || DEFAULT_GATEWAY),
+      gatewayId: createGatewayId(),
+      package: { type: 'custom-instance', sourceId: source.id, version: source.package?.version || 1 },
+    };
+    const created = await addDoc(experiencesRef, payload);
+    const gatewayId = createGatewayId(created.id);
+    await updateDoc(created, { gatewayId });
+    return this.get(created.id);
   },
 
   async getParticipant(id, userId = auth.currentUser?.uid) {
