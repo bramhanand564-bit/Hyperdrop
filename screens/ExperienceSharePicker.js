@@ -40,6 +40,9 @@ export default function ExperienceSharePicker({ route, navigation }) {
         experienceDescription: experience.description,
         experienceIcon: experience.icon || '⚡',
         experienceSchema: experience.schema || null,
+        experienceGateway: experience.gateway || null,
+        experienceGatewayId: experience.gatewayId || null,
+        experiencePackage: experience.package || null,
       });
       Alert.alert('Sent', 'Experience shared to the chat.');
       navigation.goBack();
