@@ -10,7 +10,7 @@ const MAX_SINGLE_HTML_BYTES = 4 * 1024 * 1024;
 
 const safeSlug = value => String(value || 'app').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'app';
 const safePath = value => String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter(part => part && part !== '.' && part !== '..').join('/');
-const textBytes = value => unescape(encodeURIComponent(String(value || ''))).length;
+const textBytes = value => String(value || '').length * 2;
 
 const DEFAULT_HTML = name => `<!doctype html>
 <html lang="en">
