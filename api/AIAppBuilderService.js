@@ -153,7 +153,8 @@ Do not include secrets or API keys. Prefer the simplest target that fully satisf
     return extractJson(result);
   },
   async applyBuild(project, draft, request) {
-    const target = draft.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML';
+    const route = classifyRequest(request);
+    const target = route.target === 'ADVANCED_PROJECT' || draft.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML';
     const now = Date.now();
     const nextVersion = (project.versions?.length || 0) + 1;
     const memory = {
