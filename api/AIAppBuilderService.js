@@ -237,8 +237,6 @@ android {
 }
 
 dependencies {
-    implementation "androidx.activity:activity-ktx:1.9.2"
-    implementation "androidx.webkit:webkit:1.11.0"
 }
 `,
     'android/app/src/main/AndroidManifest.xml': `<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:theme="@style/AppTheme" android:label="${String(project.name || 'Hyperdrop App').replace(/[<&\"]/g,'')}"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>`,
@@ -287,6 +285,8 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
       - name: Build debug APK
         run: gradle :app:assembleDebug
       - name: Upload APK
