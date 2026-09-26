@@ -102,6 +102,13 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     finally { setSavingCode(false); }
   };
 
+
+  const redo = async () => {
+    if (!project || !(project.redo || []).length) return;
+    try { setProject(await AIAppBuilderService.redo(project)); setMessages(m => [...m, { role: 'assistant', content: 'Re-applied the next build version.' }]); }
+    catch (e) { Alert.alert('Redo', e?.message || 'Could not re-apply the version.'); }
+  };
+
   const undo = async () => {
     if (!project || (project.versions || []).length < 2) return;
     try { setProject(await AIAppBuilderService.undo(project)); setMessages(m => [...m, { role: 'assistant', content: 'Reverted one build version.' }]); }
@@ -148,6 +155,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
             </View>
           </View>
           <TouchableOpacity onPress={undo} disabled={!project || (project.versions || []).length < 2} style={[styles.icon, { borderColor: theme.border, opacity: project && (project.versions || []).length > 1 ? 1 : .35 }]}><Ionicons name="arrow-undo" size={18} color={theme.text} /></TouchableOpacity>
+          <TouchableOpacity onPress={redo} disabled={!project || !(project.redo || []).length} style={[styles.icon, { borderColor: theme.border, marginLeft: 5, opacity: project && (project.redo || []).length ? 1 : .35 }]}><Ionicons name="arrow-redo" size={18} color={theme.text} /></TouchableOpacity>
           <TouchableOpacity onPress={startNew} style={[styles.icon, { borderColor: theme.border, marginLeft: 6 }]}><Ionicons name="add" size={18} color={theme.text} /></TouchableOpacity>
         </View>
 
@@ -195,6 +203,14 @@ export default function AIAppBuilderScreen({ navigation, route }) {
             {!project ? <Text style={[styles.help, { color: theme.sub }]}>Create an app from chat and its files will appear here.</Text> : null}
             {project ? (
               <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <Text style={[styles.actionTitle, { color: theme.text }]}>Version history</Text>
+                {(project.versions || []).slice().reverse().slice(0, 5).map(version => (
+                  <TouchableOpacity key={version.version} onPress={async () => { try { setProject(await AIAppBuilderService.restoreVersion(project, version.version)); setMessages(m => [...m, { role: 'assistant', content: 'Restored v' + version.version + '.' }]); } catch (e) { Alert.alert('Restore failed', e?.message || 'Could not restore the version.'); } }} style={styles.historyRow}>
+                    <Text style={[styles.historyVersion, { color: theme.text }]}>v{version.version}</Text><Text style={[styles.historyAction, { color: theme.sub }]} numberOfLines={1}>{version.action}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Package</Text>
                 <Text style={[styles.actionText, { color: theme.sub }]}>Generate an Android WebView project and a GitHub Actions workflow that can build an APK from the app source.</Text>
                 <View style={styles.actionRow}>
@@ -221,5 +237,5 @@ export default function AIAppBuilderScreen({ navigation, route }) {
 }
 
 const styles=StyleSheet.create({
-  safe:{flex:1},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},chat:{minHeight:180,maxHeight:250,padding:11,borderTopWidth:1},log:{flex:1},msg:{fontSize:10,lineHeight:15,marginBottom:3},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
+  safe:{flex:1},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},historyRow:{flexDirection:'row',alignItems:'center',paddingVertical:7},historyVersion:{fontSize:11,fontWeight:'900',width:36},historyAction:{fontSize:10,flex:1},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},chat:{minHeight:180,maxHeight:250,padding:11,borderTopWidth:1},log:{flex:1},msg:{fontSize:10,lineHeight:15,marginBottom:3},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
 });
