@@ -31,6 +31,9 @@ const MessagingService = {
         experienceDescription: input.experienceDescription || '',
         experienceIcon: input.experienceIcon || '⚡',
         experienceSchema: input.experienceSchema || null,
+        experienceGateway: input.experienceGateway || null,
+        experienceGatewayId: input.experienceGatewayId || null,
+        experiencePackage: input.experiencePackage || null,
       } : {}),
       ...(input.type === 'app_invite' ? {
         appId: input.appId || null,
