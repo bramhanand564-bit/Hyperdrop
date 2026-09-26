@@ -129,7 +129,21 @@ const MessagingService = {
     requireUser(); const snap = await getDoc(messageRef(sourceChatId, messageId));
     if (!snap.exists()) throw new Error('Message not found.');
     const data = snap.data();
-    return this.sendMessage(targetChatId, { text:data.text || '', type:data.type || 'text', fileUri:data.fileUri || null, fileName:data.fileName || '', poll:data.poll, location:data.location, contact:data.contact, forwardedFrom:{chatId:sourceChatId,messageId,senderName:data.senderName || 'User'} });
+    return this.sendMessage(targetChatId, {
+      text:data.text || '',
+      type:data.type || 'text',
+      fileUri:data.fileUri || null,
+      fileName:data.fileName || '',
+      poll:data.poll,
+      location:data.location,
+      contact:data.contact,
+      experienceId:data.experienceId,
+      experienceName:data.experienceName,
+      experienceDescription:data.experienceDescription,
+      experienceIcon:data.experienceIcon,
+      experienceSchema:data.experienceSchema,
+      forwardedFrom:{chatId:sourceChatId,messageId,senderName:data.senderName || 'User'}
+    });
   },
   setChatTimer(chatId, seconds) {
     requireUser(); const allowed=[0,86400,604800,7776000]; const value=allowed.includes(Number(seconds)) ? Number(seconds) : 0;
