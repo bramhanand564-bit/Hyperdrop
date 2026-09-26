@@ -70,8 +70,8 @@ export default function ExperienceBuilder({ route, navigation }) {
     rules: actions.map(action=>({
       when: action.id,
       set: {
-        status: ['Complete','Claim','Submit'].includes(action.label) ? 'completed' : (['Start','Accept','Join'].includes(action.label) ? 'active' : 'ready'),
-        pointsDelta: rewardEnabled ? Math.max(0,Number(rewardPoints)||0) : 0,
+        status: ['complete','claim','submit','book','pay','approve'].includes(String(action.label).toLowerCase()) ? 'completed' : (['start','accept','join'].includes(String(action.label).toLowerCase()) ? 'active' : 'ready'),
+        pointsDelta: rewardEnabled && action.id === trigger ? Math.max(0,Number(rewardPoints)||0) : 0,
       },
     })),
     ui:{card:['icon','name','description','primaryActions'],full:['header','fields','status','actions','web']},
