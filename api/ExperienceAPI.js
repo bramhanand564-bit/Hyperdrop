@@ -9,6 +9,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
 } from 'firebase/firestore';
 
@@ -78,20 +79,27 @@ const ExperienceAPI = {
   },
 
   async run(id) {
-    if (!id) return false;
-    await updateDoc(doc(db, 'experiences', id), {
+    const user = auth?.currentUser;
+    if (!user || !id) return false;
+    const ref = doc(db, 'experiences', id, 'participants', user.uid);
+    await setDoc(ref, {
+      userId: user.uid,
+      lastRunAt: serverTimestamp(),
       runs: increment(1),
       updatedAt: serverTimestamp(),
-    });
+    }, { merge: true });
     return true;
   },
 
   async join(id) {
-    if (!id) return false;
-    await updateDoc(doc(db, 'experiences', id), {
-      users: increment(1),
+    const user = auth?.currentUser;
+    if (!user || !id) return false;
+    const ref = doc(db, 'experiences', id, 'participants', user.uid);
+    await setDoc(ref, {
+      userId: user.uid,
+      joinedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    }, { merge: true });
     return true;
   },
 };
