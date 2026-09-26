@@ -237,7 +237,8 @@ const ExperienceAPI = {
     }
 
     const rule = (experience.schema?.rules || []).find(item => String(item.when || '').toLowerCase() === actionId.toLowerCase());
-    const status = rule?.set?.status ?? (['Complete','Claim','Submit'].includes(label) ? 'completed' : (['Start','Accept','Join'].includes(label) ? 'active' : currentState.status || 'ready'));
+    const lowerLabel = String(label).toLowerCase();
+    const status = rule?.set?.status ?? (['complete','claim','submit','book','pay','approve'].includes(lowerLabel) ? 'completed' : (['start','accept','join'].includes(lowerLabel) ? 'active' : currentState.status || 'ready'));
     const pointsDelta = Math.max(0, Number(rule?.set?.pointsDelta || 0));
     const nextPoints = Math.max(0, Number(currentState.points || 0) + pointsDelta);
 
