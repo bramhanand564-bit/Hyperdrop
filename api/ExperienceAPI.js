@@ -10,7 +10,6 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
 } from 'firebase/firestore';
 
 const experiencesRef = collection(db, 'experiences');
