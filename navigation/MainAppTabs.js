@@ -8,7 +8,7 @@ import ChatsScreen from '../screens/ChatsScreen';
 
 const TABS = [
   { id: 'Chats', icon: 'chatbubbles' },
-  { id: 'Portals', icon: 'planet' },
+  { id: 'Create', icon: 'sparkles' },
   { id: 'Moments', icon: 'aperture' },
   { id: 'Settings', icon: 'settings' },
 ];
@@ -28,7 +28,7 @@ export default function MainAppTabs({ navigation }) {
   };
 
   const renderScreen = () => {
-    if (activeTab === 'Portals') {
+    if (activeTab === 'Create') {
       const Screen = require('../screens/ExperienceHome').default;
       return <Screen navigation={navigation} />;
     }
