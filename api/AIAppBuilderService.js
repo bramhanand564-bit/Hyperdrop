@@ -38,16 +38,16 @@ const MEMORY_TEMPLATE = (project) => ({
 function memoryMarkdown(memory = {}) {
   const list = value => Array.isArray(value) ? value.map(item => '- ' + String(item)).join('\n') : '- None';
   const history = Array.isArray(memory.history) ? memory.history.map(item => '- v' + item.version + ': ' + item.action).join('\n') : '- None';
-  return '# App Memory\\n\\n'
-    + '## Project\\n'
-    + '- Name: ' + (memory.name || 'Untitled App') + '\\n'
-    + '- Target: ' + (memory.target || 'SINGLE_HTML') + '\\n'
-    + '- Summary: ' + (memory.summary || '') + '\\n\\n'
-    + '## Features\\n' + list(memory.features) + '\\n\\n'
-    + '## Pending\\n' + list(memory.pending) + '\\n\\n'
-    + '## Decisions\\n' + list(memory.decisions) + '\\n\\n'
-    + '## Important Files\\n' + list(memory.importantFiles) + '\\n\\n'
-    + '## Change History\\n' + history + '\\n';
+  return '# App Memory\n\n'
+    + '## Project\n'
+    + '- Name: ' + (memory.name || 'Untitled App') + '\n'
+    + '- Target: ' + (memory.target || 'SINGLE_HTML') + '\n'
+    + '- Summary: ' + (memory.summary || '') + '\n\n'
+    + '## Features\n' + list(memory.features) + '\n\n'
+    + '## Pending\n' + list(memory.pending) + '\n\n'
+    + '## Decisions\n' + list(memory.decisions) + '\n\n'
+    + '## Important Files\n' + list(memory.importantFiles) + '\n\n'
+    + '## Change History\n' + history + '\n';
 }
 
 async function readProjects() {
