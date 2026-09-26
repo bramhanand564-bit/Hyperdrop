@@ -109,3 +109,11 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - Removed stale Mini App dependencies from DeveloperDashboardScreen by routing it to the unified Experience Dashboard.
 - Legacy Mini App/Studio symbol search remains clean on main.
 - Latest changes are code-verified from GitHub; a fresh Android build and real-device regression are still required before claiming runtime acceptance.
+
+
+## AI App Builder — automatic single-file/advanced routing
+- Added `AIAppBuilderScreen` with chat-first creation and live WebView preview.
+- Added `AIAppBuilderService` with automatic `SINGLE_HTML` vs `ADVANCED_PROJECT` routing, real HTML generation/editing, version snapshots, undo, and project memory.
+- Single-file apps keep `index.html` as the canonical runtime and carry `MEMORY.md` in project metadata/version snapshots.
+- Advanced projects are the foundation for native Android/source builds; APK/AAB packaging remains a follow-up build stage.
+- Create → Build an App with AI is now the primary AI creator entry point.
