@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
 import { URLValidator } from '../security/URLValidator';
+import { DEFAULT_GATEWAY, normalizeGateway } from '../api/ExperienceGateway';
 
 const ACTION_PRESETS = ['Accept','Start','Complete','Join','Vote','Submit','Claim','Play','Watch','Upload','Approve','Reject','Share','Pay','Book','Report'];
 const FIELD_PRESETS = ['Text','Number','Image','Date','Time','Checkbox','Rating','File'];
@@ -32,6 +33,7 @@ export default function ExperienceBuilder({ route, navigation }) {
   const [trigger,setTrigger]=useState(actions[0]?.id || 'on_action');
   const [rewardEnabled,setRewardEnabled]=useState(false),[rewardPoints,setRewardPoints]=useState('100');
   const [webUrl,setWebUrl]=useState('');
+  const [gatewayEnabled,setGatewayEnabled]=useState(true),[chatEnabled,setChatEnabled]=useState(true),[chatPresentation,setChatPresentation]=useState('card'),[visibility,setVisibility]=useState('public');
   const [customAction,setCustomAction]=useState(''),[customFieldLabel,setCustomFieldLabel]=useState('');
   const [publishing,setPublishing]=useState(false),[loadingExisting,setLoadingExisting]=useState(Boolean(experienceId));
   useEffect(()=>{
@@ -46,6 +48,7 @@ export default function ExperienceBuilder({ route, navigation }) {
       setActions(existingActions.map(a=>({...a,id:a.id||slug(a.label),primary:(a.id||slug(a.label))===primaryId,access:a.access||'anyone'})));
       setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
       setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||(item.schema?.actions?.[0] ? (item.schema.actions[0].id || slug(item.schema.actions[0].label)) : ''));setWebUrl(item.schema?.web?.url||'');
+      const gateway=normalizeGateway(item.gateway || item.schema?.gateway || DEFAULT_GATEWAY);setGatewayEnabled(gateway.enabled);setChatEnabled(gateway.chat.enabled);setChatPresentation(gateway.chat.presentation||'card');setVisibility(gateway.visibility||'public');
     }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
     return ()=>{mounted=false;};
   },[experienceId]);
@@ -89,7 +92,8 @@ export default function ExperienceBuilder({ route, navigation }) {
     ui:{card:['icon','name','description','primaryActions'],full:['header','fields','status','actions','web']},
     web:webUrl.trim()?{url:webUrl.trim()}:null,
     settings:{rewardEnabled,rewardPoints:Math.max(0,Number(rewardPoints)||0),trigger},
-  }),[actions,fields,rewardEnabled,rewardPoints,trigger]);
+    gateway:{...normalizeGateway(DEFAULT_GATEWAY),enabled:gatewayEnabled,visibility,entrypoints:{...DEFAULT_GATEWAY.entrypoints,chat:chatEnabled},chat:{...DEFAULT_GATEWAY.chat,enabled:chatEnabled,presentation:chatPresentation}},
+  }),[actions,fields,rewardEnabled,rewardPoints,trigger,webUrl,gatewayEnabled,chatEnabled,chatPresentation,visibility]);
 
   const publish=async()=>{
     if(!name.trim())return Alert.alert('Name required','Give your experience a name.');
@@ -98,8 +102,8 @@ export default function ExperienceBuilder({ route, navigation }) {
     setPublishing(true);
     try{
       const saved=experienceId
-        ? await ExperienceAPI.update(experienceId,{name,description,icon,template,schema})
-        : await ExperienceAPI.create({name,description,icon,template,schema});
+        ? await ExperienceAPI.update(experienceId,{name,description,icon,template,schema,gateway:schema.gateway})
+        : await ExperienceAPI.create({name,description,icon,template,schema,gateway:schema.gateway});
       Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Experience was updated.':'Your Experience is live and shareable in Chat.',[
         {text:'Open',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:saved.id})},
         {text:'Dashboard',onPress:()=>navigation.replace('ExperienceDashboard')}
@@ -124,6 +128,18 @@ export default function ExperienceBuilder({ route, navigation }) {
       <Text style={[styles.label,{color:theme.text}]}>Basic</Text>
       <View style={styles.row}><TextInput value={icon} onChangeText={setIcon} maxLength={2} style={[styles.iconInput,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]}/><TextInput value={name} onChangeText={setName} maxLength={80} style={[styles.input,{flex:1,color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="Name" placeholderTextColor={theme.sub}/></View>
       <TextInput value={description} onChangeText={setDescription} multiline maxLength={500} style={[styles.textarea,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="Describe what people can do" placeholderTextColor={theme.sub}/>
+      <Text style={[styles.label,{color:theme.text}]}>Universal Gateway</Text>
+      <View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border}]}>
+        <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Gateway enabled</Text><Text style={[styles.rowSub,{color:theme.sub}]}>One Experience identity can open from Chat, Discover, Moments, Settings and full screen.</Text></View>
+        <Switch value={gatewayEnabled} onValueChange={setGatewayEnabled}/>
+      </View>
+      {gatewayEnabled?<><View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border,marginTop:8}]}>
+        <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Chat surface</Text><Text style={[styles.rowSub,{color:theme.sub}]}>Keep a compact interactive card in Chat while the same session can open full screen.</Text></View>
+        <Switch value={chatEnabled} onValueChange={setChatEnabled}/>
+      </View>
+      <View style={styles.chips}>{['card','large','alert'].map(mode=><TouchableOpacity key={mode} onPress={()=>setChatPresentation(mode)} style={[styles.option,{backgroundColor:chatPresentation===mode?theme.blue:theme.surface,borderColor:chatPresentation===mode?theme.blue:theme.border}]}><Text style={{color:chatPresentation===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>{mode}</Text></TouchableOpacity>)}</View>
+      <View style={styles.chips}>{['public','private','invite-only'].map(mode=><TouchableOpacity key={mode} onPress={()=>setVisibility(mode)} style={[styles.option,{backgroundColor:visibility===mode?theme.blue:theme.surface,borderColor:visibility===mode?theme.blue:theme.border}]}><Text style={{color:visibility===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>Visibility: {mode}</Text></TouchableOpacity>)}</View></>:null>
+
       <Text style={[styles.label,{color:theme.text}]}>Full experience URL (optional)</Text>
       <TextInput value={webUrl} onChangeText={setWebUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="https://your-experience.example" placeholderTextColor={theme.sub}/>
 
