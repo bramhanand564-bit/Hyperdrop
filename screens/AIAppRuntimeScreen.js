@@ -5,12 +5,31 @@ import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import AIAppBuilderService from '../api/AIAppBuilderService';
 
+function resolveHtml(project, inlineHtml) {
+  if (!project) return inlineHtml || '';
+  if (project.target === 'SINGLE_HTML') return project.html || project.files?.['index.html'] || inlineHtml || '';
+  const files = project.files || {};
+  const htmlPath = Object.keys(files).find(path => /(?:^|\/)index\.html$/i.test(path));
+  let html = htmlPath ? files[htmlPath] : inlineHtml || '';
+  if (!html) return '';
+  const base = htmlPath?.includes('/') ? htmlPath.slice(0, htmlPath.lastIndexOf('/') + 1) : '';
+  html = html.replace(/<link[^>]*href=["']([^"']+)["'][^>]*>/gi, (full, rel) => {
+    const path = base + String(rel).replace(/^\.\//, '');
+    return /stylesheet/i.test(full) && files[path] != null ? '<style>' + files[path] + '</style>' : full;
+  });
+  html = html.replace(/<script[^>]+src=["']([^"']+)["'][^>]*>\s*<\/script>/gi, (full, rel) => {
+    const path = base + String(rel).replace(/^\.\//, '');
+    return files[path] != null ? '<script>' + files[path] + '</script>' : full;
+  });
+  return html;
+}
+
 export default function AIAppRuntimeScreen({ navigation, route }) {
   const { theme } = useTheme();
   const [project, setProject] = useState(route.params?.project || null);
   const [loading, setLoading] = useState(!project);
   const inlineHtml = route.params?.html || '';
-  const html = project?.html || project?.files?.['index.html'] || inlineHtml;
+  const html = resolveHtml(project, inlineHtml);
 
   useEffect(() => {
     let mounted = true;
