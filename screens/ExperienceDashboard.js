@@ -74,7 +74,7 @@ export default function ExperienceDashboard({ navigation }) {
 
   const remove = () => {
     if (!selected) return;
-    Alert.alert('Delete experience?', 'This removes the public definition. Participant/event subcollections are not automatically purged.', [
+    Alert.alert('Delete experience?', 'This removes the experience and its participant/activity records.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         try {
