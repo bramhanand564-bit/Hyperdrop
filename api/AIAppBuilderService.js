@@ -433,7 +433,7 @@ Create a coherent source project. Preserve existing files unless the request cha
       version: nextVersion,
       name: draft.name || project.name,
       target,
-      history: [...(project.memory?.history || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now, memory, filePaths: Object.keys(files) }].slice(-40),
+      history: [...(project.memory?.history || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now }].slice(-40),
     };
     files['MEMORY.md'] = memoryMarkdown(memory);
     const next = {
@@ -444,7 +444,7 @@ Create a coherent source project. Preserve existing files unless the request cha
       filePaths: Object.keys(files),
       memory,
       updatedAt: now,
-      versions: [...(project.versions || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now }],
+      versions: [...(project.versions || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now, memory, filePaths: Object.keys(files) }],
     };
     const saved = await this.saveProject(next, { action: request || draft.summary || 'AI update', createVersion: false });
     await snapshot({ ...saved, files: saved.files });
