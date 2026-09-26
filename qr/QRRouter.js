@@ -1,8 +1,8 @@
+import ExperienceAPI from '../api/ExperienceAPI';
 import QRParser from './QRParser';
 import { URLValidator } from '../security/URLValidator';
 import EventBus from '../event-bus/EventBus';
 import { EventTypes } from '../event-bus/EventTypes';
-import { MiniAppAPI } from '../api/MiniAppAPI';
 import BotAPI from '../api/BotAPI';
 
 export const QRRouter = {
@@ -18,14 +18,9 @@ export const QRRouter = {
 
   async navigate(navigation, target) {
     if (target.type === 'app') {
-      const app = await MiniAppAPI.getMiniApp(target.id);
-      if (!app) throw new Error('Mini App not found.');
-      return navigation.navigate('MiniAppViewer', {
-        title: app.name,
-        url: app.url,
-        appConfig: app,
-        entryType: app.entryType || (app.url ? 'web' : 'declarative'),
-      });
+      const experience = await ExperienceAPI.get(target.id);
+      if (!experience) throw new Error('Experience not found.');
+      return navigation.navigate('ExperienceRuntime', { experienceId: experience.id });
     }
 
     if (target.type === 'bot') {
@@ -39,15 +34,17 @@ export const QRRouter = {
     }
 
     if (target.type === 'user') {
-      return navigation.navigate('PortalHome', { userId: target.id });
+      throw new Error('User QR links are not supported yet.');
     }
 
     if (target.type === 'store') {
-      return navigation.navigate('PortalHome', { itemId: target.id });
+      const experience = await ExperienceAPI.get(target.id);
+      if (!experience) throw new Error('Experience not found.');
+      return navigation.navigate('ExperienceRuntime', { experienceId: experience.id });
     }
 
     if (target.type === 'external') {
-      return navigation.navigate('WebPortal', { url: target.url, title: 'Secure Web' });
+      return navigation.navigate('ExperienceWebView', { url: target.url, title: 'Secure Web' });
     }
 
     throw new Error('Unsupported QR destination.');
