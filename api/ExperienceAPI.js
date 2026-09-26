@@ -44,6 +44,48 @@ const normalize = (id, data = {}) => ({
   updatedAt: data.updatedAt || null,
 });
 
+const sanitizeValues = (fields, values = {}) => {
+  const safe = {};
+  (Array.isArray(fields) ? fields : []).slice(0, 40).forEach(field => {
+    if (!field?.id || values[field.id] === undefined || values[field.id] === null) return;
+    const raw = values[field.id];
+    if (field.type === 'Checkbox') {
+      safe[field.id] = !!raw;
+      return;
+    }
+    if (field.type === 'Number') {
+      const number = Number(raw);
+      if (Number.isFinite(number)) safe[field.id] = Math.max(-1000000000, Math.min(1000000000, number));
+      return;
+    }
+    if (field.type === 'Rating') {
+      const rating = Number(raw);
+      if (Number.isFinite(rating)) safe[field.id] = Math.max(1, Math.min(5, Math.round(rating)));
+      return;
+    }
+    if (field.type === 'Image' || field.type === 'File') {
+      if (typeof raw === 'object' && raw) {
+        const url = String(raw.url || raw.secureUrl || '').trim();
+        const name = String(raw.name || 'File').slice(0, 180);
+        const mimeType = String(raw.mimeType || 'application/octet-stream').slice(0, 120);
+        const bytes = Number(raw.bytes);
+        if (/^https:\/\/[^\s]+$/i.test(url)) {
+          safe[field.id] = {
+            url,
+            name,
+            mimeType,
+            bytes: Number.isFinite(bytes) ? Math.max(0, Math.min(500000000, bytes)) : null,
+          };
+        }
+      }
+      return;
+    }
+    const stringValue = String(raw);
+    safe[field.id] = stringValue.slice(0, field.type === 'Text' ? 2000 : 500);
+  });
+  return safe;
+};
+
 const requireUser = () => {
   const uid = auth?.currentUser?.uid;
   if (!uid) throw new Error('Authentication required.');
@@ -94,6 +136,8 @@ const ExperienceAPI = {
     if (!name) throw new Error('Experience name is required.');
 
     const schema = input.schema || EMPTY_SCHEMA;
+    if (JSON.stringify(schema).length > 250000) throw new Error('Experience configuration is too large.');
+    if (!Array.isArray(schema.fields) || !Array.isArray(schema.actions)) throw new Error('Invalid Experience configuration.');
     const payload = {
       name,
       description: String(input.description || '').trim().slice(0, 500),
@@ -217,19 +261,8 @@ const ExperienceAPI = {
     const participantRef = doc(db, 'experiences', id, 'participants', uid);
     const currentSnap = await getDoc(participantRef);
     const currentState = currentSnap.exists() ? (currentSnap.data().state || {}) : {};
-    const fieldDefinitions = experience.schema?.fields || {};
-    const fieldList = Array.isArray(fieldDefinitions) ? fieldDefinitions : [];
-    const safeValues = {};
-    fieldList.forEach(field => {
-      if (!field?.id || values?.[field.id] === undefined || values?.[field.id] === null) return;
-      const raw = values[field.id];
-      let value = raw;
-      if (field.type === 'Checkbox') value = !!raw;
-      else if (field.type === 'Number' || field.type === 'Rating') value = Number.isFinite(Number(raw)) ? Number(raw) : 0;
-      else if (typeof raw === 'string') value = raw.slice(0, field.type === 'Text' ? 2000 : 500);
-      else if (typeof raw === 'object') value = raw;
-      safeValues[field.id] = value;
-    });
+    const fieldList = Array.isArray(experience.schema?.fields) ? experience.schema.fields : [];
+    const safeValues = sanitizeValues(fieldList, values);
 
     const requiredMissing = fieldList.find(field => field.required && (
       safeValues[field.id] === undefined
