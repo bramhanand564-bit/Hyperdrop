@@ -90,7 +90,7 @@ export default function ExperienceRuntime({ route, navigation }) {
     setActing(action.id);
     setMessage('');
     try {
-      const result = await ExperienceAPI.performAction(experience.id, action, values);
+      const result = await ExperienceAPI.performAction(experience.id, action, values, { chatId: route?.params?.chatId || null });
       const next = await ExperienceAPI.getParticipant(experience.id);
       setParticipant(next);
       setValues(prev => ({ ...prev, ...(next?.state || {}) }));
