@@ -8,21 +8,21 @@ const getWebRTC = () => require('../utils/webrtcHelper').default;
 const getFileTransfer = () => require('../utils/webrtcFileTransfer'); 
 
 // ==========================================
-// 🎮 NAX PORTAL SYNC ENGINE (New Feature)
+// 🎮 NAX EXPERIENCE SYNC ENGINE (New Feature)
 // ==========================================
 // इसे अलग से export कर रहे हैं ताकि WebPortalScreen इसे सीधा यूज़ कर सके
-export const PortalSyncEngine = {
+export const ExperienceSyncEngine = {
   activeRoomId: null,
 
-  joinPortalRoom: async (roomId, user, onSyncUpdate) => {
-    console.log(`[Portal Engine] ${user?.displayName || 'User'} joining Room: ${roomId}`);
-    PortalSyncEngine.activeRoomId = roomId;
+  joinExperienceRoom: async (roomId, user, onSyncUpdate) => {
+    console.log(`[Experience Engine] ${user?.displayName || 'User'} joining Room: ${roomId}`);
+    ExperienceSyncEngine.activeRoomId = roomId;
     
     // WebRTC रूम से कनेक्ट करना
     getWebRTC().connectToRoom(roomId, user?.uid, (peerId, message) => {
       try {
         const parsedMessage = JSON.parse(message);
-        if (parsedMessage.type === 'PORTAL_SYNC') {
+        if (parsedMessage.type === 'EXPERIENCE_SYNC') {
           console.log(`[Portal Engine] Sync data received from ${peerId}:`, parsedMessage.data);
           onSyncUpdate(parsedMessage.data); 
         }
@@ -32,9 +32,9 @@ export const PortalSyncEngine = {
     });
   },
 
-  broadcastPortalState: (syncData) => {
+  broadcastExperienceState: (syncData) => {
     if (!PortalSyncEngine.activeRoomId) {
-      console.warn("Cannot broadcast: Not in a Portal Room.");
+      console.warn("Cannot broadcast: Not in a Experience Room.");
       return;
     }
     const payload = JSON.stringify({ type: 'PORTAL_SYNC', data: syncData });
