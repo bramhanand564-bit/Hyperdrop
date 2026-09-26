@@ -104,6 +104,15 @@ export default function ExperienceHome({ navigation }) {
               </TouchableOpacity>
             </View>
 
+            <View style={{flexDirection:'row',gap:8,marginTop:12}}>
+              <TouchableOpacity onPress={() => navigation.navigate('ExperienceStore')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
+                <Ionicons name="storefront-outline" size={17} color={theme.blue}/><Text style={{color:theme.text,fontWeight:'900'}}>Experience Store</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('ExperienceDashboard')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
+                <Ionicons name="analytics-outline" size={17} color={theme.blue}/><Text style={{color:theme.text,fontWeight:'900'}}>My Dashboard</Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={[styles.section, { color: theme.text }]}>Start from a template</Text>
             <View style={styles.templateGrid}>
               {TEMPLATES.map(template => (
