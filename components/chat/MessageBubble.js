@@ -9,6 +9,8 @@ import{deleteCloudinaryByToken}from'../../utils/cloudinaryUpload';
 import MessagingService from'../../messaging/MessagingService';
 import ExperienceAPI from'../../api/ExperienceAPI';
 
+const nowDate=()=>new Date().toISOString().slice(0,10); const nowTime=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
+
 function VoiceNote({uri,isDark}){
  const[sound,setSound]=useState(null);const[playing,setPlaying]=useState(false);
  useEffect(()=>()=>{sound?.unloadAsync().catch(()=>{})},[sound]);
@@ -59,7 +61,9 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
     {(item.experienceSchema?.fields||[]).slice(0,2).map(field=><View key={field.id} style={{marginTop:7}}>
       <Text style={{color:isMe?'rgba(255,255,255,.8)':theme.sub,fontSize:10,fontWeight:'800',marginBottom:4}}>{field.label}{field.required?' *':''}</Text>
       {field.type==='Checkbox'?<TouchableOpacity onPress={()=>setExperienceValues(v=>({...v,[field.id]:!v[field.id]}))} style={{height:38,borderRadius:11,borderWidth:1,borderColor:theme.border,backgroundColor:theme.input,justifyContent:'center',paddingHorizontal:10}}><Text style={{color:isMe?'#FFF':theme.text,fontSize:12}}>{experienceValues[field.id]?'✓ Selected':'Select'}</Text></TouchableOpacity>
-      :<TextInput value={String(experienceValues[field.id]??'')} onChangeText={v=>setExperienceValues(prev=>({...prev,[field.id]:v}))} placeholder={field.type} placeholderTextColor={theme.sub} style={{height:38,borderRadius:11,borderWidth:1,borderColor:theme.border,backgroundColor:theme.input,paddingHorizontal:10,color:theme.text,fontSize:12}}/>}
+      :field.type==='Rating'?<View style={{height:38,flexDirection:'row',alignItems:'center'}}>{[1,2,3,4,5].map(star=><TouchableOpacity key={star} onPress={()=>setExperienceValues(v=>({...v,[field.id]:star}))} style={{paddingHorizontal:4}}><Ionicons name={Number(experienceValues[field.id]||0)>=star?'star':'star-outline'} size={20} color={Number(experienceValues[field.id]||0)>=star?'#F5B301':'#9AA9B5'}/></TouchableOpacity>)}</View>
+      :field.type==='Date'||field.type==='Time'?<TouchableOpacity onPress={()=>setExperienceValues(v=>({...v,[field.id]:field.type==='Date'?nowDate():nowTime()}))} style={{height:38,borderRadius:11,borderWidth:1,borderColor:theme.border,backgroundColor:theme.input,justifyContent:'center',paddingHorizontal:10}}><Text style={{color:isMe?'#FFF':(experienceValues[field.id]?theme.text:theme.sub),fontSize:12}}>{experienceValues[field.id]||('Use current '+field.type.toLowerCase())}</Text></TouchableOpacity>
+      :<TextInput value={String(experienceValues[field.id]??'')} onChangeText={v=>setExperienceValues(prev=>({...prev,[field.id]:v}))} keyboardType={field.type==='Number'?'numeric':'default'} placeholder={field.type} placeholderTextColor={theme.sub} style={{height:38,borderRadius:11,borderWidth:1,borderColor:theme.border,backgroundColor:theme.input,paddingHorizontal:10,color:theme.text,fontSize:12}}/>}
     </View>)}
     <View style={{flexDirection:'row',gap:8,marginTop:9}}>
       {(item.experienceSchema?.actions||[]).filter(a=>a.primary||a.label==='Complete'||a.label==='Submit').slice(0,2).map(action=><TouchableOpacity key={action.id} disabled={!!experienceBusy} onPress={()=>runExperienceAction(action)} style={[s.joinBtn,{flex:1,backgroundColor:theme.blue,marginTop:0,opacity:experienceBusy&&experienceBusy!==action.id?0.6:1}]}>
