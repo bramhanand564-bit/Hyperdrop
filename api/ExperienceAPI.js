@@ -159,6 +159,13 @@ const ExperienceAPI = {
     const uid = requireUser();
     if (!id) throw new Error('Experience id is required.');
 
+    if (input.name !== undefined && !String(input.name || '').trim()) throw new Error('Experience name is required.');
+    if (input.schema !== undefined) {
+      if (!input.schema || !Array.isArray(input.schema.fields) || !Array.isArray(input.schema.actions)) throw new Error('Invalid Experience configuration.');
+      if (JSON.stringify(input.schema).length > 250000) throw new Error('Experience configuration is too large.');
+    }
+    if (input.status !== undefined && !['published', 'disabled'].includes(String(input.status))) throw new Error('Invalid Experience status.');
+
     const payload = {
       ...(input.name !== undefined ? { name: String(input.name).trim().slice(0, 80) } : {}),
       ...(input.description !== undefined ? { description: String(input.description).trim().slice(0, 500) } : {}),
