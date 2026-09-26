@@ -353,13 +353,8 @@ service cloud.firestore {
         allow create: if request.auth != null
                       && request.resource.data.userId == request.auth.uid
                       && request.resource.data.createdAt != null
-                      && (
-                        request.resource.data.type != 'action'
-                        || (
-                          request.resource.data.actionId is string
-                          && request.resource.data.actionId.size() <= 120
-                        )
-                      )
+                      && request.resource.data.actionId is string
+                      && request.resource.data.actionId.size() <= 120
                       && (
                         get(/databases/$(database)/documents/experiences/$(experienceId)).data.status != 'disabled'
                         || get(/databases/$(database)/documents/experiences/$(experienceId)).data.creatorId == request.auth.uid
