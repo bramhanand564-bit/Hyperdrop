@@ -115,9 +115,9 @@ function embedMemory(html, memory) {
     target: memory?.target || 'SINGLE_HTML',
     features: Array.isArray(memory?.features) ? memory.features.slice(0, 50) : [],
     pending: Array.isArray(memory?.pending) ? memory.pending.slice(0, 50) : [],
-  }).replace(/<\\/script/gi, '<\\\\/script');
+  }).replace(/<\/script/gi, '<\\/script');
   const tag = '<script type="application/json" id="hyperdrop-memory">' + payload + '</script>';
-  const stripped = source.replace(/<script[^>]+id=["']hyperdrop-memory["'][^>]*>[\\s\\S]*?<\\/script>/gi, '');
+  const stripped = source.replace(/<script[^>]+id=["']hyperdrop-memory["'][^>]*>[\s\S]*?<\/script>/gi, '');
   return /<\/head>/i.test(stripped)
     ? stripped.replace(/<\/head>/i, tag + '</head>')
     : tag + stripped;
