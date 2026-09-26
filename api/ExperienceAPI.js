@@ -52,7 +52,12 @@ const requireUser = () => {
 
 const ExperienceAPI = {
   async list({ search = '', template = '', limitCount = 50 } = {}) {
-    const snap = await getDocs(query(experiencesRef, orderBy('createdAt', 'desc'), limit(Math.min(100, Math.max(1, Number(limitCount) || 50))));
+    const snap = await getDocs(query(
+      experiencesRef,
+      where('status', '==', 'published'),
+      orderBy('createdAt', 'desc'),
+      limit(Math.min(100, Math.max(1, Number(limitCount) || 50)))
+    ));
     const q = String(search || '').trim().toLowerCase();
 
     return snap.docs
