@@ -75,6 +75,12 @@ A → B call → offer/answer saved → ICE candidates present → ICE connected
 - MEMORY.md — short project memory
 
 ## Current Branch
-feat/moments-working-ui
+main
 
 **Priority:** Preserve the working video call and make targeted improvements elsewhere.
+
+## Branch Workflow
+- Use `main` as the primary/default development branch going forward.
+- Do not create a new feature/fix branch for every small change.
+- Keep future targeted changes on `main` unless a separate branch is genuinely needed for an isolated experiment or risky work.
+- When moving existing work into `main`, verify the current PR/commit state first; do not overwrite unrelated work.
