@@ -1,7 +1,8 @@
 import { auth, db } from '../firebaseConfig';
 import { DEFAULT_GATEWAY, normalizeGateway, createGatewayId } from './ExperienceGateway';
 import {
-    collection,
+  addDoc,
+  collection,
   deleteDoc,
   doc,
   getDoc,
