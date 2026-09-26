@@ -222,6 +222,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
                   <TouchableOpacity onPress={exportProject} style={[styles.actionBtn, { backgroundColor: theme.surfaceStrong, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="download-outline" size={15} color={theme.text} /><Text style={[styles.actionBtnText, { color: theme.text }]}>Export</Text></TouchableOpacity>
                   </View>
                 </View>
+              </View>
             ) : null}
           </ScrollView>
         )}
