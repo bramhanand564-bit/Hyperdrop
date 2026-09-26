@@ -50,6 +50,7 @@ const MessagingHubScreen = lazyRequire(() => require('./screens/MessagingHubScre
 const ForwardPickerScreen = lazyRequire(() => require('./screens/ForwardPickerScreen').default);
 const ExperienceHome = lazyRequire(() => require('./screens/ExperienceHome').default);
 const ExperienceAICreatorScreen = lazyRequire(() => require('./screens/ExperienceAICreatorScreen').default);
+const AIAppBuilderScreen = lazyRequire(() => require('./screens/AIAppBuilderScreen').default);
 const ExperienceBuilder = lazyRequire(() => require('./screens/ExperienceBuilder').default);
 const ExperienceRuntime = lazyRequire(() => require('./screens/ExperienceRuntime').default);
 const ExperienceSharePicker = lazyRequire(() => require('./screens/ExperienceSharePicker').default);
@@ -128,6 +129,7 @@ function AppNavigator() {
 
             <Stack.Screen name="ExperienceHome" component={ExperienceHome} />
             <Stack.Screen name="ExperienceAICreator" component={ExperienceAICreatorScreen} />
+            <Stack.Screen name="AIAppBuilder" component={AIAppBuilderScreen} />
             <Stack.Screen name="ExperienceBuilder" component={ExperienceBuilder} />
             <Stack.Screen name="ExperienceRuntime" component={ExperienceRuntime} />
             <Stack.Screen name="ExperienceSharePicker" component={ExperienceSharePicker} />
