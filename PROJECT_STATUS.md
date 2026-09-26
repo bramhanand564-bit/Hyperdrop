@@ -1,6 +1,6 @@
 # Hyperdrop / Nax Chat — Project Status & Change Lock
 
-Last verified by repository scan: 2026-09-26
+Last verified by repository scan: 2026-09-26 20:35 IST
 Branch: feat/moments-working-ui
 
 ## Goal
@@ -31,7 +31,7 @@ This is now a broad creator-ready implementation. Remaining product-level work i
 
 ## Latest Experience platform commits
 
-Recent implementation commits on `feat/moments-working-ui` include Experience API/runtime/builder/dashboard work, legacy Portal removal, rich fields/uploads, action access controls, inline Chat actions, native P2P transfer, analytics, and Experience security rules/indexes. Release APK workflow run #560 for code SHA `3f12d1b27fed998208cbed8d4e9a36bf405af684` completed successfully with APK verification and artifact upload. Two-device Android runtime testing remains the final acceptance step.
+Recent implementation commits on `feat/moments-working-ui` include Experience API/runtime/builder/dashboard work, legacy Portal removal, rich fields/uploads, action access controls, inline Chat actions, native P2P transfer, analytics, and Experience security rules/indexes. Release APK workflow run #562 for code SHA `35876b5bcdac747a2fad2eb49a0f7c4a3792a048` completed successfully: dependencies installed, Android project generated, release APK built, APK verified, and artifact uploaded. Two-device Android runtime testing remains the final acceptance step.
 
 ## Video-call scan findings
 
