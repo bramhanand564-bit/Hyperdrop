@@ -10,7 +10,7 @@ const getFileTransfer = () => require('../utils/webrtcFileTransfer');
 // ==========================================
 // 🎮 NAX EXPERIENCE SYNC ENGINE (New Feature)
 // ==========================================
-// इसे अलग से export कर रहे हैं ताकि WebPortalScreen इसे सीधा यूज़ कर सके
+// इसे अलग से export कर रहे हैं ताकि ExperienceRuntime इसे सीधा यूज़ कर सके
 export const ExperienceSyncEngine = {
   activeRoomId: null,
 
@@ -23,7 +23,7 @@ export const ExperienceSyncEngine = {
       try {
         const parsedMessage = JSON.parse(message);
         if (parsedMessage.type === 'EXPERIENCE_SYNC') {
-          console.log(`[Portal Engine] Sync data received from ${peerId}:`, parsedMessage.data);
+          console.log(`[Experience Engine] Sync data received from ${peerId}:`, parsedMessage.data);
           onSyncUpdate(parsedMessage.data); 
         }
       } catch (error) {
@@ -33,20 +33,20 @@ export const ExperienceSyncEngine = {
   },
 
   broadcastExperienceState: (syncData) => {
-    if (!PortalSyncEngine.activeRoomId) {
-      console.warn("Cannot broadcast: Not in a Experience Room.");
+    if (!ExperienceSyncEngine.activeRoomId) {
+      console.warn("Cannot broadcast: Not in an Experience Room.");
       return;
     }
-    const payload = JSON.stringify({ type: 'PORTAL_SYNC', data: syncData });
-    getWebRTC().broadcast(PortalSyncEngine.activeRoomId, payload);
-    console.log(`[Portal Engine] State Broadcasted:`, syncData);
+    const payload = JSON.stringify({ type: 'EXPERIENCE_SYNC', data: syncData });
+    getWebRTC().broadcast(ExperienceSyncEngine.activeRoomId, payload);
+    console.log(`[Experience Engine] State Broadcasted:`, syncData);
   },
 
   leaveRoom: () => {
-    if (PortalSyncEngine.activeRoomId) {
-      getWebRTC().disconnect(PortalSyncEngine.activeRoomId);
-      PortalSyncEngine.activeRoomId = null;
-      console.log("[Portal Engine] Left Portal Room");
+    if (ExperienceSyncEngine.activeRoomId) {
+      getWebRTC().disconnect(ExperienceSyncEngine.activeRoomId);
+      ExperienceSyncEngine.activeRoomId = null;
+      console.log("[Experience Engine] Left Experience Room");
     }
   }
 };
