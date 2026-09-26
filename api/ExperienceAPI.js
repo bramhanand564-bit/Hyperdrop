@@ -326,7 +326,7 @@ const ExperienceAPI = {
         updatedAt: serverTimestamp(),
       }, { merge: true });
 
-      return { eventId: eventRef.id, actionId, label, status, points: nextPoints, pointsDelta };
+      return result;
     });
     return { eventId: eventRef.id, actionId, label, status, points: nextPoints, pointsDelta };
   },
