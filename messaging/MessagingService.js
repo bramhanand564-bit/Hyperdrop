@@ -13,7 +13,7 @@ const MessagingService = {
     const senderId = requireUser();
     if (!chatId) throw new Error('Chat id is required.');
     const text = String(input.text || '').trim();
-    if (!text && !input.fileUri && !['poll','location','contact','app_invite'].includes(input.type)) return null;
+    if (!text && !input.fileUri && !['poll','location','contact','app_invite','experience'].includes(input.type)) return null;
     const timer = Number(input.ttl || 0);
     const payload = {
       text, senderId,
@@ -25,6 +25,13 @@ const MessagingService = {
       ...(input.fileUri ? { fileUri: input.fileUri, fileName: input.fileName || '' } : {}),
       ...(input.poll ? { poll: input.poll } : {}), ...(input.location ? { location: input.location } : {}),
       ...(input.contact ? { contact: input.contact } : {}),
+      ...(input.type === 'experience' ? {
+        experienceId: input.experienceId || null,
+        experienceName: input.experienceName || 'Experience',
+        experienceDescription: input.experienceDescription || '',
+        experienceIcon: input.experienceIcon || '⚡',
+        experienceSchema: input.experienceSchema || null,
+      } : {}),
       ...(input.type === 'app_invite' ? {
         appId: input.appId || null,
         appName: input.appName || 'Nax App',
@@ -43,7 +50,7 @@ const MessagingService = {
     await Promise.all([
       setDoc(ref, payload),
       setDoc(chatRef, {
-        lastMessage: text || ({app_invite:'🎮 App invite',image:'📷 Photo',video:'🎥 Video',voice:'🎤 Voice message',file:'📄 Document',location:'📍 Location',contact:'👤 Contact',poll:'📊 Poll'}[input.type] || 'Message'),
+        lastMessage: text || ({app_invite:'🎮 App invite',experience:'⚡ Experience',image:'📷 Photo',video:'🎥 Video',voice:'🎤 Voice message',file:'📄 Document',location:'📍 Location',contact:'👤 Contact',poll:'📊 Poll'}[input.type] || 'Message'),
         lastMessageTime: serverTimestamp(), ...(input.participants ? { participants: input.participants } : {}), typing: {},
       }, { merge: true }),
     ]);
