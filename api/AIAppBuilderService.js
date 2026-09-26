@@ -322,7 +322,7 @@ const AIAppBuilderService = {
       memory: null, versions: [], createdAt: now, updatedAt: now,
     };
     project.memory = memoryObject(project);
-    project.memory.history.push({ version: 1, action: 'created', at: now });
+    project.memory.history.push({ version: 1, action: 'created', at: now, memory: project.memory });
     const files = route === 'SINGLE_HTML'
       ? { 'index.html': validateSingleHtml(html || DEFAULT_HTML(name)), 'MEMORY.md': memoryMarkdown(project.memory) }
       : { ...advancedSeed(name), 'MEMORY.md': memoryMarkdown(project.memory) };
@@ -347,7 +347,7 @@ const AIAppBuilderService = {
     delete next.files;
     if (createVersion) {
       const version = (next.versions?.[next.versions.length - 1]?.version || 0) + 1;
-      next.versions = [...(next.versions || []), { version, action, at: Date.now() }];
+      next.versions = [...(next.versions || []), { version, action, at: Date.now(), memory, filePaths: Object.keys(files) }];
       const snapshotProject = { ...next, files };
       await snapshot(snapshotProject);
       await trimSnapshots(snapshotProject);
@@ -432,7 +432,7 @@ Create a coherent source project. Preserve existing files unless the request cha
       version: nextVersion,
       name: draft.name || project.name,
       target,
-      history: [...(project.memory?.history || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now }].slice(-40),
+      history: [...(project.memory?.history || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now, memory, filePaths: Object.keys(files) }].slice(-40),
     };
     files['MEMORY.md'] = memoryMarkdown(memory);
     const next = {
@@ -457,12 +457,14 @@ Create a coherent source project. Preserve existing files unless the request cha
     const versions = project.versions.slice(0, -1);
     const previous = versions[versions.length - 1];
     const root = await projectRoot(project.id);
-    const files = await readProjectFiles(root + '.versions/v' + previous.version + '/', project.filePaths || []);
+    const files = await readProjectFiles(root + '.versions/v' + previous.version + '/', previous.filePaths || project.filePaths || []);
     if (!Object.keys(files).length) throw new Error('Previous version snapshot is unavailable.');
+    const currentPaths = project.filePaths || [];
+    for (const path of currentPaths) {
+      if (!Object.prototype.hasOwnProperty.call(files, path)) await deleteTextFile(root, path);
+    }
     await writeProjectFiles(root, files);
-    const memory = files['MEMORY.md'] ? project.memory : project.memory;
-    const next = { ...project, files, filePaths: Object.keys(files), versions };
-    next.memory = memory;
+    const next = { ...project, files, filePaths: Object.keys(files), versions, memory: previous.memory || project.memory };
     return this.saveProject(next, { action: 'undo to v' + previous.version, createVersion: false });
   },
 
