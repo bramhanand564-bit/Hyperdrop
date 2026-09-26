@@ -357,7 +357,7 @@ const AIAppBuilderService = {
     const id = 'app_' + now + '_' + Math.random().toString(36).slice(2, 8);
     const project = {
       id, name, target: route, filePaths: [],
-      memory: null, versions: [], redo: [], createdAt: now, updatedAt: now,
+      memory: null, versions: [], redo: [], chat: [], createdAt: now, updatedAt: now,
     };
     project.memory = memoryObject(project);
     project.memory.history.push({ version: 1, action: 'created', at: now });
@@ -417,7 +417,7 @@ const AIAppBuilderService = {
     return this.saveProject({ ...project, files, filePaths: Object.keys(files) }, { action: 'deleted ' + rel, createVersion: true });
   },
 
-  async buildWithAI({ project, request, connectionId, model }) {
+  async buildWithAI({ project, request, connectionId, model, chat = [] }) {
     const route = classifyRequest(request);
     const currentFiles = project?.files || {};
     const nativeRoute = route.target === 'ADVANCED_PROJECT' && /(bluetooth|ble|background service|native|android|apk|aab|gradle|kotlin|c\\+\\+|jni|ndk|usb|nfc|vpn|widget|accessibility|device admin)/i.test(request);
@@ -450,6 +450,8 @@ Never include API keys/secrets.
           JSON.stringify(currentFiles),
           'Project memory:',
           JSON.stringify(project?.memory || {}),
+          'Recent builder conversation:',
+          JSON.stringify((Array.isArray(chat) ? chat : []).slice(-12)),
           'User request:',
           request,
         ].join('\n\n'),
@@ -460,7 +462,7 @@ Never include API keys/secrets.
     return extractJson(result);
   },
 
-  async applyBuild(project, draft, request) {
+  async applyBuild(project, draft, request, chatMessages = []) {
     const route = classifyRequest(request);
     const target = route.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : (draft.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML');
     const now = Date.now();
@@ -490,6 +492,7 @@ Never include API keys/secrets.
       files,
       filePaths: Object.keys(files),
       memory,
+      chat: [...(project.chat || []), ...(Array.isArray(chatMessages) ? chatMessages : []), { role: 'assistant', content: draft.summary || 'Build updated.' }].slice(-30),
       updatedAt: now,
       versions: [...(project.versions || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now, memory, filePaths: Object.keys(files) }],
       redo: [],
