@@ -47,14 +47,14 @@ export default function ExperienceStoreScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text}/></TouchableOpacity>
         <View style={{flex:1,marginLeft:10}}>
           <Text style={[styles.title,{color:theme.text}]}>Experience Store</Text>
-          <Text style={[styles.sub,{color:theme.sub}]}>Ready-made apps, tools and customizable experiences.</Text>
+          <Text style={[styles.sub,{color:theme.sub}]}>Discover creator-built Experiences, customize them, or start a new one.</Text>
         </View>
         <TouchableOpacity onPress={() => navigation.navigate('ExperienceBuilder',{template:'custom'})} style={[styles.add,{backgroundColor:theme.blue}]}><Ionicons name="add" size={21} color="#FFF"/></TouchableOpacity>
       </View>
 
       <View style={[styles.search,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <Ionicons name="search" size={18} color={theme.sub}/>
-        <TextInput value={query} onChangeText={setQuery} placeholder="Search apps, tools, games..." placeholderTextColor={theme.sub} style={{flex:1,color:theme.text,marginLeft:8}} returnKeyType="search"/>
+        <TextInput value={query} onChangeText={setQuery} placeholder="Search experiences, tools, games..." placeholderTextColor={theme.sub} style={{flex:1,color:theme.text,marginLeft:8}} returnKeyType="search"/>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8}}>
@@ -62,7 +62,7 @@ export default function ExperienceStoreScreen({ navigation }) {
       </ScrollView>
 
       <View style={[styles.banner,{backgroundColor:theme.surface,borderColor:theme.border}]}>
-        <Text style={{fontSize:28}}>🧩</Text><View style={{flex:1,marginLeft:11}}><Text style={[styles.bannerTitle,{color:theme.text}]}>Install, customize, publish</Text><Text style={[styles.bannerText,{color:theme.sub}]}>Use an existing Experience as your own starting point, then give it your Gateway and share it in Chat.</Text></View>
+        <Text style={{fontSize:28}}>🧩</Text><View style={{flex:1,marginLeft:11}}><Text style={[styles.bannerTitle,{color:theme.text}]}>Discover, customize, publish</Text><Text style={[styles.bannerText,{color:theme.sub}]}>Start from a creator-built Experience, customize its Gateway, then share the same live Experience in Chat.</Text></View>
       </View>
 
       <Text style={[styles.section,{color:theme.text}]}>Discover</Text>
