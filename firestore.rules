@@ -298,8 +298,9 @@ service cloud.firestore {
     // 10. HYPERDROP EXPERIENCES
     // =========================================================
     match /experiences/{experienceId} {
-      // Published experiences are discoverable.
-      allow read: if request.auth != null;
+      // Published experiences are discoverable; disabled ones remain visible only to their creator.
+      allow read: if request.auth != null
+                  && (resource.data.status != 'disabled' || resource.data.creatorId == request.auth.uid);
 
       // A creator can publish only as themselves.
       allow create: if request.auth != null
