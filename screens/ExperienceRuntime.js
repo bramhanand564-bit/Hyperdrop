@@ -17,6 +17,7 @@ import { WebView } from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../context/ThemeContext';
+import { auth } from '../firebaseConfig';
 import ExperienceAPI from '../api/ExperienceAPI';
 import { URLValidator } from '../security/URLValidator';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
@@ -148,19 +149,19 @@ export default function ExperienceRuntime({ route, navigation }) {
     }
   };
 
-  const validateFields = action => {
+  const validateFields = (action, sourceValues = values) => {
     const requiresData = ['complete', 'submit', 'claim', 'book', 'pay', 'approve'].includes(String(action?.label || '').toLowerCase());
     if (!requiresData) return null;
     for (const field of fields) {
       if (!field.required) continue;
-      if (!valuePresent(values[field.id])) return field.label || field.id;
+      if (!valuePresent(sourceValues[field.id])) return field.label || field.id;
     }
     return null;
   };
 
   const executeAction = useCallback(async (action, actionValues = values) => {
     if (!experience || acting) return false;
-    const missing = validateFields(action);
+    const missing = validateFields(action, actionValues);
     if (missing) {
       Alert.alert('Required field', `Please complete: ${missing}`);
       return false;
@@ -224,8 +225,8 @@ export default function ExperienceRuntime({ route, navigation }) {
     const webBootstrap = `
       (function(){
         var USER = ${JSON.stringify({
-          uid: require('../firebaseConfig').auth.currentUser?.uid || '',
-          name: require('../firebaseConfig').auth.currentUser?.displayName || 'User'
+          uid: auth.currentUser?.uid || '',
+          name: auth.currentUser?.displayName || 'User'
         })};
         var EXPERIENCE = ${JSON.stringify({
           id: experience.id,
