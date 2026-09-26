@@ -220,6 +220,8 @@ const ExperienceAPI = {
     await addDoc(collection(db, 'experiences', id, 'events'), {
       type: 'run',
       action: 'open',
+      actionId: 'open',
+      actionLabel: 'Open',
       userId: uid,
       chatId: context.chatId || null,
       createdAt: serverTimestamp(),
@@ -242,6 +244,8 @@ const ExperienceAPI = {
     await addDoc(collection(db, 'experiences', id, 'events'), {
       type: 'join',
       action: 'join',
+      actionId: 'join',
+      actionLabel: 'Join',
       userId: uid,
       createdAt: serverTimestamp(),
     });
