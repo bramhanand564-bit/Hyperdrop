@@ -188,6 +188,12 @@ const ExperienceAPI = {
     const actionId = definition?.id || String(action.id || action).toLowerCase().replace(/\s+/g, '_');
     const label = definition?.label || action.label || action;
     const participantRef = doc(db, 'experiences', id, 'participants', uid);
+    const currentSnap = await getDoc(participantRef);
+    const currentState = currentSnap.exists() ? (currentSnap.data().state || {}) : {};
+    const rule = (experience.schema?.rules || []).find(item => String(item.when || '').toLowerCase() === actionId.toLowerCase());
+    const status = rule?.set?.status ?? (['Complete','Claim','Submit'].includes(label) ? 'completed' : (['Start','Accept','Join'].includes(label) ? 'active' : currentState.status || 'ready'));
+    const pointsDelta = Math.max(0, Number(rule?.set?.pointsDelta || 0));
+    const nextPoints = Math.max(0, Number(currentState.points || 0) + pointsDelta);
 
     const eventRef = await addDoc(collection(db, 'experiences', id, 'events'), {
       type: 'action',
@@ -195,16 +201,21 @@ const ExperienceAPI = {
       actionLabel: label,
       userId: uid,
       values,
+      pointsDelta,
       createdAt: serverTimestamp(),
     });
 
     await setDoc(participantRef, {
       userId: uid,
+      status: status === 'completed' ? 'completed' : 'active',
       lastActionId: actionId,
       lastActionLabel: label,
       lastActionAt: serverTimestamp(),
       state: {
+        ...currentState,
         ...(values || {}),
+        status,
+        points: nextPoints,
         lastActionId: actionId,
         lastActionLabel: label,
         lastActionAt: serverTimestamp(),
@@ -212,7 +223,7 @@ const ExperienceAPI = {
       updatedAt: serverTimestamp(),
     }, { merge: true });
 
-    return { eventId: eventRef.id, actionId, label };
+    return { eventId: eventRef.id, actionId, label, status, points: nextPoints, pointsDelta };
   },
 
   async getParticipant(id, userId = auth.currentUser?.uid) {
