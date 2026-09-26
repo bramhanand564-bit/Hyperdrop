@@ -54,7 +54,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         if (full) { setProject(full); setMessages(full.chat || []); }
       } else if (!project) {
         const current = await AIAppBuilderService.getCurrent();
-        if (current) setProject(current);
+        if (current) { setProject(current); setMessages(current.chat || []); }
       }
     } catch (e) { console.log('AI builder load:', e); }
   }, [route.params?.project?.id, project]);
