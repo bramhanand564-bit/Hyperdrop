@@ -36,7 +36,7 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
    return Alert.alert('Required field',`Please complete: ${missing.label||missing.id}`);
   }
   setExperienceBusy(action.id);
-  try{await ExperienceAPI.performAction(item.experienceId,action,experienceValues);Alert.alert('Experience',`✓ ${action.label} recorded`);}
+  try{await ExperienceAPI.performAction(item.experienceId,action,experienceValues,{chatId});Alert.alert('Experience',`✓ ${action.label} recorded`);}
   catch(e){Alert.alert('Experience',e.message||'Action failed.')}
   finally{setExperienceBusy('');}
  };
