@@ -55,12 +55,19 @@ export default function ExperienceDashboard({ navigation }) {
   useEffect(() => { loadMine(); }, [loadMine]);
   useEffect(() => { loadDetail(selected); }, [selected, loadDetail]);
 
-  const metrics = useMemo(() => {
+  const analytics = useMemo(() => {
+    const actionCounts = {};
+    events.filter(e => e.type === 'action').forEach(event => {
+      const label = String(event.actionLabel || event.actionId || 'Action');
+      actionCounts[label] = (actionCounts[label] || 0) + 1;
+    });
+    const actions = Object.entries(actionCounts).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const people = participants.length;
     const completed = participants.filter(p => String(p.status || '').toLowerCase() === 'completed' || String(p.state?.status || '').toLowerCase() === 'completed').length;
     const opened = events.filter(e => e.type === 'run').length;
-    const actions = events.filter(e => e.type === 'action').length;
-    return { people, completed, actions, opened, events: events.length };
+    const actionEvents = events.filter(e => e.type === 'action').length;
+    const points = participants.reduce((sum, person) => sum + Math.max(0, Number(person.state?.points || 0)), 0);
+    return { people, completed, actionEvents, opened, events: events.length, points, actions };
   }, [participants, events]);
 
   const setStatus = async status => {
@@ -138,7 +145,7 @@ export default function ExperienceDashboard({ navigation }) {
                 </View>
 
                 <View style={styles.metrics}>
-                  {[['People', metrics.people], ['Actions', metrics.actions], ['Completed', metrics.completed]].map(([label,value]) => (
+                  {[['People', analytics.people], ['Actions', analytics.actionEvents], ['Completed', analytics.completed]].map(([label,value]) => (
                     <View key={label} style={[styles.metric, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                       <Text style={[styles.metricValue, { color: theme.text }]}>{value}</Text>
                       <Text style={[styles.metricLabel, { color: theme.sub }]}>{label}</Text>
@@ -156,6 +163,31 @@ export default function ExperienceDashboard({ navigation }) {
                   )}
                   <TouchableOpacity onPress={remove} style={[styles.small, { backgroundColor: 'rgba(255,59,48,.10)' }]}><Text style={{ color: '#FF3B30', fontWeight: '900' }}>Delete</Text></TouchableOpacity>
                 </View>
+
+                <View style={[styles.analyticsBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                  <View style={styles.analyticsHead}>
+                    <Text style={[styles.boxTitle, { color: theme.text }]}>Analytics</Text>
+                    <Text style={{ color: theme.sub, fontSize: 11 }}>{analytics.points} points earned</Text>
+                  </View>
+                  <Text style={[styles.analyticsSub, { color: theme.sub }]}>Opened {analytics.opened} times · {analytics.events} total events</Text>
+                  {analytics.actions.length ? analytics.actions.map(([label, count]) => (
+                    <View key={label} style={styles.breakdownRow}>
+                      <Text style={{ color: theme.text, fontWeight: '800', flex: 1 }} numberOfLines={1}>{label}</Text>
+                      <Text style={{ color: theme.blue, fontWeight: '900' }}>{count}</Text>
+                    </View>
+                  )) : <Text style={{ color: theme.sub, marginTop: 8 }}>No action data yet.</Text>}
+                </View>
+
+                <Text style={[styles.section, { color: theme.text }]}>Participants</Text>
+                {participants.length ? participants.slice(0, 20).map(person => (
+                  <View key={person.id} style={[styles.participant, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    <View style={[styles.personIcon, { backgroundColor: 'rgba(8,126,255,.12)' }]}><Ionicons name="person-outline" size={17} color={theme.blue} /></View>
+                    <View style={{ flex: 1, marginLeft: 9 }}>
+                      <Text style={{ color: theme.text, fontWeight: '800' }} numberOfLines={1}>{String(person.id).slice(0, 16)}</Text>
+                      <Text style={{ color: theme.sub, fontSize: 10, marginTop: 2 }}>{person.state?.status || person.status || 'ready'} · {Number(person.state?.points || 0)} points · {person.runCount || 0} opens</Text>
+                    </View>
+                  </View>
+                )) : <Text style={{ color: theme.sub }}>No participants yet.</Text>}
 
                 <Text style={[styles.section, { color: theme.text }]}>Recent Activity</Text>
                 {detailLoading ? <ActivityIndicator color={theme.blue} /> : events.length === 0 ? (
@@ -179,5 +211,5 @@ export default function ExperienceDashboard({ navigation }) {
 }
 
 const styles=StyleSheet.create({
- safe:{flex:1},content:{padding:18,paddingBottom:70},top:{flexDirection:'row',alignItems:'center',marginBottom:18},title:{fontSize:21,fontWeight:'900'},sub:{fontSize:11,marginTop:2},add:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'},section:{fontSize:18,fontWeight:'900',marginBottom:10,marginTop:8},item:{borderWidth:1,borderRadius:17,padding:13,flexDirection:'row',alignItems:'center',marginBottom:9},itemIcon:{fontSize:27,width:45},hero:{borderWidth:1,borderRadius:20,padding:16,flexDirection:'row',marginTop:9},heroIcon:{fontSize:31},heroName:{fontSize:20,fontWeight:'900',marginTop:5},heroDesc:{fontSize:12,lineHeight:17,marginTop:3},heroMeta:{fontSize:10,marginTop:8},metrics:{flexDirection:'row',gap:8,marginTop:10},metric:{flex:1,borderWidth:1,borderRadius:15,padding:12,alignItems:'center'},metricValue:{fontSize:19,fontWeight:'900'},metricLabel:{fontSize:10,marginTop:3},buttons:{flexDirection:'row',gap:8,marginTop:12},small:{flex:1,minHeight:42,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:5},smallText:{color:'#FFF',fontWeight:'900'},event:{borderWidth:1,borderRadius:15,padding:12,flexDirection:'row',alignItems:'center',marginBottom:8},empty:{borderWidth:1,borderRadius:22,padding:30,alignItems:'center',marginTop:20},emptyIcon:{fontSize:40},emptyTitle:{fontSize:18,fontWeight:'900',marginTop:8},emptyText:{fontSize:12,lineHeight:18,textAlign:'center',marginTop:4},primary:{paddingHorizontal:20,paddingVertical:11,borderRadius:13,marginTop:14},primaryText:{color:'#FFF',fontWeight:'900'}
+ safe:{flex:1},content:{padding:18,paddingBottom:70},top:{flexDirection:'row',alignItems:'center',marginBottom:18},title:{fontSize:21,fontWeight:'900'},sub:{fontSize:11,marginTop:2},add:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'},section:{fontSize:18,fontWeight:'900',marginBottom:10,marginTop:8},item:{borderWidth:1,borderRadius:17,padding:13,flexDirection:'row',alignItems:'center',marginBottom:9},itemIcon:{fontSize:27,width:45},hero:{borderWidth:1,borderRadius:20,padding:16,flexDirection:'row',marginTop:9},heroIcon:{fontSize:31},heroName:{fontSize:20,fontWeight:'900',marginTop:5},heroDesc:{fontSize:12,lineHeight:17,marginTop:3},heroMeta:{fontSize:10,marginTop:8},metrics:{flexDirection:'row',gap:8,marginTop:10},metric:{flex:1,borderWidth:1,borderRadius:15,padding:12,alignItems:'center'},metricValue:{fontSize:19,fontWeight:'900'},metricLabel:{fontSize:10,marginTop:3},buttons:{flexDirection:'row',gap:8,marginTop:12},small:{flex:1,minHeight:42,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:5},smallText:{color:'#FFF',fontWeight:'900'},event:{borderWidth:1,borderRadius:15,padding:12,flexDirection:'row',alignItems:'center',marginBottom:8},analyticsBox:{borderWidth:1,borderRadius:18,padding:14,marginTop:12},analyticsHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},analyticsSub:{fontSize:11,marginTop:4},breakdownRow:{flexDirection:'row',alignItems:'center',paddingTop:9},participant:{borderWidth:1,borderRadius:15,padding:11,flexDirection:'row',alignItems:'center',marginBottom:8},personIcon:{width:36,height:36,borderRadius:12,alignItems:'center',justifyContent:'center'},empty:{borderWidth:1,borderRadius:22,padding:30,alignItems:'center',marginTop:20},emptyIcon:{fontSize:40},emptyTitle:{fontSize:18,fontWeight:'900',marginTop:8},emptyText:{fontSize:12,lineHeight:18,textAlign:'center',marginTop:4},primary:{paddingHorizontal:20,paddingVertical:11,borderRadius:13,marginTop:14},primaryText:{color:'#FFF',fontWeight:'900'}
 });
