@@ -111,7 +111,8 @@ export default function ExperienceRuntime({ route, navigation }) {
   }
 
   const lastAction = participant?.lastActionLabel || 'None yet';
-  const status = participant?.status || 'Ready';
+  const status = participant?.state?.status || participant?.status || 'Ready';
+  const points = Number(participant?.state?.points || 0);
   const primaryAction = actions.find(a => a.primary) || actions[0];
 
   return (
@@ -129,7 +130,7 @@ export default function ExperienceRuntime({ route, navigation }) {
           <Text style={[styles.desc, { color: theme.sub }]}>{experience.description}</Text>
           <View style={styles.metaRow}>
             <Text style={[styles.meta, { color: theme.sub }]}>Status: {status}</Text>
-            <Text style={[styles.meta, { color: theme.sub }]}>Last: {lastAction}</Text>
+            <Text style={[styles.meta, { color: theme.sub }]}>Last: {lastAction}</Text><Text style={[styles.meta, { color: theme.sub }]}>Points: {points}</Text>
           </View>
         </View>
 
