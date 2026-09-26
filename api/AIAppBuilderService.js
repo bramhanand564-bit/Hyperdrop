@@ -322,13 +322,13 @@ const AIAppBuilderService = {
       memory: null, versions: [], createdAt: now, updatedAt: now,
     };
     project.memory = memoryObject(project);
-    project.memory.history.push({ version: 1, action: 'created', at: now, memory: project.memory });
+    project.memory.history.push({ version: 1, action: 'created', at: now });
     const files = route === 'SINGLE_HTML'
       ? { 'index.html': validateSingleHtml(html || DEFAULT_HTML(name)), 'MEMORY.md': memoryMarkdown(project.memory) }
       : { ...advancedSeed(name), 'MEMORY.md': memoryMarkdown(project.memory) };
     project.filePaths = Object.keys(files);
     project.files = files;
-    project.versions = [{ version: 1, action: 'created', at: now }];
+    project.versions = [{ version: 1, action: 'created', at: now, memory: project.memory, filePaths: project.filePaths }];
     const root = await projectRoot(id);
     await writeProjectFiles(root, files);
     await snapshot(project);
