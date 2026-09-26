@@ -129,6 +129,36 @@ export default function useCallLogic(route, navigation) {
     return value.match(/ typ ([a-z0-9]+)/i)?.[1] || 'unknown';
   };
 
+  // Save a fully gathered SDP in addition to trickled candidates.
+  // This makes call setup resilient when candidate subcollection delivery
+  // is delayed or a deployed Firestore rule set is stale.
+  const waitForIceGatheringComplete = (pc, timeoutMs = 8000) => {
+    if (!pc || pc.iceGatheringState === 'complete') {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        pc.onicegatheringstatechange = null;
+        resolve();
+      };
+
+      const timeout = setTimeout(finish, timeoutMs);
+
+      pc.onicegatheringstatechange = () => {
+        console.log('🧊 ICE Gathering State:', pc.iceGatheringState);
+        if (pc.iceGatheringState === 'complete') {
+          finish();
+        }
+      };
+    });
+  };
+
   // ==========================================
   // TIMER
   // ==========================================
@@ -727,20 +757,22 @@ export default function useCallLogic(route, navigation) {
         type === 'video',
     });
 
-    await pc.setLocalDescription(
-      offer
-    );
+    await pc.setLocalDescription(offer);
+
+    await waitForIceGatheringComplete(pc);
+
+    const gatheredOffer = pc.localDescription || offer;
 
     console.log(
       '📤 Local offer created',
       {
-        hasAudio: hasMediaSection(offer.sdp, 'audio'),
-        hasVideo: hasMediaSection(offer.sdp, 'video'),
-        sdpLength: offer.sdp?.length || 0,
+        hasAudio: hasMediaSection(gatheredOffer.sdp, 'audio'),
+        hasVideo: hasMediaSection(gatheredOffer.sdp, 'video'),
+        sdpLength: gatheredOffer.sdp?.length || 0,
       }
     );
 
-    if (type === 'video' && !hasMediaSection(offer.sdp, 'video')) {
+    if (type === 'video' && !hasMediaSection(gatheredOffer.sdp, 'video')) {
       throw new Error('Video offer was created without an m=video section.');
     }
 
@@ -749,8 +781,8 @@ export default function useCallLogic(route, navigation) {
     // ----------------------------------------
     await updateDoc(callDoc, {
       offer: {
-        type: offer.type,
-        sdp: offer.sdp,
+        type: gatheredOffer.type,
+        sdp: gatheredOffer.sdp,
       },
     });
 
@@ -1166,20 +1198,22 @@ export default function useCallLogic(route, navigation) {
       // ----------------------------------------
       // SET LOCAL ANSWER
       // ----------------------------------------
-      await pc.setLocalDescription(
-        answer
-      );
+      await pc.setLocalDescription(answer);
+
+      await waitForIceGatheringComplete(pc);
+
+      const gatheredAnswer = pc.localDescription || answer;
 
       console.log(
         '📤 Local answer created',
         {
-          hasAudio: hasMediaSection(answer.sdp, 'audio'),
-          hasVideo: hasMediaSection(answer.sdp, 'video'),
-          sdpLength: answer.sdp?.length || 0,
+          hasAudio: hasMediaSection(gatheredAnswer.sdp, 'audio'),
+          hasVideo: hasMediaSection(gatheredAnswer.sdp, 'video'),
+          sdpLength: gatheredAnswer.sdp?.length || 0,
         }
       );
 
-      if (type === 'video' && !hasMediaSection(answer.sdp, 'video')) {
+      if (type === 'video' && !hasMediaSection(gatheredAnswer.sdp, 'video')) {
         throw new Error('Video answer was created without an m=video section.');
       }
 
@@ -1190,8 +1224,8 @@ export default function useCallLogic(route, navigation) {
         callDoc,
         {
           answer: {
-            type: answer.type,
-            sdp: answer.sdp,
+            type: gatheredAnswer.type,
+            sdp: gatheredAnswer.sdp,
           },
         }
       );
