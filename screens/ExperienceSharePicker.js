@@ -38,6 +38,7 @@ export default function ExperienceSharePicker({ route, navigation }) {
         experienceName: experience.name,
         experienceDescription: experience.description,
         experienceIcon: experience.icon || '⚡',
+        experienceSchema: experience.schema || null,
       });
       Alert.alert('Sent', 'Experience shared to the chat.');
       navigation.goBack();
@@ -56,7 +57,7 @@ export default function ExperienceSharePicker({ route, navigation }) {
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={[styles.title, { color: theme.text }]}>Share Experience</Text>
-          <Text style={[styles.sub, { color: theme.sub }]}>{experience?.name || 'Experience'}</Text>
+          <Text style={[styles.sub, { color: theme.sub }]} numberOfLines={1}>{experience?.name || 'Experience'} · share to any chat</Text>
         </View>
       </View>
       {loading ? (
