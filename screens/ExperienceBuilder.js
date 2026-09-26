@@ -3,6 +3,7 @@ import { Alert, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, T
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
+import { URLValidator } from '../security/URLValidator';
 
 const ACTION_PRESETS = ['Accept','Start','Complete','Join','Vote','Submit','Claim','Play','Watch','Upload','Approve','Reject','Share','Pay','Book','Report'];
 const FIELD_PRESETS = ['Text','Number','Image','Date','Time','Checkbox','Rating','File'];
@@ -30,6 +31,7 @@ export default function ExperienceBuilder({ route, navigation }) {
   const [fields,setFields]=useState(initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)})));
   const [trigger,setTrigger]=useState(actions[0]?.id || 'on_action');
   const [rewardEnabled,setRewardEnabled]=useState(false),[rewardPoints,setRewardPoints]=useState('100');
+  const [webUrl,setWebUrl]=useState('');
   const [customAction,setCustomAction]=useState(''),[customFieldLabel,setCustomFieldLabel]=useState('');
   const [publishing,setPublishing]=useState(false),[loadingExisting,setLoadingExisting]=useState(Boolean(experienceId));
   useEffect(()=>{
@@ -40,7 +42,7 @@ export default function ExperienceBuilder({ route, navigation }) {
       setName(item.name||initial.name);setDescription(item.description||'');setIcon(item.icon||initial.icon);
       setActions((item.schema?.actions||initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0}))).map((a,i)=>({...a,id:a.id||slug(a.label),primary:Boolean(a.primary||i===0)})));
       setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
-      setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||item.schema?.actions?.[0]?.id||'');
+      setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||item.schema?.actions?.[0]?.id||'');setWebUrl(item.schema?.web?.url||'');
     }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
     return ()=>{mounted=false;};
   },[experienceId]);
@@ -72,13 +74,15 @@ export default function ExperienceBuilder({ route, navigation }) {
         pointsDelta: rewardEnabled ? Math.max(0,Number(rewardPoints)||0) : 0,
       },
     })),
-    ui:{card:['icon','name','description','primaryActions'],full:['header','fields','status','actions']},
+    ui:{card:['icon','name','description','primaryActions'],full:['header','fields','status','actions','web']},
+    web:webUrl.trim()?{url:webUrl.trim()}:null,
     settings:{rewardEnabled,rewardPoints:Math.max(0,Number(rewardPoints)||0),trigger},
   }),[actions,fields,rewardEnabled,rewardPoints,trigger]);
 
   const publish=async()=>{
     if(!name.trim())return Alert.alert('Name required','Give your experience a name.');
     if(!actions.length)return Alert.alert('Action required','Add at least one action.');
+    if(webUrl.trim() && !URLValidator.validateExternalLink(webUrl.trim()).valid)return Alert.alert('Invalid URL','Only a valid HTTPS URL can be used.');
     setPublishing(true);
     try{
       const saved=experienceId
@@ -108,6 +112,8 @@ export default function ExperienceBuilder({ route, navigation }) {
       <Text style={[styles.label,{color:theme.text}]}>Basic</Text>
       <View style={styles.row}><TextInput value={icon} onChangeText={setIcon} maxLength={2} style={[styles.iconInput,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]}/><TextInput value={name} onChangeText={setName} maxLength={80} style={[styles.input,{flex:1,color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="Name" placeholderTextColor={theme.sub}/></View>
       <TextInput value={description} onChangeText={setDescription} multiline maxLength={500} style={[styles.textarea,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="Describe what people can do" placeholderTextColor={theme.sub}/>
+      <Text style={[styles.label,{color:theme.text}]}>Full experience URL (optional)</Text>
+      <TextInput value={webUrl} onChangeText={setWebUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="https://your-experience.example" placeholderTextColor={theme.sub}/>
 
       <View style={styles.sectionHead}><Text style={[styles.label,{color:theme.text,marginTop:0}]}>Actions</Text><Text style={{color:theme.sub,fontSize:11}}>{actions.length}</Text></View>
       <View style={styles.list}>{actions.map(action=><View key={action.id} style={[styles.listRow,{backgroundColor:theme.surface,borderColor:theme.border}]}><View style={{flex:1}}><Text style={[styles.listTitle,{color:theme.text}]}>{action.label}</Text><Text style={{color:theme.sub,fontSize:10}}>{action.primary?'Primary action':'Secondary action'}</Text></View><TouchableOpacity onPress={()=>togglePrimary(action.id)} style={[styles.miniBtn,{backgroundColor:action.primary?theme.blue:theme.bg,borderColor:theme.border}]}><Text style={{color:action.primary?'#FFF':theme.text,fontSize:10,fontWeight:'900'}}>Primary</Text></TouchableOpacity><TouchableOpacity onPress={()=>removeAction(action.id)}><Ionicons name="trash-outline" size={18} color="#FF3B30"/></TouchableOpacity></View>)}</View>
