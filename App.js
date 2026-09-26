@@ -38,6 +38,7 @@ const SecurityPermissionsScreen = lazyRequire(() => require('./screens/SecurityP
 const WalletScreen = lazyRequire(() => require('./screens/WalletScreen').default);
 const SettingsScreen = lazyRequire(() => require('./screens/SettingsScreen').default);
 const AISettingsScreen = lazyRequire(() => require('./screens/AISettingsScreen').default);
+const AIChatScreen = lazyRequire(() => require('./screens/AIChatScreen').default);
 const OnDeviceAISettingsScreen = lazyRequire(() => require('./screens/OnDeviceAISettingsScreen').default);
 const DeveloperDashboardScreen = lazyRequire(() => require('./screens/DeveloperDashboardScreen').default);
 const TelegramBotFeaturesScreen = lazyRequire(() => require('./screens/TelegramBotFeaturesScreen').default);
@@ -118,6 +119,7 @@ function AppNavigator() {
             <Stack.Screen name="SecurityPermissions" component={SecurityPermissionsScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="AISettings" component={AISettingsScreen} />
+            <Stack.Screen name="AIChat" component={AIChatScreen} />
             <Stack.Screen name="OnDeviceAISettings" component={OnDeviceAISettingsScreen} />
             <Stack.Screen name="Wallet" component={WalletScreen} />
             <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
