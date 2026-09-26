@@ -11,6 +11,7 @@ import {
   orderBy,
   limit,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -266,11 +267,8 @@ const ExperienceAPI = {
     const actionId = definition.id;
     const label = definition.label;
     const participantRef = doc(db, 'experiences', id, 'participants', uid);
-    const currentSnap = await getDoc(participantRef);
-    const currentState = currentSnap.exists() ? (currentSnap.data().state || {}) : {};
     const fieldList = Array.isArray(experience.schema?.fields) ? experience.schema.fields : [];
     const safeValues = sanitizeValues(fieldList, values);
-
     const requiredMissing = fieldList.find(field => field.required && (
       safeValues[field.id] === undefined
       || safeValues[field.id] === null
@@ -283,40 +281,53 @@ const ExperienceAPI = {
 
     const rule = (experience.schema?.rules || []).find(item => String(item.when || '').toLowerCase() === actionId.toLowerCase());
     const lowerLabel = String(label).toLowerCase();
-    const status = rule?.set?.status ?? (['complete','claim','submit','book','pay','approve'].includes(lowerLabel) ? 'completed' : (['start','accept','join'].includes(lowerLabel) ? 'active' : currentState.status || 'ready'));
+    const fallbackStatus = ['complete','claim','submit','book','pay','approve'].includes(lowerLabel)
+      ? 'completed'
+      : (['start','accept','join'].includes(lowerLabel) ? 'active' : 'ready');
+    const status = rule?.set?.status || fallbackStatus;
     const pointsDelta = Math.max(0, Number(rule?.set?.pointsDelta || 0));
-    const nextPoints = Math.max(0, Number(currentState.points || 0) + pointsDelta);
+    const eventRef = doc(collection(db, 'experiences', id, 'events'));
 
-    const eventRef = await addDoc(collection(db, 'experiences', id, 'events'), {
-      type: 'action',
-      actionId,
-      actionLabel: label,
-      userId: uid,
-      values: safeValues,
-      chatId: context.chatId || null,
-      transferId: context.transferId || null,
-      pointsDelta,
-      createdAt: serverTimestamp(),
-    });
-
-    await setDoc(participantRef, {
-      userId: uid,
-      status: status === 'completed' ? 'completed' : 'active',
-      lastActionId: actionId,
-      lastActionLabel: label,
-      lastActionAt: serverTimestamp(),
-      state: {
+    const result = await runTransaction(db, async transaction => {
+      const currentSnap = await transaction.get(participantRef);
+      const currentState = currentSnap.exists() ? (currentSnap.data().state || {}) : {};
+      const currentPoints = Math.max(0, Number(currentState.points || 0));
+      const nextPoints = Math.max(0, currentPoints + pointsDelta);
+      const nowState = {
         ...currentState,
         ...safeValues,
         status,
         points: nextPoints,
         lastActionId: actionId,
         lastActionLabel: label,
-        lastActionAt: serverTimestamp(),
-      },
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+      };
 
+      transaction.set(eventRef, {
+        type: 'action',
+        actionId,
+        actionLabel: label,
+        userId: uid,
+        values: safeValues,
+        chatId: context.chatId || null,
+        transferId: context.transferId || null,
+        pointsDelta,
+        createdAt: serverTimestamp(),
+      });
+      transaction.set(participantRef, {
+        userId: uid,
+        status: status === 'completed' ? 'completed' : 'active',
+        lastActionId: actionId,
+        lastActionLabel: label,
+        lastActionAt: serverTimestamp(),
+        state: {
+          ...nowState,
+          lastActionAt: serverTimestamp(),
+        },
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      return { eventId: eventRef.id, actionId, label, status, points: nextPoints, pointsDelta };
+    });
     return { eventId: eventRef.id, actionId, label, status, points: nextPoints, pointsDelta };
   },
 
