@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebaseConfig';
@@ -12,6 +12,7 @@ export default function ExperienceSharePicker({ route, navigation }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -64,9 +65,21 @@ export default function ExperienceSharePicker({ route, navigation }) {
         <ActivityIndicator color={theme.blue} style={{ marginTop: 30 }} />
       ) : (
         <FlatList
-          data={chats}
+          data={chats.filter(item => !search.trim() || String(item.name || item.groupName || item.friendName || item.username || '').toLowerCase().includes(search.trim().toLowerCase()))}
           keyExtractor={item => item.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+          ListHeaderComponent={
+            <View style={[styles.search, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Ionicons name="search-outline" size={17} color={theme.sub} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Find a chat or group"
+                placeholderTextColor={theme.sub}
+                style={{ flex: 1, marginLeft: 8, color: theme.text }}
+              />
+            </View>
+          }
           ListEmptyComponent={
             <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40 }}>
               No chats available.
@@ -105,6 +118,7 @@ const styles = StyleSheet.create({
   header: { height: 70, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(128,128,128,.12)' },
   title: { fontSize: 20, fontWeight: '900' },
   sub: { fontSize: 12, marginTop: 2 },
+  search: { height: 44, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, marginBottom: 10 },
   card: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 10 },
   avatar: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 15, fontWeight: '800' },
