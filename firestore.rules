@@ -312,8 +312,8 @@ service cloud.firestore {
       allow update, delete: if request.auth != null
                             && resource.data.creatorId == request.auth.uid;
 
-      // Per-user participation state. This keeps user progress separate
-      // from the public experience definition.
+      // Per-user participation state. User can only write their own
+      // participation; the creator can read it for management/analytics.
       match /participants/{userId} {
         allow read: if request.auth != null
                     && (
@@ -328,7 +328,28 @@ service cloud.firestore {
                              && request.resource.data.userId == request.auth.uid;
 
         allow delete: if request.auth != null
-                           && request.auth.uid == userId;
+                     && request.auth.uid == userId;
+      }
+
+      // Immutable event records. Users can append their own events;
+      // the creator can read them for the dashboard.
+      match /events/{eventId} {
+        allow read: if request.auth != null
+                    && (
+                      resource.data.userId == request.auth.uid
+                      || get(
+                        /databases/$(database)/documents/experiences/$(experienceId)
+                      ).data.creatorId == request.auth.uid
+                    );
+
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.createdAt != null;
+
+        allow update, delete: if request.auth != null
+                                  && get(
+                                    /databases/$(database)/documents/experiences/$(experienceId)
+                                  ).data.creatorId == request.auth.uid;
       }
     }
 
