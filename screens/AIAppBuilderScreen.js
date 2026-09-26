@@ -205,22 +205,23 @@ export default function AIAppBuilderScreen({ navigation, route }) {
             ))}
             {!project ? <Text style={[styles.help, { color: theme.sub }]}>Create an app from chat and its files will appear here.</Text> : null}
             {project ? (
-              <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Version history</Text>
-                {(project.versions || []).slice().reverse().slice(0, 5).map(version => (
-                  <TouchableOpacity key={version.version} onPress={async () => { try { setProject(await AIAppBuilderService.restoreVersion(project, version.version)); setMessages(m => [...m, { role: 'assistant', content: 'Restored v' + version.version + '.' }]); } catch (e) { Alert.alert('Restore failed', e?.message || 'Could not restore the version.'); } }} style={styles.historyRow}>
-                    <Text style={[styles.historyVersion, { color: theme.text }]}>v{version.version}</Text><Text style={[styles.historyAction, { color: theme.sub }]} numberOfLines={1}>{version.action}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View>
+                <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                  <Text style={[styles.actionTitle, { color: theme.text }]}>Version history</Text>
+                  {(project.versions || []).slice().reverse().slice(0, 5).map(version => (
+                    <TouchableOpacity key={version.version} onPress={async () => { try { setProject(await AIAppBuilderService.restoreVersion(project, version.version)); setMessages(m => [...m, { role: 'assistant', content: 'Restored v' + version.version + '.' }]); } catch (e) { Alert.alert('Restore failed', e?.message || 'Could not restore the version.'); } }} style={styles.historyRow}>
+                      <Text style={[styles.historyVersion, { color: theme.text }]}>v{version.version}</Text><Text style={[styles.historyAction, { color: theme.sub }]} numberOfLines={1}>{version.action}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Package</Text>
                 <Text style={[styles.actionText, { color: theme.sub }]}>Generate an Android WebView project and a GitHub Actions workflow that can build an APK from the app source.</Text>
                 <View style={styles.actionRow}>
                   <TouchableOpacity onPress={prepareAndroid} style={[styles.actionBtn, { backgroundColor: theme.blue }]}><Ionicons name="logo-android" size={15} color="#FFF" /><Text style={styles.actionBtnText}>Prepare APK</Text></TouchableOpacity>
                   <TouchableOpacity onPress={exportProject} style={[styles.actionBtn, { backgroundColor: theme.surfaceStrong, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="download-outline" size={15} color={theme.text} /><Text style={[styles.actionBtnText, { color: theme.text }]}>Export</Text></TouchableOpacity>
+                  </View>
                 </View>
-              </View>
             ) : null}
           </ScrollView>
         )}
