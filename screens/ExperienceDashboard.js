@@ -56,9 +56,11 @@ export default function ExperienceDashboard({ navigation }) {
   useEffect(() => { loadDetail(selected); }, [selected, loadDetail]);
 
   const metrics = useMemo(() => {
-    const joined = participants.filter(p => p.joinedAt).length;
-    const completed = events.filter(e => String(e.actionLabel || '').toLowerCase() === 'complete').length;
-    return { joined, completed, events: events.length };
+    const people = participants.length;
+    const completed = participants.filter(p => String(p.status || '').toLowerCase() === 'completed' || String(p.state?.status || '').toLowerCase() === 'completed').length;
+    const opened = events.filter(e => e.type === 'run').length;
+    const actions = events.filter(e => e.type === 'action').length;
+    return { people, completed, actions, opened, events: events.length };
   }, [participants, events]);
 
   const setStatus = async status => {
@@ -136,7 +138,7 @@ export default function ExperienceDashboard({ navigation }) {
                 </View>
 
                 <View style={styles.metrics}>
-                  {[['People', metrics.joined], ['Actions', metrics.events], ['Completed', metrics.completed]].map(([label,value]) => (
+                  {[['People', metrics.people], ['Actions', metrics.actions], ['Completed', metrics.completed]].map(([label,value]) => (
                     <View key={label} style={[styles.metric, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                       <Text style={[styles.metricValue, { color: theme.text }]}>{value}</Text>
                       <Text style={[styles.metricLabel, { color: theme.sub }]}>{label}</Text>
@@ -163,7 +165,7 @@ export default function ExperienceDashboard({ navigation }) {
                     <Ionicons name={event.type === 'join' ? 'person-add-outline' : 'flash-outline'} size={18} color={theme.blue} />
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={{ color: theme.text, fontWeight: '800' }}>{event.actionLabel || event.action || event.type}</Text>
-                      <Text style={{ color: theme.sub, fontSize: 11, marginTop: 2 }}>{String(event.userId || '').slice(0, 10)} · {formatDate(event.createdAt)}</Text>
+                      <Text style={{ color: theme.sub, fontSize: 11, marginTop: 2 }}>{String(event.userId || '').slice(0, 10)} · {event.chatId ? 'Chat action' : event.type === 'run' ? 'Opened' : 'Direct'} · {formatDate(event.createdAt)}</Text>
                     </View>
                   </View>
                 ))}
