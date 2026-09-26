@@ -9,8 +9,7 @@ import AISettingsService from '../ai/AISettingsService';
 export default function AIAppBuilderScreen({ navigation, route }) {
   const { theme } = useTheme();
   const [project, setProject] = useState(route.params?.project || null);
-  const [connections, setConnections] = useState([]);
-  const [connectionId, setConnectionId] = useState(null);
+    const [connectionId, setConnectionId] = useState(null);
   const [model, setModel] = useState(null);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -19,7 +18,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
   const load = useCallback(async () => {
     try {
       const [items, active] = await Promise.all([AISettingsService.listConnections(), AISettingsService.getActiveConnection()]);
-      setConnections(items || []);
       setConnectionId(active?.id || items?.[0]?.id || null);
       setModel(active?.model || active?.models?.[0] || items?.[0]?.model || items?.[0]?.models?.[0] || null);
       if (!project) {
@@ -32,14 +30,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
   useEffect(() => { load(); }, [load]);
 
   const previewHtml = useMemo(() => project?.target === 'SINGLE_HTML' ? project.html : '<html><body style="font-family:system-ui;padding:30px"><h2>Advanced project</h2><p>Source project created. Native packaging is the next build stage.</p></body></html>', [project]);
-
-  const create = async () => {
-    const name = input.trim().slice(0, 60) || 'New App';
-    const next = await AIAppBuilderService.createProject({ name, request: input });
-    setProject(next);
-    setMessages(m => [...m, { role: 'user', content: input }, { role: 'assistant', content: `Created ${next.target === 'SINGLE_HTML' ? 'a single-file app' : 'an advanced project'}.` }]);
-    setInput('');
-  };
 
   const send = async () => {
     const request = input.trim();
@@ -79,7 +69,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
           <View style={styles.log}><Text style={[styles.logTitle,{color:theme.text}]}>Build chat</Text>{messages.slice(-4).map((m,i)=><Text key={i} style={[styles.msg,{color:m.role==='user'?theme.text:theme.sub}]} numberOfLines={3}>{m.role==='user'?'You: ':'AI: '}{m.content}</Text>)}</View>
           <View style={[styles.inputRow,{borderColor:theme.border,backgroundColor:theme.bg}]}>
             <TextInput value={input} onChangeText={setInput} placeholder={project ? 'Tell AI what to change…' : 'Describe the app you want…'} placeholderTextColor={theme.sub} style={[styles.input,{color:theme.text}]} multiline />
-            <TouchableOpacity onPress={project ? send : create} disabled={busy || !input.trim()} style={[styles.send,{backgroundColor:theme.blue,opacity:busy||!input.trim()?.4:1}]}>{busy?<ActivityIndicator color="#FFF" size="small"/>:<Ionicons name="arrow-up" size={20} color="#FFF"/>}</TouchableOpacity>
+            <TouchableOpacity onPress={send} disabled={busy || !input.trim()} style={[styles.send,{backgroundColor:theme.blue,opacity: busy || !input.trim() ? 0.4 : 1}]}>{busy?<ActivityIndicator color="#FFF" size="small"/>:<Ionicons name="arrow-up" size={20} color="#FFF"/>}</TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
