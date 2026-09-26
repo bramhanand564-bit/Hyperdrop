@@ -4,52 +4,7 @@
 import { useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-const getWebRTC = () => require('../utils/webrtcHelper').default;
 const getFileTransfer = () => require('../utils/webrtcFileTransfer'); 
-
-// ==========================================
-// 🎮 NAX EXPERIENCE SYNC ENGINE (New Feature)
-// ==========================================
-// इसे अलग से export कर रहे हैं ताकि ExperienceRuntime इसे सीधा यूज़ कर सके
-export const ExperienceSyncEngine = {
-  activeRoomId: null,
-
-  joinExperienceRoom: async (roomId, user, onSyncUpdate) => {
-    console.log(`[Experience Engine] ${user?.displayName || 'User'} joining Room: ${roomId}`);
-    ExperienceSyncEngine.activeRoomId = roomId;
-    
-    // WebRTC रूम से कनेक्ट करना
-    getWebRTC().connectToRoom(roomId, user?.uid, (peerId, message) => {
-      try {
-        const parsedMessage = JSON.parse(message);
-        if (parsedMessage.type === 'EXPERIENCE_SYNC') {
-          console.log(`[Experience Engine] Sync data received from ${peerId}:`, parsedMessage.data);
-          onSyncUpdate(parsedMessage.data); 
-        }
-      } catch (error) {
-        console.error("Error parsing P2P message:", error);
-      }
-    });
-  },
-
-  broadcastExperienceState: (syncData) => {
-    if (!ExperienceSyncEngine.activeRoomId) {
-      console.warn("Cannot broadcast: Not in an Experience Room.");
-      return;
-    }
-    const payload = JSON.stringify({ type: 'EXPERIENCE_SYNC', data: syncData });
-    getWebRTC().broadcast(ExperienceSyncEngine.activeRoomId, payload);
-    console.log(`[Experience Engine] State Broadcasted:`, syncData);
-  },
-
-  leaveRoom: () => {
-    if (ExperienceSyncEngine.activeRoomId) {
-      getWebRTC().disconnect(ExperienceSyncEngine.activeRoomId);
-      ExperienceSyncEngine.activeRoomId = null;
-      console.log("[Experience Engine] Left Experience Room");
-    }
-  }
-};
 
 // ==========================================
 // 🔒 ORIGINAL FILE TRANSFER MANAGER (Untouched)
