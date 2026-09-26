@@ -320,7 +320,7 @@ const AIAppBuilderService = {
     const id = 'app_' + now + '_' + Math.random().toString(36).slice(2, 8);
     const project = {
       id, name, target: route, filePaths: [],
-      memory: null, versions: [], createdAt: now, updatedAt: now,
+      memory: null, versions: [], redo: [], createdAt: now, updatedAt: now,
     };
     project.memory = memoryObject(project);
     project.memory.history.push({ version: 1, action: 'created', at: now });
@@ -347,6 +347,7 @@ const AIAppBuilderService = {
     delete next.html;
     delete next.files;
     if (createVersion) {
+      next.redo = [];
       const version = (next.versions?.[next.versions.length - 1]?.version || 0) + 1;
       next.versions = [...(next.versions || []), { version, action, at: Date.now(), memory, filePaths: Object.keys(files) }];
       const snapshotProject = { ...next, files };
@@ -445,6 +446,7 @@ Create a coherent source project. Preserve existing files unless the request cha
       memory,
       updatedAt: now,
       versions: [...(project.versions || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now, memory, filePaths: Object.keys(files) }],
+      redo: [],
     };
     const saved = await this.saveProject(next, { action: request || draft.summary || 'AI update', createVersion: false });
     await snapshot({ ...saved, files: saved.files });
@@ -465,8 +467,55 @@ Create a coherent source project. Preserve existing files unless the request cha
       if (!Object.prototype.hasOwnProperty.call(files, path)) await deleteTextFile(root, path);
     }
     await writeProjectFiles(root, files);
-    const next = { ...project, files, filePaths: Object.keys(files), versions, memory: previous.memory || project.memory };
+    const removed = project.versions[project.versions.length - 1];
+    const next = { ...project, files, filePaths: Object.keys(files), versions, redo: [...(project.redo || []), removed], memory: previous.memory || project.memory };
     return this.saveProject(next, { action: 'undo to v' + previous.version, createVersion: false });
+  },
+
+  async redo(project) {
+    const stack = project?.redo || [];
+    if (!stack.length) return project;
+    const entry = stack[stack.length - 1];
+    const root = await projectRoot(project.id);
+    const files = await readProjectFiles(root + '.versions/v' + entry.version + '/', entry.filePaths || []);
+    if (!Object.keys(files).length) throw new Error('Redo snapshot is unavailable.');
+    const currentPaths = project.filePaths || [];
+    for (const path of currentPaths) {
+      if (!Object.prototype.hasOwnProperty.call(files, path)) await deleteTextFile(root, path);
+    }
+    await writeProjectFiles(root, files);
+    const next = {
+      ...project,
+      files,
+      filePaths: Object.keys(files),
+      versions: [...(project.versions || []), entry],
+      redo: stack.slice(0, -1),
+      memory: entry.memory || project.memory,
+    };
+    return this.saveProject(next, { action: 'redo to v' + entry.version, createVersion: false });
+  },
+
+  async restoreVersion(project, version) {
+    const index = (project?.versions || []).findIndex(item => item.version === version);
+    if (index < 0) throw new Error('Version not found.');
+    const entry = project.versions[index];
+    const root = await projectRoot(project.id);
+    const files = await readProjectFiles(root + '.versions/v' + entry.version + '/', entry.filePaths || []);
+    if (!Object.keys(files).length) throw new Error('Version snapshot is unavailable.');
+    for (const path of project.filePaths || []) {
+      if (!Object.prototype.hasOwnProperty.call(files, path)) await deleteTextFile(root, path);
+    }
+    await writeProjectFiles(root, files);
+    const future = (project.versions || []).slice(index + 1);
+    const next = {
+      ...project,
+      files,
+      filePaths: Object.keys(files),
+      versions: (project.versions || []).slice(0, index + 1),
+      redo: [...future, ...(project.redo || [])],
+      memory: entry.memory || project.memory,
+    };
+    return this.saveProject(next, { action: 'restored v' + version, createVersion: false });
   },
 
   async prepareAndroidPackage(project) {
