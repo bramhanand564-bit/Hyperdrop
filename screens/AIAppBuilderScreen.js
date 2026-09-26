@@ -10,19 +10,21 @@ function previewSource(project) {
   if (!project) return '<html><body style="font-family:system-ui;padding:30px"><h2>Start building</h2><p>Describe an app below.</p></body></html>';
   if (project.target === 'SINGLE_HTML') return project.html || project.files?.['index.html'] || '';
   const files = project.files || {};
-  const htmlPath = Object.keys(files).find(path => /(?:^|\/)index\.html$/i.test(path));
+  const htmlPath = Object.keys(files).find(path => /(?:^|\\/)index\\.html$/i.test(path));
   let html = htmlPath ? files[htmlPath] : '';
   if (!html) return '<html><body style="font-family:system-ui;padding:30px"><h2>Advanced project</h2><p>No preview HTML file yet.</p></body></html>';
   const base = htmlPath.includes('/') ? htmlPath.slice(0, htmlPath.lastIndexOf('/') + 1) : '';
-  const replaceAsset = (source, tagName) => source.replace(new RegExp('<' + tagName + '[^>]+(?:href|src)=["\\\']([^"\\\']+)["\\\'][^>]*>[\\s\\S]*?</' + tagName + '>|<' + tagName + '[^>]+(?:href|src)=["\\\']([^"\\\']+)["\\\'][^>]*/?>', 'gi'), (full, one, two) => {
-    const rel = one || two || '';
-    const path = base + rel.replace(/^\.\//, '');
-    if (tagName === 'link' && /stylesheet/i.test(full) && files[path] != null) return '<style>' + files[path] + '</style>';
-    if (tagName === 'script' && files[path] != null) return '<script>' + files[path] + '</script>';
-    return full;
+
+  html = html.replace(/<link[^>]*href=["']([^"']+)["'][^>]*>/gi, (full, rel) => {
+    const path = base + String(rel).replace(/^\.\//, '');
+    return /stylesheet/i.test(full) && files[path] != null ? '<style>' + files[path] + '</style>' : full;
   });
-  html = replaceAsset(html, 'link');
-  html = replaceAsset(html, 'script');
+
+  html = html.replace(/<script[^>]+src=["']([^"']+)["'][^>]*>\\s*<\\/script>/gi, (full, rel) => {
+    const path = base + String(rel).replace(/^\.\//, '');
+    return files[path] != null ? '<script>' + files[path] + '</script>' : full;
+  });
+
   return html;
 }
 
