@@ -277,16 +277,21 @@ export default function ExperienceRuntime({ route, navigation }) {
         onProgress: value => setTransferProgress(Math.round(value * 100)),
       });
 
-      const sendAction = actions.find(action => ['send', 'upload', 'complete'].includes(String(action.label || '').toLowerCase())) || actions[0];
+      const transferFile = {
+        name: asset.name || 'experience-transfer',
+        mimeType: asset.mimeType || 'application/octet-stream',
+        bytes: size,
+      };
+      const fileField = fields.find(field => field.type === 'File');
+      const sizeField = fields.find(field => field.type === 'Number' && /size|bytes|file/i.test(String(field.label || '')));
+      const transferValues = {
+        ...values,
+        ...(fileField ? { [fileField.id]: transferFile } : {}),
+        ...(sizeField ? { [sizeField.id]: size } : {}),
+      };
+      const sendAction = actions.find(action => ['send', 'upload', 'complete'].includes(String(action.label || '').toLowerCase())) || actions.find(action => String(action.label || '').toLowerCase() === 'accept') || actions[0];
       if (sendAction) {
-        await executeAction(sendAction, {
-          ...values,
-          file: {
-            name: asset.name || 'experience-transfer',
-            mimeType: asset.mimeType || 'application/octet-stream',
-            bytes: size,
-          },
-        }, { transferId: connection.transferId });
+        await executeAction(sendAction, transferValues, { transferId: connection.transferId });
       }
       setMessage('✓ File sent directly peer-to-peer');
     } catch (e) {
@@ -296,7 +301,7 @@ export default function ExperienceRuntime({ route, navigation }) {
       setTransferBusy(false);
       setTransferProgress(0);
     }
-  }, [experience, chatId, transferBusy, actions, values, executeAction]);
+  }, [experience, chatId, transferBusy, actions, values, fields, executeAction]);
 
   const share = () => navigation.navigate('ExperienceSharePicker', { experience });
 
