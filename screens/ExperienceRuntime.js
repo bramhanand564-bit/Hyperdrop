@@ -12,8 +12,10 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
+import { URLValidator } from '../security/URLValidator';
 
 const initialValueFor = type => {
   if (type === 'Checkbox') return false;
@@ -108,6 +110,38 @@ export default function ExperienceRuntime({ route, navigation }) {
 
   if (!experience) {
     return <View style={[styles.center, { backgroundColor: theme.bg }]}><Text style={{ color: theme.text }}>Experience not found.</Text></View>;
+  }
+
+  const webUrl = String(experience.schema?.web?.url || '').trim();
+  const safeWebUrl = webUrl && URLValidator.validateExternalLink(webUrl).valid;
+
+  if (safeWebUrl) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+        <View style={[styles.webHeader, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text} /></TouchableOpacity>
+          <View style={{ flex: 1, marginHorizontal: 10 }}>
+            <Text style={[styles.webTitle, { color: theme.text }]} numberOfLines={1}>{experience.name}</Text>
+            <Text style={{ color: theme.sub, fontSize: 10 }}>Secure HTTPS Experience</Text>
+          </View>
+          <TouchableOpacity onPress={share}><Ionicons name="share-outline" size={21} color={theme.text} /></TouchableOpacity>
+        </View>
+        <WebView
+          source={{ uri: webUrl }}
+          style={{ flex: 1, backgroundColor: theme.bg }}
+          javaScriptEnabled
+          domStorageEnabled
+          originWhitelist={['https://*']}
+          allowsInlineMediaPlayback
+          startInLoadingState
+          injectedJavaScriptBeforeContentLoaded={
+            "window.Nax = { user: { authenticated: true }, experienceId: " +
+            JSON.stringify(experience.id) +
+            " }; true;"
+          }
+        />
+      </SafeAreaView>
+    );
   }
 
   const lastAction = participant?.lastActionLabel || 'None yet';
