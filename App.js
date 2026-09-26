@@ -53,18 +53,6 @@ const ExperienceRuntime = lazyRequire(() => require('./screens/ExperienceRuntime
 const ExperienceSharePicker = lazyRequire(() => require('./screens/ExperienceSharePicker').default);
 const ExperienceDashboard = lazyRequire(() => require('./screens/ExperienceDashboard').default);
 const ExperienceStoreScreen = lazyRequire(() => require('./screens/ExperienceStoreScreen').default);
-const MiniAppHome = lazyRequire(() => require('./mini-apps/MiniAppHome').default);
-const MiniAppViewer = lazyRequire(() => require('./mini-apps/MiniAppViewer').default);
-const MiniAppInstall = lazyRequire(() => require('./mini-apps/MiniAppInstall').default);
-const StudioHome = lazyRequire(() => require('./studio/StudioHome').default);
-const StudioPrompt = lazyRequire(() => require('./studio/StudioPrompt').default);
-const StudioGenerator = lazyRequire(() => require('./studio/StudioGenerator').default);
-const StudioPreview = lazyRequire(() => require('./studio/StudioPreview').default);
-const StudioTester = lazyRequire(() => require('./studio/StudioTester').default);
-const StudioPublisher = lazyRequire(() => require('./studio/StudioPublisher').default);
-const MiniAppImportScreen = lazyRequire(() => require('./screens/MiniAppImportScreen').default);
-const MiniAppLibraryScreen = lazyRequire(() => require('./screens/MiniAppLibraryScreen').default);
-const MiniAppSharePickerScreen = lazyRequire(() => require('./screens/MiniAppSharePickerScreen').default);
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
@@ -141,19 +129,7 @@ function AppNavigator() {
             <Stack.Screen name="ExperienceSharePicker" component={ExperienceSharePicker} />
             <Stack.Screen name="ExperienceDashboard" component={ExperienceDashboard} />
             <Stack.Screen name="ExperienceStore" component={ExperienceStoreScreen} />
-            <Stack.Screen name="MiniAppHome" component={MiniAppHome} />
-            <Stack.Screen name="MiniAppViewer" component={MiniAppViewer} />
-            <Stack.Screen name="MiniAppInstall" component={MiniAppInstall} />
 
-            <Stack.Screen name="StudioHome" component={StudioHome} />
-            <Stack.Screen name="StudioPrompt" component={StudioPrompt} />
-            <Stack.Screen name="StudioGenerator" component={StudioGenerator} />
-            <Stack.Screen name="StudioPreview" component={StudioPreview} />
-            <Stack.Screen name="StudioTester" component={StudioTester} />
-            <Stack.Screen name="StudioPublisher" component={StudioPublisher} />
-            <Stack.Screen name="MiniAppImport" component={MiniAppImportScreen} />
-            <Stack.Screen name="MiniAppLibrary" component={MiniAppLibraryScreen} />
-            <Stack.Screen name="MiniAppSharePicker" component={MiniAppSharePickerScreen} />
           </> : <Stack.Screen name="Auth" component={AuthScreen} />}
         </Stack.Navigator>
       </NavigationContainer>
