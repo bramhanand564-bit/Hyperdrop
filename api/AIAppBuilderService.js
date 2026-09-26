@@ -107,6 +107,22 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
+function embedMemory(html, memory) {
+  const source = String(html || '');
+  const payload = JSON.stringify({
+    version: memory?.version || 1,
+    name: memory?.name || 'Untitled App',
+    target: memory?.target || 'SINGLE_HTML',
+    features: Array.isArray(memory?.features) ? memory.features.slice(0, 50) : [],
+    pending: Array.isArray(memory?.pending) ? memory.pending.slice(0, 50) : [],
+  }).replace(/<\\/script/gi, '<\\\\/script');
+  const tag = '<script type="application/json" id="hyperdrop-memory">' + payload + '</script>';
+  const stripped = source.replace(/<script[^>]+id=["']hyperdrop-memory["'][^>]*>[\\s\\S]*?<\\/script>/gi, '');
+  return /<\\/head>/i.test(stripped)
+    ? stripped.replace(/<\\/head>/i, tag + '</head>')
+    : tag + stripped;
+}
+
 function validateSingleHtml(html) {
   const source = String(html || '').trim();
   if (!source || !/<html[\s>]/i.test(source) || !/<body[\s>]/i.test(source)) {
@@ -346,7 +362,7 @@ const AIAppBuilderService = {
     project.memory = memoryObject(project);
     project.memory.history.push({ version: 1, action: 'created', at: now });
     const files = route === 'SINGLE_HTML'
-      ? { 'index.html': validateSingleHtml(html || DEFAULT_HTML(name)), 'MEMORY.md': memoryMarkdown(project.memory) }
+      ? { 'index.html': embedMemory(validateSingleHtml(html || DEFAULT_HTML(name)), project.memory), 'MEMORY.md': memoryMarkdown(project.memory) }
       : { ...advancedSeed(name), 'MEMORY.md': memoryMarkdown(project.memory) };
     project.filePaths = Object.keys(files);
     project.files = validateProjectFiles(files, route);
@@ -361,9 +377,13 @@ const AIAppBuilderService = {
 
   async saveProject(project, { action = 'save', createVersion = false } = {}) {
     const root = await projectRoot(project.id);
-    const files = validateProjectFiles(project.files || {}, project.target);
-    await writeProjectFiles(root, files);
+    let files = validateProjectFiles(project.files || {}, project.target);
     const memory = { ...(project.memory || {}), importantFiles: project.target === 'SINGLE_HTML' ? ['index.html'] : (project.filePaths || []) };
+    if (project.target === 'SINGLE_HTML' && files['index.html']) {
+      files['index.html'] = embedMemory(validateSingleHtml(files['index.html']), memory);
+      files = validateProjectFiles(files, project.target);
+    }
+    await writeProjectFiles(root, files);
     const next = { ...project, filePaths: Object.keys(files), memory, updatedAt: Date.now() };
     delete next.html;
     delete next.files;
