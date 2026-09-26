@@ -165,7 +165,7 @@ export default function ExperienceRuntime({ route, navigation }) {
     return null;
   };
 
-  const executeAction = useCallback(async (action, actionValues = values) => {
+  const executeAction = useCallback(async (action, actionValues = values, contextExtra = {}) => {
     if (!experience || acting) return false;
     const missing = validateFields(action, actionValues);
     if (missing) {
@@ -176,7 +176,7 @@ export default function ExperienceRuntime({ route, navigation }) {
     setActing(action.id);
     setMessage('');
     try {
-      const result = await ExperienceAPI.performAction(experience.id, action, actionValues, { chatId });
+      const result = await ExperienceAPI.performAction(experience.id, action, actionValues, { chatId, ...contextExtra });
       const next = await ExperienceAPI.getParticipant(experience.id);
       setParticipant(next);
       setValues(prev => ({ ...prev, ...(next?.state || {}) }));
@@ -285,7 +285,7 @@ export default function ExperienceRuntime({ route, navigation }) {
             mimeType: asset.mimeType || 'application/octet-stream',
             bytes: size,
           },
-        });
+        }, { transferId: connection.transferId });
       }
       setMessage('✓ File sent directly peer-to-peer');
     } catch (e) {
