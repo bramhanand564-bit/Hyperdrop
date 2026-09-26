@@ -219,6 +219,7 @@ export default function ExperienceRuntime({ route, navigation }) {
     if (!experience || experience.template !== 'transfer' || !chatId || transferBusy) return;
     setTransferBusy(true);
     setTransferProgress(0);
+    let connection = null;
     try {
       const chatSnap = await getDoc(doc(db, 'chats', chatId));
       const participants = chatSnap.exists() ? (chatSnap.data()?.participants || []) : [];
@@ -239,7 +240,7 @@ export default function ExperienceRuntime({ route, navigation }) {
         throw new Error('File exceeds the 15 MB native P2P limit.');
       }
 
-      const connection = await createP2PTransfer({
+      connection = await createP2PTransfer({
         senderId: auth.currentUser?.uid,
         receiverId: peerId,
         chatId,
@@ -291,6 +292,7 @@ export default function ExperienceRuntime({ route, navigation }) {
     } catch (e) {
       Alert.alert('P2P transfer', e.message || ('Maximum size: ' + Math.round(getP2PFileTransferLimit() / 1024 / 1024) + ' MB.'));
     } finally {
+      try { connection?.cleanup?.(); } catch (e) {}
       setTransferBusy(false);
       setTransferProgress(0);
     }
