@@ -54,7 +54,7 @@ export default function ExperienceBuilder({ route, navigation }) {
     const clean=String(label||'').trim();
     if(!clean)return;
     const id=slug(clean)+`_${Date.now().toString(36).slice(-4)}`;
-    setActions(prev=>[...prev,{id,label:clean,primary:prev.length===0}]);
+    setActions(prev=>[...prev,{id,label:clean,primary:prev.length===0,access:'anyone'}]);
   };
   const addPresetAction = label => setActions(prev=>prev.some(a=>a.label===label)?prev:[...prev,{id:slug(label),label,primary:prev.length===0,access:'anyone'}]);
   const removeAction=id=>{
