@@ -176,6 +176,7 @@ export default function ExperienceRuntime({ route, navigation }) {
       setValues(prev => ({ ...prev, ...(next?.state || {}) }));
       setMessage(`✓ ${result.label} recorded`);
       postToWeb({ type: 'EXPERIENCE_ACTION_RESULT', ok: true, result });
+      postToWeb({ type: 'EXPERIENCE_STATE', participant: next });
       return true;
     } catch (e) {
       postToWeb({ type: 'EXPERIENCE_ACTION_RESULT', ok: false, error: e.message || 'Action failed.' });
@@ -252,6 +253,10 @@ export default function ExperienceRuntime({ route, navigation }) {
               actionId: actionId,
               values: values || {}
             }));
+          },
+          onActionResult: function(fn){
+            if (typeof fn === 'function') window.__naxExperienceActionResult = fn;
+            return function(){ window.__naxExperienceActionResult = null; };
           }
         };
       })();
@@ -274,11 +279,22 @@ export default function ExperienceRuntime({ route, navigation }) {
           style={{ flex: 1, backgroundColor: theme.bg }}
           javaScriptEnabled
           domStorageEnabled
-          originWhitelist={['https://*']}
+          originWhitelist={['https://*', 'about:blank']}
           allowsInlineMediaPlayback
           startInLoadingState
           onMessage={handleWebMessage}
           injectedJavaScriptBeforeContentLoaded={webBootstrap}
+          onLoadEnd={() => postToWeb({ type: 'EXPERIENCE_READY', experience, participant })}
+          onShouldStartLoadWithRequest={request => {
+            if (/^about:blank$/i.test(request.url)) return true;
+            try {
+              const requestHost = new URL(request.url).hostname.toLowerCase();
+              const baseHost = new URL(webUrl).hostname.toLowerCase();
+              return requestHost === baseHost || requestHost.endsWith('.' + baseHost);
+            } catch (e) {
+              return false;
+            }
+          }}
         />
       </SafeAreaView>
     );
