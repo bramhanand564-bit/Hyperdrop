@@ -329,7 +329,10 @@ service cloud.firestore {
                              && request.resource.data.userId == request.auth.uid;
 
         allow delete: if request.auth != null
-                     && request.auth.uid == userId;
+                     && (request.auth.uid == userId
+                         || get(
+                           /databases/$(database)/documents/experiences/$(experienceId)
+                         ).data.creatorId == request.auth.uid);
       }
 
       // Immutable event records. Users can append their own events;
