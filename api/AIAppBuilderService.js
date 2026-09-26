@@ -379,21 +379,24 @@ const AIAppBuilderService = {
   async buildWithAI({ project, request, connectionId, model }) {
     const route = classifyRequest(request);
     const currentFiles = project?.files || {};
+    const nativeRoute = route.target === 'ADVANCED_PROJECT' && /(bluetooth|ble|background service|native|android|apk|aab|gradle|kotlin|c\\+\\+|jni|ndk|usb|nfc|vpn|widget|accessibility|device admin)/i.test(request);
     const systemPrompt = `You are Hyperdrop's AI App Builder. You build real software, not explanations.
 Return ONLY valid JSON.
 
 DECISION:
 Use SINGLE_HTML when the feature can reliably run as one self-contained HTML file with inline CSS/JavaScript and browser APIs.
 Use ADVANCED_PROJECT when native Android/platform APIs, native modules, multi-file architecture, C/C++/JNI, background services, or other capabilities make one HTML file unreliable.
-Current heuristic route: ${route.target}.
+Current automatic route: ${route.target}.
 
 For SINGLE_HTML return:
 {"target":"SINGLE_HTML","name":"...","summary":"...","html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
-Requirements: complete working app; inline CSS and JavaScript; no external script/CSS dependencies; responsive; accessible; functional.
+Requirements: complete working app; inline CSS and JavaScript; no external script/CSS dependencies; responsive; accessible; functional; keep it compact.
 
 For ADVANCED_PROJECT return:
 {"target":"ADVANCED_PROJECT","name":"...","summary":"...","files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
-Create a coherent source project. Preserve existing files unless the request changes them. Never include API keys/secrets.
+Create a coherent source project and preserve existing files unless the request changes them.
+When the automatic route requires native Android capabilities (current native route: ${nativeRoute}), prefer a real Android project under android/ with settings.gradle, build.gradle, app/build.gradle, AndroidManifest.xml, source code and resources rather than pretending HTML alone provides the native feature.
+Never include API keys/secrets.
 `;
     const result = await AIService.generateText({
       connectionId, model, systemPrompt,
@@ -519,9 +522,41 @@ Create a coherent source project. Preserve existing files unless the request cha
   },
 
   async prepareAndroidPackage(project) {
-    const wrapper = androidWrapper(project);
-    const files = { ...(project.files || {}), ...wrapper };
-    const next = { ...project, files, filePaths: Object.keys(files) };
+    const existing = project?.files || {};
+    const hasAndroidProject = Object.keys(existing).some(path => path === 'android/settings.gradle' || path === 'android/build.gradle' || path === 'android/app/build.gradle');
+    const wrapper = hasAndroidProject ? { ...existing } : { ...existing, ...androidWrapper(project) };
+    if (hasAndroidProject && !wrapper['.github/workflows/build-apk.yml']) {
+      const html = project.html || existing['index.html'] || existing['src/index.html'] || DEFAULT_HTML(project.name);
+      wrapper['android/app/src/main/assets/index.html'] = wrapper['android/app/src/main/assets/index.html'] || html;
+      wrapper['.github/workflows/build-apk.yml'] = `name: Build Android APK
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+      - name: Build debug APK
+        run: gradle :app:assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperdrop-app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+`;
+    }
+    const next = { ...project, files: wrapper, filePaths: Object.keys(wrapper) };
     return this.saveProject(next, { action: 'prepared Android APK project', createVersion: true });
   },
 
