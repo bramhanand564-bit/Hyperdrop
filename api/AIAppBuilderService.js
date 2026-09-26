@@ -150,6 +150,27 @@ async function deleteTextFile(root, relativePath) {
   await FileSystem.deleteAsync(root + safePath(relativePath), { idempotent: true });
 }
 
+function validateProjectFiles(files = {}, target = 'ADVANCED_PROJECT') {
+  const entries = Object.entries(files || {});
+  if (entries.length > 200) throw new Error('Project contains too many files.');
+  let total = 0;
+  for (const [path, content] of entries) {
+    const rel = safePath(path);
+    if (!rel) throw new Error('Invalid project file path.');
+    const value = String(content ?? '');
+    const size = textBytes(value);
+    if (size > (target === 'SINGLE_HTML' ? MAX_SINGLE_HTML_BYTES : 2 * 1024 * 1024)) {
+      throw new Error('Project file is too large: ' + rel);
+    }
+    total += size;
+    if (total > 12 * 1024 * 1024) throw new Error('Project source is larger than 12 MB.');
+    if (/(sk-[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-[0-9A-Za-z-]{20,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)/.test(value)) {
+      throw new Error('Generated source appears to contain a secret. Remove it and use a secure integration instead.');
+    }
+  }
+  return Object.fromEntries(entries.map(([path, content]) => [safePath(path), String(content ?? '')]));
+}
+
 async function writeProjectFiles(root, files) {
   for (const [path, content] of Object.entries(files || {})) await writeTextFile(root, path, content);
 }
@@ -328,7 +349,7 @@ const AIAppBuilderService = {
       ? { 'index.html': validateSingleHtml(html || DEFAULT_HTML(name)), 'MEMORY.md': memoryMarkdown(project.memory) }
       : { ...advancedSeed(name), 'MEMORY.md': memoryMarkdown(project.memory) };
     project.filePaths = Object.keys(files);
-    project.files = files;
+    project.files = validateProjectFiles(files, route);
     project.versions = [{ version: 1, action: 'created', at: now, memory: project.memory, filePaths: project.filePaths }];
     const root = await projectRoot(id);
     await writeProjectFiles(root, files);
@@ -340,7 +361,7 @@ const AIAppBuilderService = {
 
   async saveProject(project, { action = 'save', createVersion = false } = {}) {
     const root = await projectRoot(project.id);
-    const files = project.files || {};
+    const files = validateProjectFiles(project.files || {}, project.target);
     await writeProjectFiles(root, files);
     const memory = { ...(project.memory || {}), importantFiles: project.target === 'SINGLE_HTML' ? ['index.html'] : (project.filePaths || []) };
     const next = { ...project, filePaths: Object.keys(files), memory, updatedAt: Date.now() };
@@ -362,7 +383,7 @@ const AIAppBuilderService = {
     const rel = safePath(path);
     if (!rel) throw new Error('Invalid file path.');
     if (project.target === 'SINGLE_HTML' && rel === 'index.html') content = validateSingleHtml(content);
-    const files = { ...(project.files || {}), [rel]: String(content ?? '') };
+    const files = validateProjectFiles({ ...(project.files || {}), [rel]: String(content ?? '') }, project.target);
     const next = { ...project, files, filePaths: Object.keys(files) };
     return this.saveProject(next, { action, createVersion });
   },
