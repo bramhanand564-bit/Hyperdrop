@@ -482,14 +482,14 @@ Use ADVANCED_PROJECT when native Android/platform APIs, native modules, multi-fi
 Current automatic route: ${route.target}.
 
 For SINGLE_HTML return:
-{"target":"SINGLE_HTML","name":"...","summary":"...","html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
+{"target":"SINGLE_HTML","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
 Requirements: complete working app; inline CSS and JavaScript; no external script/CSS dependencies; responsive; accessible; functional; keep it compact.
 
 For ADVANCED_PROJECT return:
-{"target":"ADVANCED_PROJECT","name":"...","summary":"...","files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
+{"target":"ADVANCED_PROJECT","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
 Create a coherent source project and preserve existing files unless the request changes them.
 When the automatic route requires native Android capabilities (current native route: ${nativeRoute}), prefer a real Android project under android/ with settings.gradle, build.gradle, app/build.gradle, AndroidManifest.xml, source code and resources rather than pretending HTML alone provides the native feature.
-Never include API keys/secrets.
+Conversation behavior: act like a real coding agent. Do the requested work directly. After every build, report what is working, what remains, and the best next action. If the user says fix, not working, error, broken, or similar, inspect the existing project and modify the code to fix it instead of only explaining. suggestedReplies must be short actionable messages the user can tap and send. Never ask the user to manually edit code when you can edit it yourself.\nNever include API keys/secrets.
 `;
     const result = await AIService.generateText({
       connectionId, model, systemPrompt,
