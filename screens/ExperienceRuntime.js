@@ -21,6 +21,10 @@ import { auth } from '../firebaseConfig';
 import ExperienceAPI from '../api/ExperienceAPI';
 import { URLValidator } from '../security/URLValidator';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
+import * as FileSystem from 'expo-file-system';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { canUseP2PFileTransfer, createP2PTransfer, getP2PFileTransferLimit, sendFileOverDataChannel } from '../utils/webrtcFileTransfer';
 
 const initialValueFor = type => {
   if (type === 'Checkbox') return false;
@@ -47,6 +51,8 @@ export default function ExperienceRuntime({ route, navigation }) {
   const [busy, setBusy] = useState(true);
   const [acting, setActing] = useState('');
   const [fieldBusy, setFieldBusy] = useState('');
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferProgress, setTransferProgress] = useState(0);
   const [message, setMessage] = useState('');
   const webRef = useRef(null);
 
@@ -208,6 +214,87 @@ export default function ExperienceRuntime({ route, navigation }) {
       postToWeb({ type: 'EXPERIENCE_ACTION_RESULT', ok: false, error: e.message || 'Invalid bridge message.' });
     }
   }, [actions, values, executeAction, postToWeb]);
+
+  const sendNativeP2P = useCallback(async () => {
+    if (!experience || experience.template !== 'transfer' || !chatId || transferBusy) return;
+    setTransferBusy(true);
+    setTransferProgress(0);
+    try {
+      const chatSnap = await getDoc(doc(db, 'chats', chatId));
+      const participants = chatSnap.exists() ? (chatSnap.data()?.participants || []) : [];
+      const peerId = participants.find(id => id && id !== auth.currentUser?.uid);
+      if (!peerId || participants.length !== 2) {
+        throw new Error('Native P2P transfer is available in a one-to-one chat only.');
+      }
+
+      const picked = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (picked.canceled || !picked.assets?.[0]?.uri) return;
+      const asset = picked.assets[0];
+      const info = await FileSystem.getInfoAsync(asset.uri);
+      const size = Number(asset.size || info.size || 0);
+      if (!canUseP2PFileTransfer(size)) {
+        throw new Error('File exceeds the 15 MB native P2P limit.');
+      }
+
+      const connection = await createP2PTransfer({
+        senderId: auth.currentUser?.uid,
+        receiverId: peerId,
+        chatId,
+        fileName: asset.name || 'experience-transfer',
+        mimeType: asset.mimeType || 'application/octet-stream',
+        fileSize: size,
+      });
+
+      await new Promise((resolve, reject) => {
+        if (connection.dataChannel?.readyState === 'open') {
+          resolve();
+          return;
+        }
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error('P2P connection timed out. Try again when both users are online.'));
+        }, 30000);
+        const onOpen = () => { clearTimeout(timeout); cleanup(); resolve(); };
+        const onError = () => { clearTimeout(timeout); cleanup(); reject(new Error('P2P data channel failed to open.')); };
+        const cleanup = () => {
+          connection.dataChannel?.removeEventListener?.('open', onOpen);
+          connection.dataChannel?.removeEventListener?.('error', onError);
+        };
+        connection.dataChannel?.addEventListener?.('open', onOpen);
+        connection.dataChannel?.addEventListener?.('error', onError);
+      });
+
+      await sendFileOverDataChannel({
+        dataChannel: connection.dataChannel,
+        fileUri: asset.uri,
+        fileName: asset.name || 'experience-transfer',
+        mimeType: asset.mimeType || 'application/octet-stream',
+        fileSize: size,
+        onProgress: value => setTransferProgress(Math.round(value * 100)),
+      });
+
+      const sendAction = actions.find(action => ['send', 'upload', 'complete'].includes(String(action.label || '').toLowerCase())) || actions[0];
+      if (sendAction) {
+        await executeAction(sendAction, {
+          ...values,
+          file: {
+            name: asset.name || 'experience-transfer',
+            mimeType: asset.mimeType || 'application/octet-stream',
+            bytes: size,
+          },
+        });
+      }
+      setMessage('✓ File sent directly peer-to-peer');
+    } catch (e) {
+      Alert.alert('P2P transfer', e.message || ('Maximum size: ' + Math.round(getP2PFileTransferLimit() / 1024 / 1024) + ' MB.'));
+    } finally {
+      setTransferBusy(false);
+      setTransferProgress(0);
+    }
+  }, [experience, chatId, transferBusy, actions, values, executeAction]);
 
   const share = () => navigation.navigate('ExperienceSharePicker', { experience });
 
@@ -412,6 +499,29 @@ export default function ExperienceRuntime({ route, navigation }) {
           </View>
         ) : null}
 
+        {experience.template === 'transfer' && chatId ? (
+          <View style={[styles.transferBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.boxTitle, { color: theme.text }]}>Native P2P transfer</Text>
+              <Text style={[styles.infoText, { color: theme.sub }]}>
+                Sends the file directly to the other person in this one-to-one chat. Maximum 15 MB.
+              </Text>
+              {transferBusy ? (
+                <Text style={{ color: theme.blue, fontSize: 11, fontWeight: '800', marginTop: 6 }}>
+                  Sending… {transferProgress}%
+                </Text>
+              ) : null}
+            </View>
+            <TouchableOpacity
+              disabled={transferBusy || !!acting}
+              onPress={sendNativeP2P}
+              style={[styles.transferButton, { backgroundColor: theme.blue, opacity: transferBusy || acting ? 0.55 : 1 }]}
+            >
+              {transferBusy ? <ActivityIndicator color="#FFF" /> : <Ionicons name="send" size={18} color="#FFF" />}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {primaryAction ? (
           <TouchableOpacity
             style={[styles.primary, { backgroundColor: theme.blue, opacity: acting ? 0.6 : 1 }]}
@@ -480,6 +590,8 @@ const styles = StyleSheet.create({
   info:{borderWidth:1,borderRadius:18,padding:15,marginTop:16},
   infoTitle:{fontSize:14,fontWeight:'900'},
   infoText:{fontSize:12,lineHeight:18,marginTop:5},
+  transferBox:{borderWidth:1,borderRadius:18,padding:14,marginTop:12,flexDirection:'row',alignItems:'center'},
+  transferButton:{width:46,height:46,borderRadius:14,alignItems:'center',justifyContent:'center',marginLeft:12},
   webHeader:{height:54,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:10},
   webTitle:{fontSize:15,fontWeight:'900'},
 });
