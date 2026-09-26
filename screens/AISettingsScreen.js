@@ -217,6 +217,9 @@ export default function AISettingsScreen({ navigation }) {
                 <TouchableOpacity onPress={() => test(connection.id)} style={styles.smallBtn}>
                   {testingId === connection.id ? <ActivityIndicator size="small" color={blue} /> : <Text style={[styles.smallBtnText, { color: blue }]}>Test</Text>}
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('AIChat', { connectionId: connection.id, model: connection.model })} style={styles.smallBtn}>
+                  <Text style={[styles.smallBtnText, { color: green }]}>Chat</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => edit(connection)} style={styles.smallBtn}>
                   <Text style={[styles.smallBtnText, { color: text }]}>Edit</Text>
                 </TouchableOpacity>
