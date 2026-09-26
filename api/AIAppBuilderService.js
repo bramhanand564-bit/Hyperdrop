@@ -1,73 +1,101 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import AIService from '../ai/AIService';
 
-const PROJECTS_KEY = 'nax.ai-app-builder.projects.v1';
-const CURRENT_KEY = 'nax.ai-app-builder.current.v1';
+const PROJECTS_KEY = 'nax.ai-app-builder.projects.v2';
+const CURRENT_KEY = 'nax.ai-app-builder.current.v2';
+const ROOT_DIR = `${FileSystem.documentDirectory || ''}hyperdrop-apps/`;
+const MAX_VERSIONS = 8;
+const MAX_SINGLE_HTML_BYTES = 4 * 1024 * 1024;
 
-const DEFAULT_HTML = (name = 'My App') => `<!doctype html>
+const safeSlug = value => String(value || 'app').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'app';
+const safePath = value => String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter(part => part && part !== '.' && part !== '..').join('/');
+const textBytes = value => unescape(encodeURIComponent(String(value || ''))).length;
+
+const DEFAULT_HTML = name => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>${name}</title>
+<title>${String(name || 'My App').replace(/[<>]/g, '')}</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#f5f7fb;color:#111827}
 .app{max-width:760px;margin:auto;padding:28px 18px}.card{background:white;border:1px solid #e5e7eb;border-radius:20px;padding:22px;box-shadow:0 8px 30px rgba(0,0,0,.06)}
 button{border:0;border-radius:12px;padding:12px 16px;font-weight:800;background:#2563eb;color:#fff}
 </style>
 </head>
-<body><main class="app"><section class="card"><h1>${name}</h1><p>Your app is ready. Ask the AI builder to change it.</p></section></main>
+<body><main class="app"><section class="card"><h1>${String(name || 'My App').replace(/[<>]/g, '')}</h1><p>Your app is ready. Tell the AI what to build next.</p><button id="start">Start</button></section></main>
 <script>
-window.HYPERDROP_APP={version:1,name:${JSON.stringify(name)}};
+const state={started:false};
+document.getElementById('start')?.addEventListener('click',()=>{state.started=true;document.getElementById('start').textContent='Ready ✓'});
+window.HYPERDROP_APP={version:1,name:${JSON.stringify(name || 'My App')}};
 </script>
 </body></html>`;
 
-const MEMORY_TEMPLATE = (project) => ({
-  version: 1,
-  name: project.name,
-  target: project.target,
-  summary: 'Single-file HTML app managed by the Hyperdrop AI App Builder.',
-  decisions: ['Prefer the smallest viable build target.', 'Keep the app self-contained when possible.'],
-  features: [],
-  pending: [],
-  importantFiles: ['index.html'],
-  history: [],
-});
+function memoryObject(project) {
+  return {
+    version: 1,
+    name: project.name,
+    target: project.target,
+    summary: 'App managed by the Hyperdrop AI App Builder.',
+    decisions: ['Prefer the smallest viable build target.', 'Keep Single HTML apps self-contained.', 'Never embed API keys or secrets in generated source.'],
+    features: [],
+    pending: [],
+    importantFiles: project.target === 'SINGLE_HTML' ? ['index.html'] : ['README.md', 'MEMORY.md'],
+    history: [],
+  };
+}
 
 function memoryMarkdown(memory = {}) {
-  const list = value => Array.isArray(value) ? value.map(item => '- ' + String(item)).join('\n') : '- None';
-  const history = Array.isArray(memory.history) ? memory.history.map(item => '- v' + item.version + ': ' + item.action).join('\n') : '- None';
-  return '# App Memory\n\n'
-    + '## Project\n'
-    + '- Name: ' + (memory.name || 'Untitled App') + '\n'
-    + '- Target: ' + (memory.target || 'SINGLE_HTML') + '\n'
-    + '- Summary: ' + (memory.summary || '') + '\n\n'
-    + '## Features\n' + list(memory.features) + '\n\n'
-    + '## Pending\n' + list(memory.pending) + '\n\n'
-    + '## Decisions\n' + list(memory.decisions) + '\n\n'
-    + '## Important Files\n' + list(memory.importantFiles) + '\n\n'
-    + '## Change History\n' + history + '\n';
+  const list = value => Array.isArray(value) && value.length ? value.map(item => '- ' + String(item)).join('\n') : '- None';
+  const history = Array.isArray(memory.history) && memory.history.length
+    ? memory.history.map(item => '- v' + item.version + ': ' + item.action).join('\n')
+    : '- None';
+  return [
+    '# App Memory',
+    '',
+    '## Project',
+    '- Name: ' + (memory.name || 'Untitled App'),
+    '- Target: ' + (memory.target || 'SINGLE_HTML'),
+    '- Summary: ' + (memory.summary || ''),
+    '',
+    '## Features',
+    list(memory.features),
+    '',
+    '## Pending',
+    list(memory.pending),
+    '',
+    '## Decisions',
+    list(memory.decisions),
+    '',
+    '## Important Files',
+    list(memory.importantFiles),
+    '',
+    '## Change History',
+    history,
+    '',
+  ].join('\n');
 }
-
-async function readProjects() {
-  try { return JSON.parse(await AsyncStorage.getItem(PROJECTS_KEY) || '[]'); } catch (_) { return []; }
-}
-async function writeProjects(projects) { await AsyncStorage.setItem(PROJECTS_KEY, JSON.stringify(projects)); }
 
 function classifyRequest(text) {
   const value = String(text || '').toLowerCase();
   const nativeSignals = [
     'bluetooth','ble','background service','native module','android service','foreground service',
-    'camera in background','usb','serial port','nfc','accessibility service','vpn service',
-    'custom c++','c++','ndk','jni','system overlay','device admin','root access','native android'
+    'usb','serial port','nfc','accessibility service','vpn service','custom c++','c++',
+    'ndk','jni','system overlay','device admin','root access','native android','widget provider',
+    'home screen widget','lock screen','call screening','default dialer','sms receiver',
   ];
-  const advanced = nativeSignals.some(signal => value.includes(signal));
+  const heavySignals = [
+    'multi module native','native plugin','custom native library','kernel','3d engine native',
+    'android sdk integration','custom gradle plugin'
+  ];
+  const advanced = nativeSignals.some(signal => value.includes(signal)) || heavySignals.some(signal => value.includes(signal));
   return {
     target: advanced ? 'ADVANCED_PROJECT' : 'SINGLE_HTML',
     reason: advanced
-      ? 'The request appears to need native/platform capabilities that a single HTML file cannot reliably provide.'
-      : 'The requested app can normally be built as a self-contained HTML/CSS/JavaScript app.',
+      ? 'The request likely needs native/platform capabilities that a single HTML file cannot reliably provide.'
+      : 'The request can normally be built as a self-contained HTML/CSS/JavaScript app.',
   };
 }
 
@@ -79,111 +107,397 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
+function validateSingleHtml(html) {
+  const source = String(html || '').trim();
+  if (!source || !/<html[\s>]/i.test(source) || !/<body[\s>]/i.test(source)) {
+    throw new Error('AI returned an incomplete HTML document.');
+  }
+  if (textBytes(source) > MAX_SINGLE_HTML_BYTES) {
+    throw new Error('Generated single-file app is larger than 4 MB. Ask the AI to make it smaller.');
+  }
+  if (/<script[^>]+src\s*=|<link[^>]+href\s*=\s*["']https?:/i.test(source)) {
+    throw new Error('Single HTML apps must keep JavaScript and CSS self-contained.');
+  }
+  return source;
+}
+
+async function ensureDir(path) {
+  try { await FileSystem.makeDirectoryAsync(path, { intermediates: true }); } catch (_) {}
+}
+
+async function projectRoot(id) {
+  await ensureDir(ROOT_DIR);
+  const root = ROOT_DIR + safeSlug(id) + '/';
+  await ensureDir(root);
+  return root;
+}
+
+async function writeTextFile(root, relativePath, content) {
+  const rel = safePath(relativePath);
+  if (!rel) throw new Error('Invalid project file path.');
+  const full = root + rel;
+  const parts = full.split('/');
+  parts.pop();
+  await ensureDir(parts.join('/') + '/');
+  await FileSystem.writeAsStringAsync(full, String(content ?? ''), { encoding: FileSystem.EncodingType.UTF8 });
+}
+
+async function readTextFile(root, relativePath) {
+  return FileSystem.readAsStringAsync(root + safePath(relativePath), { encoding: FileSystem.EncodingType.UTF8 });
+}
+
+async function deleteTextFile(root, relativePath) {
+  await FileSystem.deleteAsync(root + safePath(relativePath), { idempotent: true });
+}
+
+async function writeProjectFiles(root, files) {
+  for (const [path, content] of Object.entries(files || {})) await writeTextFile(root, path, content);
+}
+
+async function readProjectFiles(root, paths) {
+  const output = {};
+  for (const path of paths || []) {
+    try { output[path] = await readTextFile(root, path); } catch (_) {}
+  }
+  return output;
+}
+
+async function readMetadata() {
+  try { return JSON.parse(await AsyncStorage.getItem(PROJECTS_KEY) || '[]'); } catch (_) { return []; }
+}
+
+async function writeMetadata(items) {
+  await AsyncStorage.setItem(PROJECTS_KEY, JSON.stringify(items));
+}
+
+async function saveMetadata(meta) {
+  const items = await readMetadata();
+  const next = { ...meta, html: undefined };
+  delete next.html;
+  const index = items.findIndex(item => item.id === meta.id);
+  if (index >= 0) items[index] = next; else items.unshift(next);
+  await writeMetadata(items);
+  await AsyncStorage.setItem(CURRENT_KEY, meta.id);
+}
+
+async function snapshot(project) {
+  const root = await projectRoot(project.id);
+  const version = project.versions?.[project.versions.length - 1]?.version || 1;
+  const snapRoot = root + '.versions/v' + version + '/';
+  await ensureDir(snapRoot);
+  await writeProjectFiles(snapRoot, project.files || {});
+  return { ...project, rootPath: root };
+}
+
+async function trimSnapshots(project) {
+  const versions = project.versions || [];
+  if (versions.length <= MAX_VERSIONS) return;
+  const root = await projectRoot(project.id);
+  const stale = versions.slice(0, versions.length - MAX_VERSIONS);
+  for (const item of stale) await FileSystem.deleteAsync(root + '.versions/v' + item.version, { idempotent: true });
+}
+
+function advancedSeed(name) {
+  const safeName = String(name || 'Advanced App').replace(/[<>]/g, '');
+  return {
+    'README.md': `# ${safeName}\n\nGenerated by Hyperdrop AI App Builder.\n\nBuild target: Advanced Project.\n`,
+    'MEMORY.md': '',
+    'src/index.html': `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeName}</title><link rel="stylesheet" href="./styles.css"></head><body><main id="app"><h1>${safeName}</h1><p>Ask the AI builder to implement this project.</p></main><script src="./main.js"></script></body></html>`,
+    'src/styles.css': 'body{font-family:system-ui;margin:0;padding:24px;background:#f5f7fb;color:#111827}.app{max-width:760px;margin:auto}',
+    'src/main.js': 'document.getElementById("app").classList.add("app");',
+  };
+}
+
+function androidWrapper(project) {
+  const packageName = 'com.hyperdrop.generated.' + safeSlug(project.id).replace(/-/g, '').slice(0, 18);
+  const html = project.html || project.files?.['index.html'] || project.files?.['src/index.html'] || DEFAULT_HTML(project.name);
+  return {
+    'android/settings.gradle': `pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+rootProject.name = "HyperdropApp"
+include(":app")
+`,
+    'android/build.gradle': `plugins {
+    id "com.android.application" version "8.5.2" apply false
+}
+`,
+    'android/gradle.properties': 'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\nandroid.useAndroidX=true\n',
+    'android/app/build.gradle': `plugins { id "com.android.application" }
+
+android {
+    namespace "${packageName}"
+    compileSdk 35
+    defaultConfig {
+        applicationId "${packageName}"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+dependencies {
+    implementation "androidx.activity:activity-ktx:1.9.2"
+    implementation "androidx.webkit:webkit:1.11.0"
+}
+`,
+    'android/app/src/main/AndroidManifest.xml': `<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:theme="@style/AppTheme" android:label="${String(project.name || 'Hyperdrop App').replace(/[<&\"]/g,'')}"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>`,
+    'android/app/src/main/res/values/styles.xml': '<resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#2563EB</item></style></resources>',
+    'android/app/src/main/java/' + packageName.replace(/\./g, '/') + '/MainActivity.kt': `package ${packageName}
+
+import android.app.Activity
+import android.os.Bundle
+import android.webkit.WebView
+import android.webkit.WebViewClient
+
+class MainActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val webView = WebView(this)
+        webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
+        webView.webViewClient = WebViewClient()
+        webView.loadUrl("file:///android_asset/index.html")
+        setContentView(webView)
+    }
+}
+`,
+    'android/app/src/main/assets/index.html': html,
+    '.github/workflows/build-apk.yml': `name: Build Android APK
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "android/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK
+        run: gradle :app:assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperdrop-app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+`,
+  };
+}
+
 const AIAppBuilderService = {
   classifyRequest,
-  async listProjects() { return readProjects(); },
-  async getProject(id) {
-    const projects = await readProjects();
-    return projects.find(item => item.id === id) || null;
+
+  async listProjects() {
+    return (await readMetadata()).map(item => ({ ...item, html: undefined }));
   },
-  async createProject({ name = 'Untitled App', request = '', target } = {}) {
+
+  async getProject(id) {
+    const meta = (await readMetadata()).find(item => item.id === id);
+    if (!meta) return null;
+    const root = await projectRoot(meta.id);
+    const files = await readProjectFiles(root, meta.filePaths || []);
+    return { ...meta, rootPath: root, files, html: files['index.html'] || files['src/index.html'] || '' };
+  },
+
+  async createProject({ name = 'Untitled App', request = '', target, html } = {}) {
     const route = target || classifyRequest(request).target;
     const now = Date.now();
+    const id = 'app_' + now + '_' + Math.random().toString(36).slice(2, 8);
     const project = {
-      id: 'app_' + now + '_' + Math.random().toString(36).slice(2, 8),
-      name,
-      target: route,
-      html: route === 'SINGLE_HTML' ? DEFAULT_HTML(name) : '',
-      files: route === 'ADVANCED_PROJECT' ? { 'MEMORY.md': '' } : { 'index.html': DEFAULT_HTML(name), 'MEMORY.md': '' },
-      memory: null,
-      versions: [],
-      createdAt: now,
-      updatedAt: now,
+      id, name, target: route, filePaths: [],
+      memory: null, versions: [], createdAt: now, updatedAt: now,
     };
-    project.memory = MEMORY_TEMPLATE(project);
+    project.memory = memoryObject(project);
     project.memory.history.push({ version: 1, action: 'created', at: now });
-    project.files['MEMORY.md'] = memoryMarkdown(project.memory);
-    project.versions.push({ version: 1, html: project.html, files: project.files, memory: project.memory, at: now });
-    const projects = await readProjects();
-    projects.unshift(project);
-    await writeProjects(projects);
-    await AsyncStorage.setItem(CURRENT_KEY, project.id);
-    return project;
+    const files = route === 'SINGLE_HTML'
+      ? { 'index.html': validateSingleHtml(html || DEFAULT_HTML(name)), 'MEMORY.md': memoryMarkdown(project.memory) }
+      : { ...advancedSeed(name), 'MEMORY.md': memoryMarkdown(project.memory) };
+    project.filePaths = Object.keys(files);
+    project.files = files;
+    project.versions = [{ version: 1, action: 'created', at: now }];
+    const root = await projectRoot(id);
+    await writeProjectFiles(root, files);
+    await snapshot(project);
+    delete project.files;
+    await saveMetadata(project);
+    return this.getProject(id);
   },
-  async saveProject(project) {
-    const projects = await readProjects();
-    const next = { ...project, updatedAt: Date.now() };
-    const index = projects.findIndex(item => item.id === next.id);
-    if (index >= 0) projects[index] = next; else projects.unshift(next);
-    await writeProjects(projects);
-    await AsyncStorage.setItem(CURRENT_KEY, next.id);
-    return next;
+
+  async saveProject(project, { action = 'save', createVersion = false } = {}) {
+    const root = await projectRoot(project.id);
+    const files = project.files || {};
+    await writeProjectFiles(root, files);
+    const memory = { ...(project.memory || {}), importantFiles: project.target === 'SINGLE_HTML' ? ['index.html'] : (project.filePaths || []) };
+    const next = { ...project, filePaths: Object.keys(files), memory, updatedAt: Date.now() };
+    delete next.html;
+    delete next.files;
+    if (createVersion) {
+      const version = (next.versions?.[next.versions.length - 1]?.version || 0) + 1;
+      next.versions = [...(next.versions || []), { version, action, at: Date.now() }];
+      const snapshotProject = { ...next, files };
+      await snapshot(snapshotProject);
+      await trimSnapshots(snapshotProject);
+    }
+    await saveMetadata(next);
+    return this.getProject(next.id);
   },
-  async applySingleHtml(project, html, summary = 'Updated app') {
-    const nextVersion = (project.versions?.length || 0) + 1;
-    const next = {
-      ...project,
-      html: String(html || project.html),
-      files: { ...(project.files || {}), 'index.html': String(html || project.html) },
-      memory: {
-        ...(project.memory || MEMORY_TEMPLATE(project)),
-        history: [...(project.memory?.history || []), { version: nextVersion, action: summary, at: Date.now() }].slice(-30),
-      },
-      versions: [...(project.versions || []), { version: nextVersion, html: String(html || project.html), files: { ...(project.files || {}), 'index.html': String(html || project.html) }, memory: project.memory, at: Date.now() }].slice(-20),
-    };
-    return this.saveProject(next);
+
+  async updateFile(project, path, content, { createVersion = true, action = 'manual file edit' } = {}) {
+    const rel = safePath(path);
+    if (!rel) throw new Error('Invalid file path.');
+    if (project.target === 'SINGLE_HTML' && rel === 'index.html') content = validateSingleHtml(content);
+    const files = { ...(project.files || {}), [rel]: String(content ?? '') };
+    const next = { ...project, files, filePaths: Object.keys(files) };
+    return this.saveProject(next, { action, createVersion });
   },
+
+  async deleteFile(project, path) {
+    if (project.target === 'SINGLE_HTML' && safePath(path) === 'index.html') throw new Error('Single HTML apps must keep index.html.');
+    const rel = safePath(path);
+    const files = { ...(project.files || {}) };
+    delete files[rel];
+    await deleteTextFile(await projectRoot(project.id), rel);
+    return this.saveProject({ ...project, files, filePaths: Object.keys(files) }, { action: 'deleted ' + rel, createVersion: true });
+  },
+
   async buildWithAI({ project, request, connectionId, model }) {
     const route = classifyRequest(request);
-    const systemPrompt = `You are Hyperdrop's AI App Builder. Build real applications, not explanations.
+    const currentFiles = project?.files || {};
+    const systemPrompt = `You are Hyperdrop's AI App Builder. You build real software, not explanations.
 Return ONLY valid JSON.
-For SINGLE_HTML, return:
+
+DECISION:
+Use SINGLE_HTML when the feature can reliably run as one self-contained HTML file with inline CSS/JavaScript and browser APIs.
+Use ADVANCED_PROJECT when native Android/platform APIs, native modules, multi-file architecture, C/C++/JNI, background services, or other capabilities make one HTML file unreliable.
+Current heuristic route: ${route.target}.
+
+For SINGLE_HTML return:
 {"target":"SINGLE_HTML","name":"...","summary":"...","html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
-The HTML must be completely self-contained: inline CSS and JavaScript, no external scripts, no external dependencies, responsive, functional and safe.
-For ADVANCED_PROJECT, return:
-{"target":"ADVANCED_PROJECT","name":"...","summary":"...","files":{"MEMORY.md":"...","README.md":"...","src/index.js":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
-Do not include secrets or API keys. Prefer the simplest target that fully satisfies the request. Current heuristic route is ${route.target}: ${route.reason}.`;
+Requirements: complete working app; inline CSS and JavaScript; no external script/CSS dependencies; responsive; accessible; functional.
+
+For ADVANCED_PROJECT return:
+{"target":"ADVANCED_PROJECT","name":"...","summary":"...","files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
+Create a coherent source project. Preserve existing files unless the request changes them. Never include API keys/secrets.
+`;
     const result = await AIService.generateText({
-      connectionId, model,
-      systemPrompt,
-      messages: [{ role: 'user', content: `Existing project: ${project?.name || 'new app'}\nExisting HTML:\n${project?.html || '(none)'}\nExisting memory:\n${JSON.stringify(project?.memory || {})}\nUser request:\n${request}` }],
-      temperature: 0.15,
-      maxTokens: 12000,
+      connectionId, model, systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          'Project: ' + (project?.name || 'new app'),
+          'Target: ' + (project?.target || route.target),
+          'Existing files:',
+          JSON.stringify(currentFiles),
+          'Project memory:',
+          JSON.stringify(project?.memory || {}),
+          'User request:',
+          request,
+        ].join('\n\n'),
+      }],
+      temperature: 0.12,
+      maxTokens: 16000,
     });
     return extractJson(result);
   },
+
   async applyBuild(project, draft, request) {
     const route = classifyRequest(request);
-    const target = route.target === 'ADVANCED_PROJECT' || draft.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML';
+    const target = route.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : (draft.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML');
     const now = Date.now();
-    const nextVersion = (project.versions?.length || 0) + 1;
+    let files;
+    if (target === 'SINGLE_HTML') {
+      const html = validateSingleHtml(draft.html || project.html || DEFAULT_HTML(project.name));
+      files = { ...(project.files || {}), 'index.html': html };
+    } else {
+      files = { ...(project.files || {}), ...(draft.files || {}) };
+    }
+    const nextVersion = (project.versions?.[project.versions.length - 1]?.version || 0) + 1;
     const memory = {
-      ...(project.memory || MEMORY_TEMPLATE(project)),
+      ...(project.memory || memoryObject(project)),
       ...(draft.memory || {}),
       version: nextVersion,
       name: draft.name || project.name,
       target,
-      history: [...(project.memory?.history || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now }].slice(-30),
+      history: [...(project.memory?.history || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now }].slice(-40),
     };
-    const files = target === 'SINGLE_HTML'
-      ? { ...(project.files || {}), 'index.html': String(draft.html || project.html || '') }
-      : { ...(project.files || {}), ...(draft.files || {}) };
+    files['MEMORY.md'] = memoryMarkdown(memory);
     const next = {
-      ...project, name: draft.name || project.name, target, html: target === 'SINGLE_HTML' ? files['index.html'] : project.html,
-      files: { ...files, 'MEMORY.md': memoryMarkdown(memory) }, memory, updatedAt: now,
-      versions: [...(project.versions || []), { version: nextVersion, html: target === 'SINGLE_HTML' ? files['index.html'] : project.html, files: { ...files, 'MEMORY.md': memoryMarkdown(memory) }, memory, at: now }].slice(-20),
+      ...project,
+      name: draft.name || project.name,
+      target,
+      files,
+      filePaths: Object.keys(files),
+      memory,
+      updatedAt: now,
+      versions: [...(project.versions || []), { version: nextVersion, action: request || draft.summary || 'AI update', at: now }],
     };
-    return this.saveProject(next);
+    const saved = await this.saveProject(next, { action: request || draft.summary || 'AI update', createVersion: false });
+    await snapshot({ ...saved, files: saved.files });
+    await trimSnapshots(saved);
+    await saveMetadata(saved);
+    return saved;
   },
+
   async undo(project) {
     if (!project?.versions || project.versions.length < 2) return project;
     const versions = project.versions.slice(0, -1);
     const previous = versions[versions.length - 1];
-    return this.saveProject({ ...project, html: previous.html || project.html, files: previous.files || project.files, memory: previous.memory || project.memory, versions });
+    const root = await projectRoot(project.id);
+    const files = await readProjectFiles(root + '.versions/v' + previous.version + '/', project.filePaths || []);
+    if (!Object.keys(files).length) throw new Error('Previous version snapshot is unavailable.');
+    await writeProjectFiles(root, files);
+    const memory = files['MEMORY.md'] ? project.memory : project.memory;
+    const next = { ...project, files, filePaths: Object.keys(files), versions };
+    next.memory = memory;
+    return this.saveProject(next, { action: 'undo to v' + previous.version, createVersion: false });
   },
+
+  async prepareAndroidPackage(project) {
+    const wrapper = androidWrapper(project);
+    const files = { ...(project.files || {}), ...wrapper };
+    const next = { ...project, files, filePaths: Object.keys(files) };
+    return this.saveProject(next, { action: 'prepared Android APK project', createVersion: true });
+  },
+
+  async exportProject(project) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const exportRoot = (FileSystem.documentDirectory || '') + 'HyperdropExports/' + safeSlug(project.name) + '-' + stamp + '/';
+    await ensureDir(exportRoot);
+    const files = project.files || {};
+    for (const [path, content] of Object.entries(files)) await writeTextFile(exportRoot, path, content);
+    return exportRoot;
+  },
+
   async getCurrent() {
     const id = await AsyncStorage.getItem(CURRENT_KEY);
     return id ? this.getProject(id) : null;
+  },
+
+  async setCurrent(id) {
+    if (id) await AsyncStorage.setItem(CURRENT_KEY, id);
+  },
+
+  async removeProject(id) {
+    const root = await projectRoot(id);
+    await FileSystem.deleteAsync(root, { idempotent: true });
+    const items = (await readMetadata()).filter(item => item.id !== id);
+    await writeMetadata(items);
+    const current = await AsyncStorage.getItem(CURRENT_KEY);
+    if (current === id) await AsyncStorage.removeItem(CURRENT_KEY);
   },
 };
 
