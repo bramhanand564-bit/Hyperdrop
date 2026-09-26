@@ -41,10 +41,11 @@ export default function ExperienceBuilder({ route, navigation }) {
       if(!mounted||!item)return;
       setName(item.name||initial.name);setDescription(item.description||'');setIcon(item.icon||initial.icon);
       const existingActions = item.schema?.actions || initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0}));
-      const primaryId = existingActions.find(a=>a.primary)?.id || existingActions[0]?.id;
+      const primaryAction = existingActions.find(a=>a.primary) || existingActions[0];
+      const primaryId = primaryAction ? (primaryAction.id || slug(primaryAction.label)) : '';
       setActions(existingActions.map(a=>({...a,id:a.id||slug(a.label),primary:(a.id||slug(a.label))===primaryId})));
       setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
-      setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||item.schema?.actions?.[0]?.id||'');setWebUrl(item.schema?.web?.url||'');
+      setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||(item.schema?.actions?.[0] ? (item.schema.actions[0].id || slug(item.schema.actions[0].label)) : ''));setWebUrl(item.schema?.web?.url||'');
     }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
     return ()=>{mounted=false;};
   },[experienceId]);
@@ -143,7 +144,7 @@ export default function ExperienceBuilder({ route, navigation }) {
         <Text style={[styles.noteTitle,{color:theme.text}]}>Publish flow</Text>
         <Text style={[styles.noteText,{color:theme.sub}]}>Create → publish → share to Chat → users interact → participant state and immutable events update → creator can inspect activity in the dashboard.</Text>
       </View>
-      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:publishing?.6:1}]} onPress={publish} disabled={publishing}><Text style={styles.publishText}>{publishing?(experienceId?'Saving…':'Publishing…'):(experienceId?'Save changes':'Publish')}</Text></TouchableOpacity>
+      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:(publishing||loadingExisting)?.6:1}]} onPress={publish} disabled={publishing||loadingExisting}><Text style={styles.publishText}>{publishing?(experienceId?'Saving…':'Publishing…'):(experienceId?'Save changes':'Publish')}</Text></TouchableOpacity>
     </ScrollView>
   </SafeAreaView>;
 }
