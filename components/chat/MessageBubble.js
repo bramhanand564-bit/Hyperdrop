@@ -64,7 +64,7 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
       {(item.experienceSchema?.actions||[]).filter(a=>a.primary||a.label==='Complete'||a.label==='Submit').slice(0,2).map(action=><TouchableOpacity key={action.id} disabled={!!experienceBusy} onPress={()=>runExperienceAction(action)} style={[s.joinBtn,{flex:1,backgroundColor:theme.blue,marginTop:0,opacity:experienceBusy&&experienceBusy!==action.id?0.6:1}]}>
         <Text style={{color:'#FFF',fontWeight:'900',fontSize:11}}>{experienceBusy===action.id?'…':action.label}</Text>
       </TouchableOpacity>)}
-      <TouchableOpacity style={[s.joinBtn,{flex:1,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,marginTop:0}]} onPress={()=>navigation?.navigate('ExperienceRuntime',{experienceId:item.experienceId})}>
+      <TouchableOpacity style={[s.joinBtn,{flex:1,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,marginTop:0}]} onPress={()=>navigation?.navigate('ExperienceRuntime',{experienceId:item.experienceId,chatId:chatId})}>
         <Text style={{color:theme.text,fontWeight:'900',fontSize:11}}>Open</Text>
       </TouchableOpacity>
     </View>
