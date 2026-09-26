@@ -102,9 +102,61 @@ function classifyRequest(text) {
 function extractJson(text) {
   const raw = String(text || '').trim().replace(/^\`\`\`(?:json)?/i, '').replace(/\`\`\`$/,'').trim();
   try { return JSON.parse(raw); } catch (_) {}
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('AI did not return valid builder JSON.');
-  return JSON.parse(match[0]);
+
+  const start = raw.indexOf('{');
+  if (start < 0) throw new Error('AI did not return builder JSON.');
+  const candidate = raw.slice(start);
+
+  const repaired = repairTruncatedJson(candidate);
+  if (repaired) {
+    try { return JSON.parse(repaired); } catch (_) {}
+  }
+
+  const match = candidate.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch (_) {}
+  }
+  throw new Error('AI response was cut off before the builder JSON was complete. Try again; the current app was not changed.');
+}
+
+function repairTruncatedJson(source) {
+  let inString = false;
+  let escaped = false;
+  const stack = [];
+  let out = '';
+
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    out += ch;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+
+  if (!inString && stack.length) {
+    while (stack.length) {
+      const open = stack.pop();
+      out += open === '{' ? '}' : ']';
+    }
+    return out;
+  }
+
+  if (inString) {
+    if (escaped) out += '\\';
+    out += '"';
+    while (stack.length) {
+      const open = stack.pop();
+      out += open === '{' ? '}' : ']';
+    }
+    return out;
+  }
+  return null;
 }
 
 function embedMemory(html, memory) {
