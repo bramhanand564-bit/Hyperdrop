@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -23,6 +23,7 @@ const slug = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9
 export default function ExperienceBuilder({ route, navigation }) {
   const { theme } = useTheme();
   const template = route?.params?.template || 'custom';
+  const experienceId = route?.params?.experienceId || null;
   const initial = TEMPLATE_DEFAULTS[template] || TEMPLATE_DEFAULTS.custom;
   const [name,setName]=useState(initial.name),[description,setDescription]=useState(initial.description),[icon,setIcon]=useState(initial.icon);
   const [actions,setActions]=useState(initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0})));
@@ -30,7 +31,19 @@ export default function ExperienceBuilder({ route, navigation }) {
   const [trigger,setTrigger]=useState(actions[0]?.id || 'on_action');
   const [rewardEnabled,setRewardEnabled]=useState(false),[rewardPoints,setRewardPoints]=useState('100');
   const [customAction,setCustomAction]=useState(''),[customFieldLabel,setCustomFieldLabel]=useState('');
-  const [publishing,setPublishing]=useState(false);
+  const [publishing,setPublishing]=useState(false),[loadingExisting,setLoadingExisting]=useState(Boolean(experienceId));
+  useEffect(()=>{
+    let mounted=true;
+    if(!experienceId){setLoadingExisting(false);return undefined;}
+    ExperienceAPI.get(experienceId).then(item=>{
+      if(!mounted||!item)return;
+      setName(item.name||initial.name);setDescription(item.description||'');setIcon(item.icon||initial.icon);
+      setActions((item.schema?.actions||initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0}))).map((a,i)=>({...a,id:a.id||slug(a.label),primary:Boolean(a.primary||i===0)})));
+      setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
+      setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||item.schema?.actions?.[0]?.id||'');
+    }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
+    return ()=>{mounted=false;};
+  },[experienceId]);
 
   const addAction = label => {
     const clean=String(label||'').trim();
@@ -68,9 +81,11 @@ export default function ExperienceBuilder({ route, navigation }) {
     if(!actions.length)return Alert.alert('Action required','Add at least one action.');
     setPublishing(true);
     try{
-      const created=await ExperienceAPI.create({name,description,icon,template,schema});
-      Alert.alert('Published','Your Experience is live and shareable in Chat.',[
-        {text:'Open',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:created.id})},
+      const saved=experienceId
+        ? await ExperienceAPI.update(experienceId,{name,description,icon,template,schema})
+        : await ExperienceAPI.create({name,description,icon,template,schema});
+      Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Experience was updated.':'Your Experience is live and shareable in Chat.',[
+        {text:'Open',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:saved.id})},
         {text:'Dashboard',onPress:()=>navigation.replace('ExperienceDashboard')}
       ]);
     }catch(e){Alert.alert('Publish failed',e.message||'Unable to publish.')}
@@ -78,7 +93,7 @@ export default function ExperienceBuilder({ route, navigation }) {
   };
 
   return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}>
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">{loadingExisting?<View style={{padding:12,borderRadius:12,backgroundColor:theme.surface,marginBottom:10}}><Text style={{color:theme.sub,fontSize:12}}>Loading existing Experience…</Text></View>:null}
       <View style={styles.top}><TouchableOpacity onPress={()=>navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text}/></TouchableOpacity><Text style={[styles.title,{color:theme.text}]}>Create</Text><View style={{width:26}}/></View>
 
       <View style={[styles.preview,{backgroundColor:theme.surface,borderColor:theme.border}]}>
@@ -113,7 +128,7 @@ export default function ExperienceBuilder({ route, navigation }) {
         <Text style={[styles.noteTitle,{color:theme.text}]}>Publish flow</Text>
         <Text style={[styles.noteText,{color:theme.sub}]}>Create → publish → share to Chat → users interact → participant state and immutable events update → creator can inspect activity in the dashboard.</Text>
       </View>
-      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:publishing?.6:1}]} onPress={publish} disabled={publishing}><Text style={styles.publishText}>{publishing?'Publishing…':'Publish'}</Text></TouchableOpacity>
+      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:publishing?.6:1}]} onPress={publish} disabled={publishing}><Text style={styles.publishText}>{publishing?(experienceId?'Saving…':'Publishing…'):(experienceId?'Save changes':'Publish')}</Text></TouchableOpacity>
     </ScrollView>
   </SafeAreaView>;
 }
