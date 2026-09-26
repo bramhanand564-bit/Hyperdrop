@@ -254,6 +254,7 @@ const ExperienceAPI = {
       userId: uid,
       values: safeValues,
       chatId: context.chatId || null,
+      transferId: context.transferId || null,
       pointsDelta,
       createdAt: serverTimestamp(),
     });
