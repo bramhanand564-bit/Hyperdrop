@@ -21,6 +21,13 @@ Build a stable Nax Chat / Hyperdrop app with reliable private chat and media mes
 | Video call | HARDENED / DEVICE VERIFICATION PENDING | Remote RTCView no longer force-remounts; video-call remote stream is published only after a video track exists; SDP/ICE diagnostics added. Still needs two-device APK verification. |
 | Call cleanup / speaker restore | FIXED IN CODE | WebRTC tracks and Expo audio mode are restored on cleanup. |
 | P2P transfer | PRESENT | Dedicated transfer rules/manager exist; full regression not completed in this scan. |
+| Unified Experience platform | NEW | Legacy Portal UI/store was removed on this branch. Creator Studio, templates, runtime, Firestore experience schema, per-user participation, and Chat share cards are now the new foundation. End-to-end group/admin workflows still need runtime testing. |
+
+## Unified Experience platform
+
+The old Portal module was removed and replaced by a single Experience model. `ExperienceHome` is now the main Portals tab, with templates for tasks, rewards, games, quizzes, forms, community, media, P2P transfer, and custom experiences. `ExperienceBuilder` publishes a reusable schema of fields/actions/rules. `ExperienceRuntime` executes the published experience, and `ExperienceSharePicker` sends a live experience reference into Chat. `MessageBubble` renders `experience` messages with an Open Experience action. Firestore rules isolate the public experience definition from per-user `participants/{uid}` state.
+
+This is a foundation, not a claim that every possible creator capability is finished. Advanced logic blocks, full admin analytics, monetization/payouts, richer chat group targeting, and native P2P/media capabilities remain follow-up work.
 
 ## Video-call scan findings
 
