@@ -156,6 +156,7 @@ export default function ChatsScreen({ navigation }) {
         onStartPrivateChat={() => { setShowNewMenu(false); Alert.alert('New Chat', 'Upar @username search karo aur user/bot ko select karo.'); }}
         onOpenGlobalRoom={() => { setShowNewMenu(false); navigation.navigate('ChatRoom', { chatId: 'global_chats', chatName: 'Global Room' }); }}
         onCreateBot={() => { setShowNewMenu(false); navigation.navigate('BotCreate'); }}
+        onCreateExperience={() => { setShowNewMenu(false); navigation.navigate('ExperienceBuilder', { template: 'custom' }); }}
         onOpenMessagingHub={() => { setShowNewMenu(false); navigation.navigate('MessagingHub'); }}
       />
     </GlassScene>
