@@ -63,9 +63,11 @@ The current builder supports:
 - primary action
 - custom data fields
 - required fields
-- triggers
+- text/number/checkbox/rating/date/time/image/file input types
+- selected reward trigger
 - virtual points
 - optional secure HTTPS full-screen URL
+- native media upload for image/file responses
 
 The dashboard supports:
 - own Experiences
@@ -84,7 +86,7 @@ Firestore rules isolate:
 - immutable user event creation
 - creator analytics reads
 
-Full web Experiences accept HTTPS URLs only through the existing URL validator.
+Full web Experiences accept HTTPS URLs only through the existing URL validator. The native runtime exposes a small window.Nax bridge to the hosted page: user, experience, participant, sendAction(actionId, values), and onActionResult(callback). Top-level navigation is kept on the declared HTTPS host.
 
 Real money rewards, ad payouts, privileged device access, and server-authoritative business logic should be implemented behind trusted backend infrastructure; the current virtual points system is not a secure cash ledger.
 
@@ -100,3 +102,4 @@ Real money rewards, ad payouts, privileged device access, and server-authoritati
 - `components/chat/MessageBubble.js`
 - `messaging/MessagingService.js`
 - `firestore.rules`
+- `firestore.indexes.json`
