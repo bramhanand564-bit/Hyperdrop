@@ -50,6 +50,7 @@ const ForwardPickerScreen = lazyRequire(() => require('./screens/ForwardPickerSc
 const ExperienceHome = lazyRequire(() => require('./screens/ExperienceHome').default);
 const ExperienceBuilder = lazyRequire(() => require('./screens/ExperienceBuilder').default);
 const ExperienceRuntime = lazyRequire(() => require('./screens/ExperienceRuntime').default);
+const ExperienceSharePicker = lazyRequire(() => require('./screens/ExperienceSharePicker').default);
 const MiniAppHome = lazyRequire(() => require('./mini-apps/MiniAppHome').default);
 const MiniAppViewer = lazyRequire(() => require('./mini-apps/MiniAppViewer').default);
 const MiniAppInstall = lazyRequire(() => require('./mini-apps/MiniAppInstall').default);
@@ -135,6 +136,7 @@ function AppNavigator() {
             <Stack.Screen name="ExperienceHome" component={ExperienceHome} />
             <Stack.Screen name="ExperienceBuilder" component={ExperienceBuilder} />
             <Stack.Screen name="ExperienceRuntime" component={ExperienceRuntime} />
+            <Stack.Screen name="ExperienceSharePicker" component={ExperienceSharePicker} />
             <Stack.Screen name="MiniAppHome" component={MiniAppHome} />
             <Stack.Screen name="MiniAppViewer" component={MiniAppViewer} />
             <Stack.Screen name="MiniAppInstall" component={MiniAppInstall} />
