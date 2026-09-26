@@ -40,7 +40,9 @@ export default function ExperienceBuilder({ route, navigation }) {
     ExperienceAPI.get(experienceId).then(item=>{
       if(!mounted||!item)return;
       setName(item.name||initial.name);setDescription(item.description||'');setIcon(item.icon||initial.icon);
-      setActions((item.schema?.actions||initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0}))).map((a,i)=>({...a,id:a.id||slug(a.label),primary:Boolean(a.primary||i===0)})));
+      const existingActions = item.schema?.actions || initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0}));
+      const primaryId = existingActions.find(a=>a.primary)?.id || existingActions[0]?.id;
+      setActions(existingActions.map(a=>({...a,id:a.id||slug(a.label),primary:(a.id||slug(a.label))===primaryId})));
       setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
       setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||item.schema?.actions?.[0]?.id||'');setWebUrl(item.schema?.web?.url||'');
     }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
@@ -54,7 +56,14 @@ export default function ExperienceBuilder({ route, navigation }) {
     setActions(prev=>[...prev,{id,label:clean,primary:prev.length===0}]);
   };
   const addPresetAction = label => setActions(prev=>prev.some(a=>a.label===label)?prev:[...prev,{id:slug(label),label,primary:prev.length===0}]);
-  const removeAction=id=>setActions(prev=>prev.filter(a=>a.id!==id));
+  const removeAction=id=>{
+    setActions(prev=>{
+      const next=prev.filter(a=>a.id!==id);
+      setTrigger(prevTrigger=>prevTrigger===id?(next[0]?.id||''):prevTrigger);
+      if(next.length && !next.some(a=>a.primary)) next[0]={...next[0],primary:true};
+      return next;
+    });
+  };
   const togglePrimary=id=>setActions(prev=>prev.map(a=>({...a,primary:a.id===id})));
   const addField = (type,label) => {
     const clean=String(label||'').trim() || type;
