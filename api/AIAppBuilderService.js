@@ -118,8 +118,8 @@ function embedMemory(html, memory) {
   }).replace(/<\\/script/gi, '<\\\\/script');
   const tag = '<script type="application/json" id="hyperdrop-memory">' + payload + '</script>';
   const stripped = source.replace(/<script[^>]+id=["']hyperdrop-memory["'][^>]*>[\\s\\S]*?<\\/script>/gi, '');
-  return /<\\/head>/i.test(stripped)
-    ? stripped.replace(/<\\/head>/i, tag + '</head>')
+  return /<\/head>/i.test(stripped)
+    ? stripped.replace(/<\/head>/i, tag + '</head>')
     : tag + stripped;
 }
 
