@@ -241,7 +241,7 @@ dependencies {
 `,
     'android/app/src/main/AndroidManifest.xml': `<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:theme="@style/AppTheme" android:label="${String(project.name || 'Hyperdrop App').replace(/[<&\"]/g,'')}"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>`,
     'android/app/src/main/res/values/styles.xml': '<resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#2563EB</item></style></resources>',
-    'android/app/src/main/java/' + packageName.replace(/\\./g, '/') + '/MainActivity.java': `package ${packageName};
+    ['android/app/src/main/java/' + packageName.replace(/\\./g, '/') + '/MainActivity.java']: `package ${packageName};
 
 import android.app.Activity;
 import android.os.Bundle;
