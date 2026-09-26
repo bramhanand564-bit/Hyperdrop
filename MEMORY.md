@@ -84,3 +84,16 @@ main
 - Do not create a new feature/fix branch for every small change.
 - Keep future targeted changes on `main` unless a separate branch is genuinely needed for an isolated experiment or risky work.
 - When moving existing work into `main`, verify the current PR/commit state first; do not overwrite unrelated work.
+
+
+## AI APP BUILDER — CURRENT ARCHITECTURE
+- Primary creator is chat-first: **Create → Build an App with AI**.
+- Builder automatically chooses the simplest viable target. Default: `SINGLE_HTML`; native/platform-heavy requirements route to `ADVANCED_PROJECT`.
+- `SINGLE_HTML` apps use one canonical `index.html` with inline CSS/JavaScript and live WebView preview. Keep them small/self-contained to reduce storage and simplify sharing.
+- `ADVANCED_PROJECT` is a real multi-file workspace with file tree + code editor + live web preview where an HTML entry exists.
+- Every generated app/project carries `MEMORY.md`; the AI receives current source files and project memory on every change.
+- App projects use app-private filesystem storage rather than putting full source into AsyncStorage; metadata/history stay lightweight.
+- Builder supports AI create/update, manual file edits, undo, redo, version restore, import HTML, local export, and Android packaging scaffold.
+- Android packaging generates a Java WebView APK project plus a GitHub Actions workflow for debug APK builds. Complex native projects can extend the generated Android source.
+- Do not expose or embed API keys/secrets inside generated HTML/source.
+- Future product direction: keep Simple/Single HTML as the normal path; advanced mode is automatic, not a manual user choice.
