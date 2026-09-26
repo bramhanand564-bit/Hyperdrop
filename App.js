@@ -43,7 +43,7 @@ const DeveloperDashboardScreen = lazyRequire(() => require('./screens/DeveloperD
 const TelegramBotFeaturesScreen = lazyRequire(() => require('./screens/TelegramBotFeaturesScreen').default);
 const BotEdit = lazyRequire(() => require('./bots/BotEdit').default);
 const BotCommands = lazyRequire(() => require('./bots/BotCommands').default);
-const WebPortalScreen = lazyRequire(() => require('./screens/WebPortalScreen').default);
+const ExperienceWebViewScreen = lazyRequire(() => require('./screens/ExperienceWebViewScreen').default);
 const ChatSettingsScreen = lazyRequire(() => require('./screens/ChatSettingsScreen').default);
 const MessagingHubScreen = lazyRequire(() => require('./screens/MessagingHubScreen').default);
 const ForwardPickerScreen = lazyRequire(() => require('./screens/ForwardPickerScreen').default);
@@ -131,7 +131,7 @@ function AppNavigator() {
             <Stack.Screen name="OnDeviceAISettings" component={OnDeviceAISettingsScreen} />
             <Stack.Screen name="Wallet" component={WalletScreen} />
             <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
-            <Stack.Screen name="WebPortal" component={WebPortalScreen} />
+            <Stack.Screen name="ExperienceWebView" component={ExperienceWebViewScreen} />
 
 
             <Stack.Screen name="ExperienceHome" component={ExperienceHome} />
