@@ -35,6 +35,21 @@ const MEMORY_TEMPLATE = (project) => ({
   history: [],
 });
 
+function memoryMarkdown(memory = {}) {
+  const list = value => Array.isArray(value) ? value.map(item => '- ' + String(item)).join('\n') : '- None';
+  const history = Array.isArray(memory.history) ? memory.history.map(item => '- v' + item.version + ': ' + item.action).join('\n') : '- None';
+  return '# App Memory\\n\\n'
+    + '## Project\\n'
+    + '- Name: ' + (memory.name || 'Untitled App') + '\\n'
+    + '- Target: ' + (memory.target || 'SINGLE_HTML') + '\\n'
+    + '- Summary: ' + (memory.summary || '') + '\\n\\n'
+    + '## Features\\n' + list(memory.features) + '\\n\\n'
+    + '## Pending\\n' + list(memory.pending) + '\\n\\n'
+    + '## Decisions\\n' + list(memory.decisions) + '\\n\\n'
+    + '## Important Files\\n' + list(memory.importantFiles) + '\\n\\n'
+    + '## Change History\\n' + history + '\\n';
+}
+
 async function readProjects() {
   try { return JSON.parse(await AsyncStorage.getItem(PROJECTS_KEY) || '[]'); } catch (_) { return []; }
 }
@@ -79,7 +94,7 @@ const AIAppBuilderService = {
       name,
       target: route,
       html: route === 'SINGLE_HTML' ? DEFAULT_HTML(name) : '',
-      files: route === 'ADVANCED_PROJECT' ? { 'MEMORY.md': '' } : { 'index.html': DEFAULT_HTML(name) },
+      files: route === 'ADVANCED_PROJECT' ? { 'MEMORY.md': '' } : { 'index.html': DEFAULT_HTML(name), 'MEMORY.md': '' },
       memory: null,
       versions: [],
       createdAt: now,
@@ -87,6 +102,7 @@ const AIAppBuilderService = {
     };
     project.memory = MEMORY_TEMPLATE(project);
     project.memory.history.push({ version: 1, action: 'created', at: now });
+    project.files['MEMORY.md'] = memoryMarkdown(project.memory);
     project.versions.push({ version: 1, html: project.html, files: project.files, memory: project.memory, at: now });
     const projects = await readProjects();
     projects.unshift(project);
@@ -153,8 +169,8 @@ Do not include secrets or API keys. Prefer the simplest target that fully satisf
       : { ...(project.files || {}), ...(draft.files || {}) };
     const next = {
       ...project, name: draft.name || project.name, target, html: target === 'SINGLE_HTML' ? files['index.html'] : project.html,
-      files, memory, updatedAt: now,
-      versions: [...(project.versions || []), { version: nextVersion, html: target === 'SINGLE_HTML' ? files['index.html'] : project.html, files, memory, at: now }].slice(-20),
+      files: { ...files, 'MEMORY.md': memoryMarkdown(memory) }, memory, updatedAt: now,
+      versions: [...(project.versions || []), { version: nextVersion, html: target === 'SINGLE_HTML' ? files['index.html'] : project.html, files: { ...files, 'MEMORY.md': memoryMarkdown(memory) }, memory, at: now }].slice(-20),
     };
     return this.saveProject(next);
   },
