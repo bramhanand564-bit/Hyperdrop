@@ -108,6 +108,10 @@ export default function ExperienceHome({ navigation }) {
               <Ionicons name="sparkles" size={18} color="#FFF"/><View style={{flex:1,marginLeft:9}}><Text style={{color:'#FFF',fontWeight:'900'}}>Build an App with AI</Text><Text style={{color:'rgba(255,255,255,.82)',fontSize:10,marginTop:2}}>AI automatically chooses the right builder</Text></View><Ionicons name="arrow-forward" size={17} color="#FFF"/>
             </TouchableOpacity>
 
+            <TouchableOpacity onPress={() => navigation.navigate('AIAppProjects')} style={[styles.aiButton,{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,marginTop:10}]}>
+              <Ionicons name="folder-open-outline" size={18} color={theme.blue}/><View style={{flex:1,marginLeft:9}}><Text style={{color:theme.text,fontWeight:'900'}}>My AI Apps</Text><Text style={{color:theme.sub,fontSize:10,marginTop:2}}>Open, edit, preview, package</Text></View><Ionicons name="chevron-forward" size={17} color={theme.sub}/>
+            </TouchableOpacity>
+
             <View style={{flexDirection:'row',gap:8,marginTop:12}}>
               <TouchableOpacity onPress={() => navigation.navigate('ExperienceStore')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
                 <Ionicons name="storefront-outline" size={17} color={theme.blue}/><Text style={{color:theme.text,fontWeight:'900'}}>Experience Store</Text>
