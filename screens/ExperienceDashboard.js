@@ -145,6 +145,7 @@ export default function ExperienceDashboard({ navigation }) {
                 </View>
 
                 <View style={styles.buttons}>
+                  <TouchableOpacity onPress={() => navigation.navigate('ExperienceBuilder',{experienceId:selected.id,template:selected.template})} style={[styles.small, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="create-outline" size={16} color={theme.text} /><Text style={{color:theme.text,fontWeight:'900'}}>Edit</Text></TouchableOpacity>
                   <TouchableOpacity onPress={() => navigation.navigate('ExperienceSharePicker',{experience:selected})} style={[styles.small, { backgroundColor: theme.blue }]}><Ionicons name="share-outline" size={16} color="#FFF" /><Text style={styles.smallText}>Share</Text></TouchableOpacity>
                   {selected.status === 'disabled' ? (
                     <TouchableOpacity onPress={() => setStatus('published')} style={[styles.small, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}><Text style={{ color: theme.text, fontWeight: '900' }}>Publish</Text></TouchableOpacity>
