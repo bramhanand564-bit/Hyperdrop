@@ -9,6 +9,7 @@ import {
   increment,
   writeBatch,
   orderBy,
+  limit,
   query,
   serverTimestamp,
   setDoc,
@@ -50,8 +51,8 @@ const requireUser = () => {
 };
 
 const ExperienceAPI = {
-  async list({ search = '', template = '' } = {}) {
-    const snap = await getDocs(query(experiencesRef, orderBy('createdAt', 'desc')));
+  async list({ search = '', template = '', limitCount = 50 } = {}) {
+    const snap = await getDocs(query(experiencesRef, orderBy('createdAt', 'desc'), limit(Math.min(100, Math.max(1, Number(limitCount) || 50))));
     const q = String(search || '').trim().toLowerCase();
 
     return snap.docs
@@ -148,7 +149,7 @@ const ExperienceAPI = {
     return true;
   },
 
-  async run(id) {
+  async run(id, context = {}) {
     const uid = requireUser();
     if (!id) return false;
 
@@ -163,6 +164,7 @@ const ExperienceAPI = {
       type: 'run',
       action: 'open',
       userId: uid,
+      chatId: context.chatId || null,
       createdAt: serverTimestamp(),
     });
 
@@ -203,11 +205,37 @@ const ExperienceAPI = {
       || String(item.label || '').toLowerCase() === String(action.label || action).toLowerCase()
     );
 
-    const actionId = definition?.id || String(action.id || action).toLowerCase().replace(/\s+/g, '_');
-    const label = definition?.label || action.label || action;
+    if (!definition) throw new Error('This action is not available in the Experience.');
+
+    const actionId = definition.id;
+    const label = definition.label;
     const participantRef = doc(db, 'experiences', id, 'participants', uid);
     const currentSnap = await getDoc(participantRef);
     const currentState = currentSnap.exists() ? (currentSnap.data().state || {}) : {};
+    const fieldDefinitions = experience.schema?.fields || {};
+    const fieldList = Array.isArray(fieldDefinitions) ? fieldDefinitions : [];
+    const safeValues = {};
+    fieldList.forEach(field => {
+      if (!field?.id || values?.[field.id] === undefined || values?.[field.id] === null) return;
+      const raw = values[field.id];
+      let value = raw;
+      if (field.type === 'Checkbox') value = !!raw;
+      else if (field.type === 'Number' || field.type === 'Rating') value = Number.isFinite(Number(raw)) ? Number(raw) : 0;
+      else if (typeof raw === 'string') value = raw.slice(0, field.type === 'Text' ? 2000 : 500);
+      else if (typeof raw === 'object') value = raw;
+      safeValues[field.id] = value;
+    });
+
+    const requiredMissing = fieldList.find(field => field.required && (
+      safeValues[field.id] === undefined
+      || safeValues[field.id] === null
+      || safeValues[field.id] === ''
+      || (field.type === 'Checkbox' && safeValues[field.id] === false)
+    ));
+    if (requiredMissing && ['complete','submit','claim','book','pay','approve'].includes(String(label).toLowerCase())) {
+      throw new Error('Required field missing: ' + (requiredMissing.label || requiredMissing.id));
+    }
+
     const rule = (experience.schema?.rules || []).find(item => String(item.when || '').toLowerCase() === actionId.toLowerCase());
     const status = rule?.set?.status ?? (['Complete','Claim','Submit'].includes(label) ? 'completed' : (['Start','Accept','Join'].includes(label) ? 'active' : currentState.status || 'ready'));
     const pointsDelta = Math.max(0, Number(rule?.set?.pointsDelta || 0));
@@ -218,7 +246,7 @@ const ExperienceAPI = {
       actionId,
       actionLabel: label,
       userId: uid,
-      values,
+      values: safeValues,
       chatId: context.chatId || null,
       pointsDelta,
       createdAt: serverTimestamp(),
@@ -232,7 +260,7 @@ const ExperienceAPI = {
       lastActionAt: serverTimestamp(),
       state: {
         ...currentState,
-        ...(values || {}),
+        ...safeValues,
         status,
         points: nextPoints,
         lastActionId: actionId,
@@ -263,9 +291,10 @@ const ExperienceAPI = {
     if (!id) return [];
     const snap = await getDocs(query(
       collection(db, 'experiences', id, 'events'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(Math.min(500, Math.max(1, Number(limitCount) || 100)))
     ));
-    return snap.docs.slice(0, limitCount).map(d => ({ id: d.id, ...d.data() }));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
 };
 
