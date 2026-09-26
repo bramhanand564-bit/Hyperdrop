@@ -5,6 +5,20 @@
 ## VIDEO CALL — WORKING
 **Android-to-Android video call is working.** Remote video, signalling/ICE, RTCView and call cleanup are considered working. Do not rewrite the video-call system unless a new regression is specifically reported.
 
+## UNIFIED EXPERIENCE PLATFORM — NEW
+The legacy Portal/store layer on this branch has been removed from the main product path. A single Experience model now powers creator-built interactive experiences, templates, runtime, Chat sharing, inline actions/forms, per-user state, immutable activity events, and creator analytics.
+
+Key files:
+- api/ExperienceAPI.js
+- screens/ExperienceHome.js
+- screens/ExperienceBuilder.js
+- screens/ExperienceRuntime.js
+- screens/ExperienceSharePicker.js
+- screens/ExperienceDashboard.js
+- firestore.rules
+
+Creator flow: Create → customize fields/actions/rules → Publish → Share to Chat → users interact → participant state/events update → creator dashboard.
+
 ## What is Hyperdrop?
 Hyperdrop / Nax Chat is a React Native + Expo app focused on private communication, media sharing, social Moments/Stories, and peer-to-peer features.
 
@@ -21,6 +35,7 @@ Build one stable communication app where chat, media, identity, social sharing, 
 - **Identity:** Firebase Auth + persistent Google username/profile.
 - **P2P:** peer-to-peer file/media transfer.
 - **Firebase:** Firestore data + security rules.
+- **Experiences:** universal shareable interactive objects for tasks, games, rewards, forms, media, workflows and P2P-oriented experiences.
 
 ## Current Focus
 1. **Protect video call:** don't change working WebRTC code without a specific bug.
