@@ -7,6 +7,7 @@ import{Video,ResizeMode,Audio}from'expo-av';
 import*as FileSystem from'expo-file-system';
 import{deleteCloudinaryByToken}from'../../utils/cloudinaryUpload';
 import MessagingService from'../../messaging/MessagingService';
+import ExperienceAPI from'../../api/ExperienceAPI';
 
 function VoiceNote({uri,isDark}){
  const[sound,setSound]=useState(null);const[playing,setPlaying]=useState(false);
