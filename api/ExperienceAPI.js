@@ -7,6 +7,7 @@ import {
   getDoc,
   getDocs,
   increment,
+  writeBatch,
   orderBy,
   query,
   serverTimestamp,
@@ -126,7 +127,24 @@ const ExperienceAPI = {
   async remove(id) {
     requireUser();
     if (!id) return false;
-    await deleteDoc(doc(db, 'experiences', id));
+    const root = doc(db, 'experiences', id);
+    const [participants, events] = await Promise.all([
+      getDocs(collection(db, 'experiences', id, 'participants')),
+      getDocs(collection(db, 'experiences', id, 'events')),
+    ]);
+
+    const refs = [
+      ...participants.docs.map(item => item.ref),
+      ...events.docs.map(item => item.ref),
+      root,
+    ];
+
+    for (let index = 0; index < refs.length; index += 400) {
+      const batch = writeBatch(db);
+      refs.slice(index, index + 400).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+
     return true;
   },
 
