@@ -37,6 +37,11 @@ const ICE_SERVERS = {
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
+    {
+      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
 };
 
@@ -54,9 +59,12 @@ export function createPeerConnection(
     type
   );
 
-  const pc = new RTCPeerConnection(
-    ICE_SERVERS
-  );
+  const pc = new RTCPeerConnection({
+    ...ICE_SERVERS,
+    sdpSemantics: 'unified-plan',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
+  });
 
   // ========================================
   // LOCAL CAMERA + MICROPHONE
@@ -96,98 +104,86 @@ export function createPeerConnection(
   // ========================================
   // REMOTE STREAM
   // ========================================
+  // Prefer the native stream supplied by WebRTC in event.streams[0].
+  // RTCView resolves streamURL through the native WebRTC module, so
+  // keeping that native stream avoids black surfaces on Android.
+  let fallbackRemoteStream = null;
 
-  // We keep our own remote MediaStream because
-  // some React Native WebRTC versions may send
-  // ontrack without event.streams.
-  let remoteMediaStream = null;
+  const publishRemoteStream = (stream) => {
+    if (!stream || !onTrack) {
+      return;
+    }
+
+    try {
+      const videoTracks = stream.getVideoTracks?.() || [];
+      const audioTracks = stream.getAudioTracks?.() || [];
+      console.log(
+        '🎥 Publishing native remote stream:',
+        stream.toURL?.(),
+        {
+          audio: audioTracks.length,
+          video: videoTracks.length,
+        }
+      );
+
+      // On video calls, do not mount RTCView for an audio-only ontrack event.
+      // Mounting too early can leave Android RTCView stuck on a black surface.
+      // Wait until the native stream actually contains a video track.
+      if (type === 'video' && videoTracks.length === 0) {
+        console.log(
+          '⏳ Waiting for remote video track before publishing stream'
+        );
+        return;
+      }
+
+      onTrack(stream);
+    } catch (error) {
+      console.log('❌ Remote stream publish error:', error);
+    }
+  };
 
   pc.ontrack = (event) => {
     try {
       console.log(
         '📥 Remote track received:',
-        event.track?.kind
+        event.track?.kind,
+        event.track?.id
       );
 
-      // --------------------------------------
-      // If browser/RN gives us a stream,
-      // use it directly.
-      // --------------------------------------
-      if (
-        event.streams &&
-        event.streams.length > 0 &&
-        event.streams[0]
-      ) {
-        const remoteStream =
-          event.streams[0];
-
-        console.log(
-          '🎥 Remote stream received directly'
-        );
-
-        if (onTrack) {
-          onTrack(remoteStream);
-        }
-
+      // Primary path: use the native MediaStream sent with the track.
+      if (event.streams && event.streams.length > 0 && event.streams[0]) {
+        publishRemoteStream(event.streams[0]);
         return;
       }
 
-      // --------------------------------------
-      // Fallback:
-      // Build MediaStream from individual tracks.
-      // --------------------------------------
-      if (!remoteMediaStream) {
-        remoteMediaStream =
-          new MediaStream();
+      // Compatibility fallback when the platform does not provide streams.
+      if (!fallbackRemoteStream) {
+        fallbackRemoteStream = new MediaStream();
       }
 
       if (event.track) {
-        try {
-          remoteMediaStream.addTrack(
-            event.track
-          );
-        } catch (addTrackError) {
-          console.log(
-            '⚠️ Remote track already added or could not be added:',
-            addTrackError
-          );
+        const alreadyThere = (fallbackRemoteStream.getTracks?.() || [])
+          .some((track) => track.id === event.track.id);
+
+        if (!alreadyThere) {
+          fallbackRemoteStream.addTrack(event.track);
         }
       }
 
-      console.log(
-        '📺 Remote MediaStream built from track'
-      );
-
-      if (onTrack) {
-        onTrack(remoteMediaStream);
-      }
+      publishRemoteStream(fallbackRemoteStream);
     } catch (error) {
-      console.log(
-        '❌ Remote Track Error:',
-        error
-      );
+      console.log('❌ Remote Track Error:', error);
     }
   };
 
-  // ========================================
-  // OLD REACT-NATIVE FALLBACK
-  // ========================================
   pc.onaddstream = (event) => {
     try {
       if (event.stream) {
-        console.log(
-          '📥 Remote stream received via onaddstream'
-        );
-
-        if (onTrack) {
-          onTrack(event.stream);
-        }
+        console.log('📥 Remote stream received via onaddstream');
+        publishRemoteStream(event.stream);
       }
     } catch (error) {
-      console.log(
-        '❌ onaddstream Error:',
-        error
-      );
+      console.log('❌ onaddstream Error:', error);
     }
   };
 
@@ -202,8 +198,18 @@ export function createPeerConnection(
       return;
     }
 
+    const candidate = event.candidate;
+    const candidateLine = candidate.candidate || '';
+    const candidateType =
+      candidateLine.match(/ typ ([a-z0-9]+)/i)?.[1] || 'unknown';
+
     console.log(
-      '🧊 Local ICE candidate generated'
+      '🧊 Local ICE candidate generated:',
+      {
+        type: candidateType,
+        sdpMid: candidate.sdpMid,
+        sdpMLineIndex: candidate.sdpMLineIndex,
+      }
     );
 
     if (onIceCandidate) {
@@ -230,36 +236,8 @@ export function createPeerConnection(
     );
   };
 
-  // ========================================
-  // ICE CONNECTION STATE
-  // ========================================
-  pc.oniceconnectionstatechange = () => {
-    console.log(
-      '🧊 ICE Connection State:',
-      pc.iceConnectionState
-    );
-  };
-
-  // ========================================
-  // CONNECTION STATE
-  // ========================================
-  pc.onconnectionstatechange = () => {
-    console.log(
-      '📡 WebRTC Connection State:',
-      pc.connectionState
-    );
-  };
-
-  // ========================================
-  // SIGNALING STATE
-  // ========================================
-  pc.onsignalingstatechange = () => {
-    console.log(
-      '📶 Signaling State:',
-      pc.signalingState
-    );
-  };
-
+  // Connection/signaling state handlers are intentionally owned by
+  // useCallLogic so a single listener updates call UI state.
   // ========================================
   // ICE CANDIDATE ERROR
   // ========================================

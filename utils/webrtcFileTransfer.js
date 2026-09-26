@@ -254,17 +254,23 @@ export async function sendFileOverDataChannel({ dataChannel, fileUri, fileName, 
   }));
 
   let offset = 0;
+  const MAX_BUFFERED_BYTES = 512 * 1024;
   while (offset < totalSize) {
+    while (Number(dataChannel.bufferedAmount || 0) > MAX_BUFFERED_BYTES) {
+      await new Promise(resolve => setTimeout(resolve, 25));
+      if (dataChannel.readyState !== 'open') throw new Error('P2P connection closed during transfer.');
+    }
+
     const end = Math.min(offset + CHUNK_SIZE, totalSize);
     const chunk = bytes.slice(offset, end);
     let binary = '';
     for (let i = 0; i < chunk.length; i++) binary += String.fromCharCode(chunk[i]);
-    
+
     dataChannel.send(JSON.stringify({ type: 'file-chunk', data: btoa(binary) }));
     offset = end;
 
     if (onProgress) onProgress(Math.min(offset / Math.max(totalSize, 1), 1));
-    await new Promise((resolve) => { setTimeout(resolve, 0); }); // Yield to JS event loop
+    await new Promise(resolve => setTimeout(resolve, 0));
   }
 
   dataChannel.send(JSON.stringify({ type: 'file-end' }));

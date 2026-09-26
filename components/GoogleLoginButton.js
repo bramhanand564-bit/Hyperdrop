@@ -3,7 +3,7 @@ import { TouchableOpacity, Text, ActivityIndicator, Alert, StyleSheet } from 're
 import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 // 🔥 यहाँ Drive बैकअप के लिए scopes और offlineAccess ऐड किया गया है
@@ -29,19 +29,36 @@ export default function GoogleLoginButton({ textMain, disabled }) {
       const userCredential = await signInWithCredential(auth, googleCredential);
       const user = userCredential.user;
 
-      // नए यूजर के लिए रैंडम यूज़रनेम बनाना (ताकि ऐप क्रैश न हो)
-      const emailPrefix = user.email ? user.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user';
-      const randomNum = Math.floor(Math.random() * 10000);
-      const fallbackUsername = `${emailPrefix}${randomNum}`;
+      // IMPORTANT: Google Sign-In can run every time the same Gmail logs in.
+      // Never generate a new username for an existing user.
+      const userRef = doc(db, 'users', user.uid);
+      const existingProfile = await getDoc(userRef);
+      const existingData = existingProfile.exists() ? existingProfile.data() : null;
 
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: user.email || '',
-        username: `@${fallbackUsername}`,
-        usernameLower: fallbackUsername,
-        online: true,
-        createdAt: new Date()
-      }, { merge: true });
+      if (existingData?.username || existingData?.usernameLower) {
+        // Existing account: preserve the original username/ID.
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email || existingData.email || '',
+          online: true,
+        }, { merge: true });
+      } else {
+        // First Google login: generate a username once.
+        const emailPrefix = user.email
+          ? user.email.split('@')[0].replace(/[^a-z0-9_]/gi, '').toLowerCase()
+          : 'user';
+        const safePrefix = emailPrefix || 'user';
+        const fallbackUsername = safePrefix + Math.floor(Math.random() * 10000);
+
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email || '',
+          username: '@' + fallbackUsername,
+          usernameLower: fallbackUsername,
+          online: true,
+          createdAt: new Date()
+        }, { merge: true });
+      }
 
     } catch (error) {
       console.log('Google Auth Error:', error);

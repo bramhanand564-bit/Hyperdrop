@@ -3,6 +3,7 @@
 // ==========================================
 import { useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
+import { Audio } from 'expo-av';
 import {
   RTCSessionDescription,
   RTCIceCandidate,
@@ -75,6 +76,7 @@ export default function useCallLogic(route, navigation) {
   // REFS
   // ==========================================
   const peerRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const callRef = useRef(null);
 
   const cleanupListenersRef = useRef([]);
@@ -84,6 +86,24 @@ export default function useCallLogic(route, navigation) {
   const navigationHandledRef = useRef(false);
 
   const timerRef = useRef(null);
+
+  // Android WebRTC can leave the global audio route in communication mode
+  // after a call. Keep the app audio session explicitly on the main speaker
+  // and restore it when the call is finished.
+  const setCallAudioMode = async (active) => {
+    try {
+      await Audio.setIsEnabledAsync(true);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: active,
+        playsInSilentModeIOS: false,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: active,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (error) {
+      console.log('🔊 Audio mode update error:', error);
+    }
+  };
 
   // ICE candidates received before remote SDP
   const iceCandidateQueue = useRef([]);
@@ -96,6 +116,48 @@ export default function useCallLogic(route, navigation) {
 
   // Prevent offer from being processed more than once
   const offerProcessedRef = useRef(false);
+
+  // Diagnostics for future call debugging without another full repo scan.
+  const localIceCandidateCountRef = useRef(0);
+  const remoteIceCandidateCountRef = useRef(0);
+
+  const hasMediaSection = (sdp, media) =>
+    new RegExp(`(?:^|\\r?\\n)m=${media} `, 'i').test(sdp || '');
+
+  const getCandidateType = (candidate) => {
+    const value = candidate?.candidate || '';
+    return value.match(/ typ ([a-z0-9]+)/i)?.[1] || 'unknown';
+  };
+
+  // Save a fully gathered SDP in addition to trickled candidates.
+  // This makes call setup resilient when candidate subcollection delivery
+  // is delayed or a deployed Firestore rule set is stale.
+  const waitForIceGatheringComplete = (pc, timeoutMs = 8000) => {
+    if (!pc || pc.iceGatheringState === 'complete') {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        pc.onicegatheringstatechange = null;
+        resolve();
+      };
+
+      const timeout = setTimeout(finish, timeoutMs);
+
+      pc.onicegatheringstatechange = () => {
+        console.log('🧊 ICE Gathering State:', pc.iceGatheringState);
+        if (pc.iceGatheringState === 'complete') {
+          finish();
+        }
+      };
+    });
+  };
 
   // ==========================================
   // TIMER
@@ -179,6 +241,16 @@ export default function useCallLogic(route, navigation) {
           await pc.addIceCandidate(
             new RTCIceCandidate(candidateData)
           );
+
+          remoteIceCandidateCountRef.current += 1;
+
+          console.log(
+            '✅ Remote ICE candidate added:',
+            {
+              type: getCandidateType(candidateData),
+              count: remoteIceCandidateCountRef.current,
+            }
+          );
         } catch (error) {
           console.log(
             '❌ Remote ICE Candidate Error:',
@@ -212,6 +284,22 @@ export default function useCallLogic(route, navigation) {
           return;
         }
 
+        remoteStreamRef.current = remote;
+
+        const videoTracks = remote.getVideoTracks?.() || [];
+        const audioTracks = remote.getAudioTracks?.() || [];
+
+        console.log(
+          '🎥 Remote stream accepted:',
+          {
+            audio: audioTracks.length,
+            video: videoTracks.length,
+            streamUrl: remote.toURL?.(),
+          }
+        );
+
+        // webrtcHelper only publishes a video-call stream once a video track
+        // exists, so RTCView mounts against a stream that is already drawable.
         setRemoteStream(remote);
         setBusy(false);
       },
@@ -231,6 +319,10 @@ export default function useCallLogic(route, navigation) {
             ? 'offerCandidates'
             : 'answerCandidates';
 
+          const candidateData = candidate.toJSON();
+
+          localIceCandidateCountRef.current += 1;
+
           await addDoc(
             collection(
               db,
@@ -238,11 +330,15 @@ export default function useCallLogic(route, navigation) {
               callId,
               collectionName
             ),
-            candidate.toJSON()
+            candidateData
           );
 
           console.log(
-            `🧊 Local ICE candidate saved: ${collectionName}`
+            `🧊 Local ICE candidate saved: ${collectionName}`,
+            {
+              type: getCandidateType(candidateData),
+              count: localIceCandidateCountRef.current,
+            }
           );
         } catch (error) {
           console.log(
@@ -275,6 +371,23 @@ export default function useCallLogic(route, navigation) {
         setConnected(true);
         setBusy(false);
         setStatus('Connected');
+
+        try {
+          const receivers = pc.getReceivers?.() || [];
+          console.log(
+            '🎬 Remote receivers at ICE connected:',
+            receivers.map((receiver) => ({
+              kind: receiver?.track?.kind,
+              readyState: receiver?.track?.readyState,
+              enabled: receiver?.track?.enabled,
+            }))
+          );
+        } catch (error) {
+          console.log(
+            'ℹ️ Receiver diagnostics unavailable:',
+            error?.message || error
+          );
+        }
 
         // Tell the other side that WebRTC is actually connected.
         updateConnectedStatus();
@@ -644,21 +757,32 @@ export default function useCallLogic(route, navigation) {
         type === 'video',
     });
 
-    await pc.setLocalDescription(
-      offer
-    );
+    await pc.setLocalDescription(offer);
+
+    await waitForIceGatheringComplete(pc);
+
+    const gatheredOffer = pc.localDescription || offer;
 
     console.log(
-      '📤 Local offer created'
+      '📤 Local offer created',
+      {
+        hasAudio: hasMediaSection(gatheredOffer.sdp, 'audio'),
+        hasVideo: hasMediaSection(gatheredOffer.sdp, 'video'),
+        sdpLength: gatheredOffer.sdp?.length || 0,
+      }
     );
+
+    if (type === 'video' && !hasMediaSection(gatheredOffer.sdp, 'video')) {
+      throw new Error('Video offer was created without an m=video section.');
+    }
 
     // ----------------------------------------
     // SAVE OFFER
     // ----------------------------------------
     await updateDoc(callDoc, {
       offer: {
-        type: offer.type,
-        sdp: offer.sdp,
+        type: gatheredOffer.type,
+        sdp: gatheredOffer.sdp,
       },
     });
 
@@ -746,8 +870,22 @@ export default function useCallLogic(route, navigation) {
           answerAppliedRef.current = true;
 
           console.log(
-            '📥 Applying remote answer'
+            '📥 Applying remote answer',
+            {
+              hasAudio: hasMediaSection(data.answer?.sdp, 'audio'),
+              hasVideo: hasMediaSection(data.answer?.sdp, 'video'),
+              sdpLength: data.answer?.sdp?.length || 0,
+            }
           );
+
+          if (
+            type === 'video' &&
+            !hasMediaSection(data.answer?.sdp, 'video')
+          ) {
+            throw new Error(
+              'Remote answer was created without an m=video section.'
+            );
+          }
 
           await pc.setRemoteDescription(
             new RTCSessionDescription(
@@ -925,6 +1063,11 @@ export default function useCallLogic(route, navigation) {
         '🎥 Incoming local camera + microphone ready'
       );
 
+      if (mountedRef.current) {
+        setBusy(false);
+        setStatus('Connecting...');
+      }
+
       // ----------------------------------------
       // CREATE PEER
       // ----------------------------------------
@@ -941,41 +1084,89 @@ export default function useCallLogic(route, navigation) {
       );
 
       // ----------------------------------------
-      // GET CALL DOCUMENT
+      // WAIT FOR CALLER OFFER
       // ----------------------------------------
-      const snap =
-        await getDoc(callDoc);
+      // The receiver can tap Accept before the caller's
+      // Firestore offer update arrives. Do not fail the
+      // call in that race; wait for the offer briefly.
+      const data = await new Promise((resolve, reject) => {
+        let settled = false;
+        let unsubscribe = () => {};
+        const timeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          try { unsubscribe(); } catch (_) {}
+          reject(new Error('Caller offer timed out. Please try again.'));
+        }, 15000);
 
-      const data =
-        snap.data();
+        unsubscribe = onSnapshot(
+          callDoc,
+          snapshot => {
+            const next = snapshot.data();
 
-      if (!data) {
-        throw new Error(
-          'Call no longer exists.'
+            if (!next) {
+              clearTimeout(timeout);
+              settled = true;
+              try { unsubscribe(); } catch (_) {}
+              reject(new Error('Call no longer exists.'));
+              return;
+            }
+
+            if (next.status === 'ended' || next.status === 'rejected') {
+              clearTimeout(timeout);
+              settled = true;
+              try { unsubscribe(); } catch (_) {}
+              reject(new Error('Call has ended.'));
+              return;
+            }
+
+            if (next.offer && !settled) {
+              clearTimeout(timeout);
+              settled = true;
+              try { unsubscribe(); } catch (_) {}
+              resolve(next);
+            }
+          },
+          error => {
+            clearTimeout(timeout);
+            settled = true;
+            try { unsubscribe(); } catch (_) {}
+            reject(error);
+          }
         );
-      }
 
-      if (!data.offer) {
-        throw new Error(
-          'Caller offer not found.'
-        );
-      }
+        cleanupListenersRef.current.push(() => {
+          clearTimeout(timeout);
+          try { unsubscribe(); } catch (_) {}
+        });
+      });
 
-      if (
-        offerProcessedRef.current
-      ) {
+      if (offerProcessedRef.current) {
         return;
       }
 
-      offerProcessedRef.current =
-        true;
+      offerProcessedRef.current = true;
 
       // ----------------------------------------
       // SET REMOTE OFFER
       // ----------------------------------------
       console.log(
-        '📥 Applying caller offer'
+        '📥 Applying caller offer',
+        {
+          hasAudio: hasMediaSection(data.offer?.sdp, 'audio'),
+          hasVideo: hasMediaSection(data.offer?.sdp, 'video'),
+          sdpLength: data.offer?.sdp?.length || 0,
+        }
       );
+
+      if (
+        type === 'video' &&
+        !hasMediaSection(data.offer?.sdp, 'video')
+      ) {
+        throw new Error(
+          'Caller offer was created without an m=video section.'
+        );
+      }
 
       await pc.setRemoteDescription(
         new RTCSessionDescription(
@@ -1007,13 +1198,24 @@ export default function useCallLogic(route, navigation) {
       // ----------------------------------------
       // SET LOCAL ANSWER
       // ----------------------------------------
-      await pc.setLocalDescription(
-        answer
-      );
+      await pc.setLocalDescription(answer);
+
+      await waitForIceGatheringComplete(pc);
+
+      const gatheredAnswer = pc.localDescription || answer;
 
       console.log(
-        '📤 Local answer created'
+        '📤 Local answer created',
+        {
+          hasAudio: hasMediaSection(gatheredAnswer.sdp, 'audio'),
+          hasVideo: hasMediaSection(gatheredAnswer.sdp, 'video'),
+          sdpLength: gatheredAnswer.sdp?.length || 0,
+        }
       );
+
+      if (type === 'video' && !hasMediaSection(gatheredAnswer.sdp, 'video')) {
+        throw new Error('Video answer was created without an m=video section.');
+      }
 
       // ----------------------------------------
       // SAVE ANSWER
@@ -1022,8 +1224,8 @@ export default function useCallLogic(route, navigation) {
         callDoc,
         {
           answer: {
-            type: answer.type,
-            sdp: answer.sdp,
+            type: gatheredAnswer.type,
+            sdp: gatheredAnswer.sdp,
           },
         }
       );
@@ -1103,6 +1305,7 @@ export default function useCallLogic(route, navigation) {
   // ==========================================
   const startCall = async () => {
     try {
+      await setCallAudioMode(true);
       if (!currentUser?.uid) {
         throw new Error(
           'Login required.'
@@ -1223,6 +1426,10 @@ export default function useCallLogic(route, navigation) {
     // ICE QUEUE
     // ----------------------------------------
     iceCandidateQueue.current = [];
+    localIceCandidateCountRef.current = 0;
+    remoteIceCandidateCountRef.current = 0;
+    answerAppliedRef.current = false;
+    offerProcessedRef.current = false;
 
     // ----------------------------------------
     // RESET ICE PROCESSING
@@ -1267,11 +1474,25 @@ export default function useCallLogic(route, navigation) {
     // ----------------------------------------
     // REMOTE STREAM
     // ----------------------------------------
+    try {
+      if (remoteStreamRef.current) {
+        remoteStreamRef.current.getTracks?.().forEach((track) => {
+          try { track.stop(); } catch (_) {}
+        });
+        remoteStreamRef.current = null;
+      }
+    } catch (error) {
+      console.log('❌ Remote media cleanup error:', error);
+    }
+
     if (mountedRef.current) {
       setRemoteStream(null);
       setConnected(false);
       setBusy(false);
     }
+
+    // Explicitly restore normal app audio/speaker routing after WebRTC.
+    setCallAudioMode(false);
 
     // ----------------------------------------
     // NAVIGATION
@@ -1312,6 +1533,7 @@ export default function useCallLogic(route, navigation) {
     localStreamRef,
 
     remoteStream,
+
 
     isMuted,
     isCameraOff,

@@ -65,7 +65,13 @@ export default function CallScreen({ route, navigation }) {
       <View style={styles.videoContainer}>
         {/* Remote Video (Friend) */}
         {remoteStream ? (
-          <RTCView streamURL={remoteStream.toURL()} style={styles.remoteVideo} objectFit="cover" mirror={false} />
+          <RTCView
+            streamURL={remoteStream.toURL()}
+            style={styles.remoteVideo}
+            objectFit="cover"
+            mirror={false}
+            zOrder={0}
+          />
         ) : (
           <View style={styles.waitingVideo}>
             <Ionicons name="videocam" size={55} color="#5E7485" />
@@ -76,7 +82,13 @@ export default function CallScreen({ route, navigation }) {
 
         {/* Local Video (You) */}
         {localStream && !isCameraOff && (
-          <RTCView streamURL={localStream.toURL()} style={styles.localVideo} objectFit="cover" mirror={facing === 'front'} />
+          <RTCView
+            streamURL={localStream.toURL()}
+            style={styles.localVideo}
+            objectFit="cover"
+            mirror={facing === 'front'}
+            zOrder={1}
+          />
         )}
 
         <SafeAreaView style={styles.videoOverlay}>

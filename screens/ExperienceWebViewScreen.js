@@ -10,7 +10,7 @@ import { URLValidator } from '../security/URLValidator';
 import RateLimiter from '../security/RateLimiter';
 import AuditLogger from '../security/AuditLogger'; 
 
-export default function WebPortalScreen({ route, navigation }) {
+export default function ExperienceWebViewScreen({ route, navigation }) {
   // 📥 Nax Studio से AI जनरेटेड `htmlCode` आएगा, या फिर नॉर्मल `url`
   const { title = 'Mini-App', url, htmlCode, isPremium = false } = route.params || {};
   const { isDark } = useTheme();
@@ -30,7 +30,7 @@ export default function WebPortalScreen({ route, navigation }) {
 
   // 🧠 THE SUPER BRIDGE: Nax Data & Local AI Hardware Check
   const injectedCode = `
-    window.NaxPortal = {
+    window.NaxExperience = {
       user: {
         uid: ${JSON.stringify(portalUser.uid)},
         name: ${JSON.stringify(portalUser.name)},
@@ -84,7 +84,7 @@ export default function WebPortalScreen({ route, navigation }) {
           Alert.alert('Watch Party', 'A valid HTTPS watch-party URL is required.');
           return;
         }
-        navigation.navigate('WebPortal', { title: `${title} Watch Party`, url: targetUrl });
+        navigation.navigate('ExperienceWebView', { title: `${title} Watch Party`, url: targetUrl });
       }
     } catch (e) {
       console.error("Bridge Error:", e);
@@ -116,7 +116,7 @@ export default function WebPortalScreen({ route, navigation }) {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert("Menu", "Portal Settings")}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => Alert.alert("Menu", "Experience Settings")}>
           <Ionicons name="ellipsis-vertical" size={24} color={textMain} />
         </TouchableOpacity>
       </View>

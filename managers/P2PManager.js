@@ -4,52 +4,7 @@
 import { useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-const getWebRTC = () => require('../utils/webrtcHelper').default;
 const getFileTransfer = () => require('../utils/webrtcFileTransfer'); 
-
-// ==========================================
-// 🎮 NAX PORTAL SYNC ENGINE (New Feature)
-// ==========================================
-// इसे अलग से export कर रहे हैं ताकि WebPortalScreen इसे सीधा यूज़ कर सके
-export const PortalSyncEngine = {
-  activeRoomId: null,
-
-  joinPortalRoom: async (roomId, user, onSyncUpdate) => {
-    console.log(`[Portal Engine] ${user?.displayName || 'User'} joining Room: ${roomId}`);
-    PortalSyncEngine.activeRoomId = roomId;
-    
-    // WebRTC रूम से कनेक्ट करना
-    getWebRTC().connectToRoom(roomId, user?.uid, (peerId, message) => {
-      try {
-        const parsedMessage = JSON.parse(message);
-        if (parsedMessage.type === 'PORTAL_SYNC') {
-          console.log(`[Portal Engine] Sync data received from ${peerId}:`, parsedMessage.data);
-          onSyncUpdate(parsedMessage.data); 
-        }
-      } catch (error) {
-        console.error("Error parsing P2P message:", error);
-      }
-    });
-  },
-
-  broadcastPortalState: (syncData) => {
-    if (!PortalSyncEngine.activeRoomId) {
-      console.warn("Cannot broadcast: Not in a Portal Room.");
-      return;
-    }
-    const payload = JSON.stringify({ type: 'PORTAL_SYNC', data: syncData });
-    getWebRTC().broadcast(PortalSyncEngine.activeRoomId, payload);
-    console.log(`[Portal Engine] State Broadcasted:`, syncData);
-  },
-
-  leaveRoom: () => {
-    if (PortalSyncEngine.activeRoomId) {
-      getWebRTC().disconnect(PortalSyncEngine.activeRoomId);
-      PortalSyncEngine.activeRoomId = null;
-      console.log("[Portal Engine] Left Portal Room");
-    }
-  }
-};
 
 // ==========================================
 // 🔒 ORIGINAL FILE TRANSFER MANAGER (Untouched)

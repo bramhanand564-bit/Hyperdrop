@@ -7,6 +7,9 @@ import{Video,ResizeMode,Audio}from'expo-av';
 import*as FileSystem from'expo-file-system';
 import{deleteCloudinaryByToken}from'../../utils/cloudinaryUpload';
 import MessagingService from'../../messaging/MessagingService';
+import ExperienceAPI from'../../api/ExperienceAPI';
+
+const nowDate=()=>new Date().toISOString().slice(0,10); const nowTime=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
 
 function VoiceNote({uri,isDark}){
  const[sound,setSound]=useState(null);const[playing,setPlaying]=useState(false);
@@ -18,7 +21,7 @@ function VoiceNote({uri,isDark}){
 
 function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation}){
  const{isDark,theme}=useTheme();
- const[imageOpen,setImageOpen]=useState(false),[actionOpen,setActionOpen]=useState(false),[editOpen,setEditOpen]=useState(false),[editText,setEditText]=useState(item.text||''),[local,setLocal]=useState(item.fileUri),[openedOnce,setOpenedOnce]=useState(!!item.viewOnceOpenedBy?.[auth.currentUser?.uid]);
+ const[imageOpen,setImageOpen]=useState(false),[actionOpen,setActionOpen]=useState(false),[editOpen,setEditOpen]=useState(false),[editText,setEditText]=useState(item.text||''),[local,setLocal]=useState(item.fileUri),[openedOnce,setOpenedOnce]=useState(!!item.viewOnceOpenedBy?.[auth.currentUser?.uid]),[experienceValues,setExperienceValues]=useState({}),[experienceBusy,setExperienceBusy]=useState('');
  const other=theme.text,sub=theme.sub;
  const time=t=>{if(!t)return'';const d=t.toDate?t.toDate():new Date(t);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})};
  useEffect(()=>{let mounted=true;(async()=>{if(!isMe&&item.fileUri&&item.deleteToken){try{const ext=item.fileName?.includes('.')?item.fileName.slice(item.fileName.lastIndexOf('.')):(item.type==='video'?'.mp4':item.type==='image'?'.jpg':'.bin');const path=`${FileSystem.documentDirectory}nax_media_${item.id}${ext}`;const info=await FileSystem.getInfoAsync(path);const r=info.exists?{uri:path,status:200}:await FileSystem.downloadAsync(item.fileUri,path);if(r.status===200&&mounted){setLocal(r.uri);await deleteCloudinaryByToken(item.deleteToken)}}catch(e){}}})();return()=>{mounted=false}},[item.fileUri,item.deleteToken,item.id,isMe]);
@@ -29,6 +32,17 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
   if(action==='star')await MessagingService.toggleStar(chatId,item.id);if(action==='pin')await MessagingService.pinMessage(chatId,item.id);
   if(action==='delete')await MessagingService.deleteMessage(chatId,item.id,true);if(action==='edit'){setEditText(item.text||'');setEditOpen(true)}
  }catch(e){Alert.alert('Message',e.message||'Action failed.')}};
+ const runExperienceAction=async action=>{
+  if(!item.experienceId||!action||experienceBusy)return;
+  const missing=(item.experienceSchema?.fields||[]).find(f=>f.required&&(experienceValues[f.id]===undefined||experienceValues[f.id]===null||experienceValues[f.id]===''||(f.type==='Checkbox'&&experienceValues[f.id]===false)));
+  if(missing&&['complete','submit','claim','book','pay','approve'].includes(String(action.label||'').toLowerCase())){
+   return Alert.alert('Required field',`Please complete: ${missing.label||missing.id}`);
+  }
+  setExperienceBusy(action.id);
+  try{await ExperienceAPI.performAction(item.experienceId,action,experienceValues,{chatId});Alert.alert('Experience',`✓ ${action.label} recorded`);}
+  catch(e){Alert.alert('Experience',e.message||'Action failed.')}
+  finally{setExperienceBusy('');}
+ };
  const renderPoll=()=>{const votes=item.poll?.votes||{};return <View><Text style={{color:isMe?'#FFF':other,fontWeight:'900'}}>{item.poll.question}</Text>{(item.poll.options||[]).map((o,i)=>{const count=Object.values(votes).filter(v=>v===i).length;const mine=votes[auth.currentUser?.uid]===i;return <TouchableOpacity key={i}onPress={()=>MessagingService.votePoll(chatId,item.id,i).catch(e=>Alert.alert('Poll',e.message||'Vote failed'))}style={[s.pollOption,{backgroundColor:mine?'rgba(8,126,255,.14)':theme.input,borderColor:theme.border}]}><Text style={{color:other,flex:1}}>{o}</Text><Text style={{color:sub,fontWeight:'800'}}>{count}</Text></TouchableOpacity>})}</View>};
  return <View style={[s.wrap,isMe?s.me:s.other]}>
   {!isMe&&isGlobal?<Text style={[s.sender,{color:sub}]}>@{item.senderName}</Text>:null}
@@ -42,6 +56,24 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
    {item.type==='location'&&item.location?<TouchableOpacity style={s.special} onPress={async()=>{const lat=Number(item.location.latitude ?? item.location.lat);const lng=Number(item.location.longitude ?? item.location.lng);if(!Number.isFinite(lat)||!Number.isFinite(lng))return Alert.alert('Location','Location coordinates are unavailable.');try{await Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`)}catch(e){Alert.alert('Location','Could not open maps.')}}}><Ionicons name="location"size={28}color="#5A91B8"/><Text style={{color:isMe?'#FFF':other}}>Shared location</Text></TouchableOpacity>:null}
    {item.type==='contact'&&item.contact?<View style={s.special}><Ionicons name="person-circle"size={30}color="#6D8FD6"/><View><Text style={{color:isMe?'#FFF':other,fontWeight:'800'}}>{item.contact.name||'Contact'}</Text><Text style={{color:isMe?'rgba(255,255,255,.7)':sub}}>{item.contact.phone||''}</Text></View></View>:null}
    {item.type==='poll'&&item.poll?renderPoll():null}
+   {item.type==='experience'?<View style={[s.appInvite,{backgroundColor:isMe?'rgba(255,255,255,.12)':theme.surface,borderColor:theme.border}]}>
+    <View style={s.inviteHead}><View style={[s.inviteIcon,{backgroundColor:'rgba(8,126,255,.12)'}]}><Text style={{fontSize:24}}>{item.experienceIcon||'⚡'}</Text></View><View style={{flex:1,marginLeft:10}}><Text style={{color:isMe?'#FFF':theme.text,fontSize:15,fontWeight:'900'}} numberOfLines={1}>{item.experienceName||'Experience'}</Text><Text style={{color:isMe?'rgba(255,255,255,.75)':theme.sub,fontSize:11,marginTop:3}} numberOfLines={2}>{item.experienceDescription||'Interactive experience'}</Text></View></View>
+    {(item.experienceSchema?.fields||[]).slice(0,2).map(field=><View key={field.id} style={{marginTop:7}}>
+      <Text style={{color:isMe?'rgba(255,255,255,.8)':theme.sub,fontSize:10,fontWeight:'800',marginBottom:4}}>{field.label}{field.required?' *':''}</Text>
+      {field.type==='Checkbox'?<TouchableOpacity onPress={()=>setExperienceValues(v=>({...v,[field.id]:!v[field.id]}))} style={{height:38,borderRadius:11,borderWidth:1,borderColor:theme.border,backgroundColor:theme.input,justifyContent:'center',paddingHorizontal:10}}><Text style={{color:isMe?'#FFF':theme.text,fontSize:12}}>{experienceValues[field.id]?'✓ Selected':'Select'}</Text></TouchableOpacity>
+      :field.type==='Rating'?<View style={{height:38,flexDirection:'row',alignItems:'center'}}>{[1,2,3,4,5].map(star=><TouchableOpacity key={star} onPress={()=>setExperienceValues(v=>({...v,[field.id]:star}))} style={{paddingHorizontal:4}}><Ionicons name={Number(experienceValues[field.id]||0)>=star?'star':'star-outline'} size={20} color={Number(experienceValues[field.id]||0)>=star?'#F5B301':'#9AA9B5'}/></TouchableOpacity>)}</View>
+      :field.type==='Date'||field.type==='Time'?<TouchableOpacity onPress={()=>setExperienceValues(v=>({...v,[field.id]:field.type==='Date'?nowDate():nowTime()}))} style={{height:38,borderRadius:11,borderWidth:1,borderColor:theme.border,backgroundColor:theme.input,justifyContent:'center',paddingHorizontal:10}}><Text style={{color:isMe?'#FFF':(experienceValues[field.id]?theme.text:theme.sub),fontSize:12}}>{experienceValues[field.id]||('Use current '+field.type.toLowerCase())}</Text></TouchableOpacity>
+      :<TextInput value={String(experienceValues[field.id]??'')} onChangeText={v=>setExperienceValues(prev=>({...prev,[field.id]:v}))} keyboardType={field.type==='Number'?'numeric':'default'} placeholder={field.type} placeholderTextColor={theme.sub} style={{height:38,borderRadius:11,borderWidth:1,borderColor:theme.border,backgroundColor:theme.input,paddingHorizontal:10,color:theme.text,fontSize:12}}/>}
+    </View>)}
+    <View style={{flexDirection:'row',gap:8,marginTop:9}}>
+      {(item.experienceSchema?.actions||[]).filter(a=>a.primary||a.label==='Complete'||a.label==='Submit').slice(0,2).map(action=><TouchableOpacity key={action.id} disabled={!!experienceBusy} onPress={()=>runExperienceAction(action)} style={[s.joinBtn,{flex:1,backgroundColor:theme.blue,marginTop:0,opacity:experienceBusy&&experienceBusy!==action.id?0.6:1}]}>
+        <Text style={{color:'#FFF',fontWeight:'900',fontSize:11}}>{experienceBusy===action.id?'…':action.label}</Text>
+      </TouchableOpacity>)}
+      <TouchableOpacity style={[s.joinBtn,{flex:1,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,marginTop:0}]} onPress={()=>navigation?.navigate('ExperienceRuntime',{experienceId:item.experienceId,chatId:chatId})}>
+        <Text style={{color:theme.text,fontWeight:'900',fontSize:11}}>Open</Text>
+      </TouchableOpacity>
+    </View>
+   </View>:null}
    {item.type==='app_invite'?<View style={[s.appInvite,{backgroundColor:isMe?'rgba(255,255,255,.12)':theme.surface,borderColor:theme.border}]}>
     <View style={s.inviteHead}><View style={[s.inviteIcon,{backgroundColor:'rgba(8,126,255,.12)'}]}><Ionicons name={item.appIcon||'game-controller'} size={25} color={theme.blue}/></View><View style={{flex:1,marginLeft:10}}><Text style={{color:isMe?'#FFF':theme.text,fontSize:15,fontWeight:'900'}} numberOfLines={1}>{item.appName||'Nax App'}</Text><Text style={{color:isMe?'rgba(255,255,255,.75)':theme.sub,fontSize:11,marginTop:3}} numberOfLines={2}>{item.appDescription||'Open this Nax app invite.'}</Text></View></View>
     {item.sessionId?<Text style={{color:isMe?'rgba(255,255,255,.72)':theme.sub,fontSize:10,marginTop:8}}>Multiplayer room • {String(item.sessionId).slice(0,8)}</Text>:null}

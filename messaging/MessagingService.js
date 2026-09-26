@@ -13,7 +13,7 @@ const MessagingService = {
     const senderId = requireUser();
     if (!chatId) throw new Error('Chat id is required.');
     const text = String(input.text || '').trim();
-    if (!text && !input.fileUri && !['poll','location','contact','app_invite'].includes(input.type)) return null;
+    if (!text && !input.fileUri && !['poll','location','contact','app_invite','experience'].includes(input.type)) return null;
     const timer = Number(input.ttl || 0);
     const payload = {
       text, senderId,
@@ -25,6 +25,13 @@ const MessagingService = {
       ...(input.fileUri ? { fileUri: input.fileUri, fileName: input.fileName || '' } : {}),
       ...(input.poll ? { poll: input.poll } : {}), ...(input.location ? { location: input.location } : {}),
       ...(input.contact ? { contact: input.contact } : {}),
+      ...(input.type === 'experience' ? {
+        experienceId: input.experienceId || null,
+        experienceName: input.experienceName || 'Experience',
+        experienceDescription: input.experienceDescription || '',
+        experienceIcon: input.experienceIcon || '⚡',
+        experienceSchema: input.experienceSchema || null,
+      } : {}),
       ...(input.type === 'app_invite' ? {
         appId: input.appId || null,
         appName: input.appName || 'Nax App',
@@ -43,7 +50,7 @@ const MessagingService = {
     await Promise.all([
       setDoc(ref, payload),
       setDoc(chatRef, {
-        lastMessage: text || ({app_invite:'🎮 App invite',image:'📷 Photo',video:'🎥 Video',voice:'🎤 Voice message',file:'📄 Document',location:'📍 Location',contact:'👤 Contact',poll:'📊 Poll'}[input.type] || 'Message'),
+        lastMessage: text || ({app_invite:'🎮 App invite',experience:'⚡ Experience',image:'📷 Photo',video:'🎥 Video',voice:'🎤 Voice message',file:'📄 Document',location:'📍 Location',contact:'👤 Contact',poll:'📊 Poll'}[input.type] || 'Message'),
         lastMessageTime: serverTimestamp(), ...(input.participants ? { participants: input.participants } : {}), typing: {},
       }, { merge: true }),
     ]);
@@ -99,16 +106,44 @@ const MessagingService = {
     return updateDoc(ref, { reactions });
   },
   async toggleStar(chatId, messageId) {
-    const me = requireUser(); const ref = doc(db, 'users', me, 'starred_messages', `${chatId}_${messageId}`);
+    const me = requireUser();
+    const ref = doc(db, 'users', me, 'starred_messages', `${chatId}_${messageId}`);
+    const message = messageRef(chatId, messageId);
     const snap = await getDoc(ref);
-    return snap.exists() ? deleteDoc(ref) : setDoc(ref, { chatId, messageId, createdAt: serverTimestamp() });
+    if (snap.exists()) {
+      await deleteDoc(ref);
+      await updateDoc(message, { [`starredBy.${me}`]: false });
+      return false;
+    }
+    await setDoc(ref, { chatId, messageId, createdAt: serverTimestamp() });
+    await updateDoc(message, { [`starredBy.${me}`]: true });
+    return true;
   },
-  pinMessage(chatId, messageId) { requireUser(); return updateDoc(doc(db, 'chats', chatId), { pinnedMessageId: messageId, pinnedAt: serverTimestamp() }); },
+  async pinMessage(chatId, messageId) {
+    const me = requireUser();
+    await updateDoc(doc(db, 'chats', chatId), { pinnedMessageId: messageId, pinnedAt: serverTimestamp() });
+    await updateDoc(messageRef(chatId, messageId), { pinnedAt: serverTimestamp(), [`pinnedBy.${me}`]: true });
+    return true;
+  },
   async forwardMessage(sourceChatId, messageId, targetChatId) {
     requireUser(); const snap = await getDoc(messageRef(sourceChatId, messageId));
     if (!snap.exists()) throw new Error('Message not found.');
     const data = snap.data();
-    return this.sendMessage(targetChatId, { text:data.text || '', type:data.type || 'text', fileUri:data.fileUri || null, fileName:data.fileName || '', poll:data.poll, location:data.location, contact:data.contact, forwardedFrom:{chatId:sourceChatId,messageId,senderName:data.senderName || 'User'} });
+    return this.sendMessage(targetChatId, {
+      text:data.text || '',
+      type:data.type || 'text',
+      fileUri:data.fileUri || null,
+      fileName:data.fileName || '',
+      poll:data.poll,
+      location:data.location,
+      contact:data.contact,
+      experienceId:data.experienceId,
+      experienceName:data.experienceName,
+      experienceDescription:data.experienceDescription,
+      experienceIcon:data.experienceIcon,
+      experienceSchema:data.experienceSchema,
+      forwardedFrom:{chatId:sourceChatId,messageId,senderName:data.senderName || 'User'}
+    });
   },
   setChatTimer(chatId, seconds) {
     requireUser(); const allowed=[0,86400,604800,7776000]; const value=allowed.includes(Number(seconds)) ? Number(seconds) : 0;

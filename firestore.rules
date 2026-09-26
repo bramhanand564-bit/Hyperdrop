@@ -1,0 +1,371 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================
+    // 1. USERS & SUBCOLLECTIONS
+    // =========================================================
+    match /users/{userId} {
+      // Public profile read
+      allow read: if true;
+
+      // User can modify only their own profile
+      allow write: if request.auth != null
+                    && request.auth.uid == userId;
+
+      // User-owned subcollections
+      match /{document=**} {
+        allow read, write: if request.auth != null
+                          && request.auth.uid == userId;
+      }
+    }
+
+
+    // =========================================================
+    // 2. USERNAMES
+    // =========================================================
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /Usernames/{username} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+
+    // =========================================================
+    // 3. MINI APPS
+    // =========================================================
+    match /mini_apps/{appId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+
+    // =========================================================
+    // 4. BOTS
+    // =========================================================
+    match /bots/{botId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+
+    // =========================================================
+    // 5. CHATS & MESSAGES
+    // =========================================================
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+
+    // =========================================================
+    // 6. CALLS & WEBRTC
+    // =========================================================
+    match /calls/{callId} {
+
+      // Caller creates the call.
+      allow create: if request.auth != null
+                    && request.resource.data.callerId == request.auth.uid
+                    && request.resource.data.receiverId is string
+                    && request.resource.data.receiverId != request.auth.uid;
+
+      // Only caller or receiver can read the call document.
+      allow read: if request.auth != null
+                  && (
+                    resource.data.callerId == request.auth.uid
+                    || resource.data.receiverId == request.auth.uid
+                  );
+
+      // Only caller or receiver can update a call, and the
+      // immutable participant IDs cannot be changed.
+      allow update: if request.auth != null
+                    && (
+                      resource.data.callerId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    )
+                    && request.resource.data.callerId == resource.data.callerId
+                    && request.resource.data.receiverId == resource.data.receiverId;
+
+      allow delete: if request.auth != null
+                    && (
+                      resource.data.callerId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    );
+
+      // IMPORTANT: these names must exactly match useCallLogic.js.
+      match /offerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.callerId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+
+      match /answerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.callerId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/calls/$(callId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+    }
+
+    // =========================================================
+    // 7. P2P FILE TRANSFERS
+    // =========================================================
+    match /file_transfers/{transferId} {
+      allow create: if request.auth != null
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.receiverId is string
+                    && request.resource.data.receiverId != request.auth.uid;
+
+      allow read: if request.auth != null
+                  && (
+                    resource.data.senderId == request.auth.uid
+                    || resource.data.receiverId == request.auth.uid
+                  );
+
+      allow update: if request.auth != null
+                    && (
+                      resource.data.senderId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    )
+                    && request.resource.data.senderId == resource.data.senderId
+                    && request.resource.data.receiverId == resource.data.receiverId;
+
+      allow delete: if request.auth != null
+                    && (
+                      resource.data.senderId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid
+                    );
+
+      match /offerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.senderId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+
+      match /answerCandidates/{candidateId} {
+        allow read, write: if request.auth != null
+                           && (
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.senderId == request.auth.uid
+                             ||
+                             get(
+                               /databases/$(database)/documents/file_transfers/$(transferId)
+                             ).data.receiverId == request.auth.uid
+                           );
+      }
+    }
+
+
+    // =========================================================
+    // 8. MOMENTS / POSTS / REELS
+    // =========================================================
+    match /global_moments/{momentId} {
+
+      // Authenticated users can see the Moments feed.
+      allow read: if request.auth != null;
+
+      // A user may publish only as themselves.
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.userId is string
+                    && request.resource.data.createdAt != null;
+
+      // Owner can update their own post.
+      // Other authenticated users may only change likes/saves,
+      // or increment commentsCount by exactly one.
+      allow update: if request.auth != null
+                    && (
+                      resource.data.userId == request.auth.uid
+                      ||
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'likes',
+                        'savedBy'
+                      ])
+                      ||
+                      (
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                          'commentsCount'
+                        ])
+                        && request.resource.data.commentsCount
+                           == resource.data.commentsCount + 1
+                      )
+                    );
+
+      // Only the original author can delete a Moment.
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+
+      // -------------------------
+      // Moment comments
+      // -------------------------
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500;
+
+        allow update: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+
+        allow delete: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+      }
+    }
+
+
+    // =========================================================
+    // 9. STORIES
+    // =========================================================
+    match /global_stories/{storyId} {
+
+      allow read: if request.auth != null;
+
+      // A user may publish only their own Story.
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.userId is string
+                    && request.resource.data.createdAt != null;
+
+      // Owner can update their own Story.
+      // Everyone else may only modify likes.
+      allow update: if request.auth != null
+                    && (
+                      resource.data.userId == request.auth.uid
+                      ||
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'likes'
+                      ])
+                    );
+
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+
+      // -------------------------
+      // Story replies
+      // -------------------------
+      match /replies/{replyId} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500;
+
+        allow update: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+
+        allow delete: if request.auth != null
+                      && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    // =========================================================
+    // 10. HYPERDROP EXPERIENCES
+    // =========================================================
+    match /experiences/{experienceId} {
+      // Published experiences are discoverable; disabled ones remain visible only to their creator.
+      allow read: if request.auth != null
+                  && (resource.data.status != 'disabled' || resource.data.creatorId == request.auth.uid);
+
+      // A creator can publish only as themselves.
+      allow create: if request.auth != null
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 80;
+
+      // Only the creator can change the experience definition/status.
+      allow update, delete: if request.auth != null
+                            && resource.data.creatorId == request.auth.uid;
+
+      // Per-user participation state. User can only write their own
+      // participation; the creator can read it for management/analytics.
+      match /participants/{userId} {
+        allow read: if request.auth != null
+                    && (
+                      request.auth.uid == userId
+                      || get(
+                        /databases/$(database)/documents/experiences/$(experienceId)
+                      ).data.creatorId == request.auth.uid
+                    );
+
+        allow create, update: if request.auth != null
+                             && request.auth.uid == userId
+                             && request.resource.data.userId == request.auth.uid
+                             && (
+                               get(/databases/$(database)/documents/experiences/$(experienceId)).data.status != 'disabled'
+                               || get(/databases/$(database)/documents/experiences/$(experienceId)).data.creatorId == request.auth.uid
+                             );
+
+        allow delete: if request.auth != null
+                     && (request.auth.uid == userId
+                         || get(
+                           /databases/$(database)/documents/experiences/$(experienceId)
+                         ).data.creatorId == request.auth.uid);
+      }
+
+      // Immutable event records. Users can append their own events;
+      // the creator can read them for the dashboard.
+      match /events/{eventId} {
+        allow read: if request.auth != null
+                    && (
+                      resource.data.userId == request.auth.uid
+                      || get(
+                        /databases/$(database)/documents/experiences/$(experienceId)
+                      ).data.creatorId == request.auth.uid
+                    );
+
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.createdAt != null
+                      && request.resource.data.actionId is string
+                      && request.resource.data.actionId.size() <= 120
+                      && (
+                        get(/databases/$(database)/documents/experiences/$(experienceId)).data.status != 'disabled'
+                        || get(/databases/$(database)/documents/experiences/$(experienceId)).data.creatorId == request.auth.uid
+                      );
+
+        allow update, delete: if request.auth != null
+                                  && get(
+                                    /databases/$(database)/documents/experiences/$(experienceId)
+                                  ).data.creatorId == request.auth.uid;
+      }
+    }
+
+  }
+}
