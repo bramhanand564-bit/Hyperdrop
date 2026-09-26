@@ -51,7 +51,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
       const id = route.params?.project?.id;
       if (id) {
         const full = await AIAppBuilderService.getProject(id);
-        if (full) setProject(full);
+        if (full) { setProject(full); setMessages(full.chat || []); }
       } else if (!project) {
         const current = await AIAppBuilderService.getCurrent();
         if (current) setProject(current);
@@ -78,12 +78,14 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     try {
       let current = project;
       if (!current) current = await AIAppBuilderService.createProject({ name: request.slice(0, 50), request });
-      const draft = await AIAppBuilderService.buildWithAI({ project: current, request, connectionId, model });
-      const next = await AIAppBuilderService.applyBuild(current, draft, request);
+      const chatHistory = [...messages, { role: 'user', content: request }];
+      const draft = await AIAppBuilderService.buildWithAI({ project: current, request, connectionId, model, chat: chatHistory });
+      const next = await AIAppBuilderService.applyBuild(current, draft, request, chatHistory);
+      const assistant = { role: 'assistant', content: draft.summary || 'Build updated.' };
       setProject(next);
+      setMessages(m => [...m, assistant]);
       const selected = next.files?.[selectedFile] != null ? selectedFile : (next.target === 'SINGLE_HTML' ? 'index.html' : Object.keys(next.files || {})[0]);
       if (selected) setSelectedFile(selected);
-      setMessages(m => [...m, { role: 'assistant', content: draft.summary || 'Build updated.' }]);
       setInput('');
       setTab('preview');
     } catch (e) {
