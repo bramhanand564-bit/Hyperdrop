@@ -24,14 +24,20 @@ const slug = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9
 
 export default function ExperienceBuilder({ route, navigation }) {
   const { theme } = useTheme();
-  const template = route?.params?.template || 'custom';
+  const aiDraft = route?.params?.aiDraft || null;
+  const template = aiDraft?.template || route?.params?.template || 'custom';
   const experienceId = route?.params?.experienceId || null;
   const initial = TEMPLATE_DEFAULTS[template] || TEMPLATE_DEFAULTS.custom;
-  const [name,setName]=useState(initial.name),[description,setDescription]=useState(initial.description),[icon,setIcon]=useState(initial.icon);
-  const [actions,setActions]=useState(initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0})));
-  const [fields,setFields]=useState(initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)})));
-  const [trigger,setTrigger]=useState(actions[0]?.id || 'on_action');
-  const [rewardEnabled,setRewardEnabled]=useState(false),[rewardPoints,setRewardPoints]=useState('100');
+  const initialName = aiDraft?.name || initial.name;
+  const initialDescription = aiDraft?.description || initial.description;
+  const initialIcon = aiDraft?.icon || initial.icon;
+  const initialActions = aiDraft?.actions?.length ? aiDraft.actions : initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0,access:'anyone'}));
+  const initialFields = aiDraft?.fields?.length ? aiDraft.fields : initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}));
+  const [name,setName]=useState(initialName),[description,setDescription]=useState(initialDescription),[icon,setIcon]=useState(initialIcon);
+  const [actions,setActions]=useState(initialActions.map((a,i)=>({...a,id:a.id||slug(a.label),primary:a.primary??i===0,access:a.access||'anyone'})));
+  const [fields,setFields]=useState(initialFields.map((f,i)=>({...f,id:f.id||`field_${i+1}`})));
+  const [trigger,setTrigger]=useState(initialActions[0]?.id || 'on_action');
+  const [rewardEnabled,setRewardEnabled]=useState(Boolean(aiDraft?.rewardEnabled)),[rewardPoints,setRewardPoints]=useState(String(aiDraft?.rewardPoints || 100));
   const [webUrl,setWebUrl]=useState('');
   const [gatewayEnabled,setGatewayEnabled]=useState(true),[chatEnabled,setChatEnabled]=useState(true),[chatPresentation,setChatPresentation]=useState('card'),[visibility,setVisibility]=useState('public');
   const [customAction,setCustomAction]=useState(''),[customFieldLabel,setCustomFieldLabel]=useState('');
