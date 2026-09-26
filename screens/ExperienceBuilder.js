@@ -43,7 +43,7 @@ export default function ExperienceBuilder({ route, navigation }) {
       const existingActions = item.schema?.actions || initial.actions.map((label,i)=>({id:slug(label),label,primary:i===0}));
       const primaryAction = existingActions.find(a=>a.primary) || existingActions[0];
       const primaryId = primaryAction ? (primaryAction.id || slug(primaryAction.label)) : '';
-      setActions(existingActions.map(a=>({...a,id:a.id||slug(a.label),primary:(a.id||slug(a.label))===primaryId})));
+      setActions(existingActions.map(a=>({...a,id:a.id||slug(a.label),primary:(a.id||slug(a.label))===primaryId,access:a.access||'anyone'})));
       setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
       setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||(item.schema?.actions?.[0] ? (item.schema.actions[0].id || slug(item.schema.actions[0].label)) : ''));setWebUrl(item.schema?.web?.url||'');
     }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
@@ -56,7 +56,7 @@ export default function ExperienceBuilder({ route, navigation }) {
     const id=slug(clean)+`_${Date.now().toString(36).slice(-4)}`;
     setActions(prev=>[...prev,{id,label:clean,primary:prev.length===0}]);
   };
-  const addPresetAction = label => setActions(prev=>prev.some(a=>a.label===label)?prev:[...prev,{id:slug(label),label,primary:prev.length===0}]);
+  const addPresetAction = label => setActions(prev=>prev.some(a=>a.label===label)?prev:[...prev,{id:slug(label),label,primary:prev.length===0,access:'anyone'}]);
   const removeAction=id=>{
     setActions(prev=>{
       const next=prev.filter(a=>a.id!==id);
@@ -66,6 +66,7 @@ export default function ExperienceBuilder({ route, navigation }) {
     });
   };
   const togglePrimary=id=>setActions(prev=>prev.map(a=>({...a,primary:a.id===id})));
+  const cycleAccess=id=>setActions(prev=>prev.map(a=>a.id===id?{...a,access:a.access==='creator'?'admin':a.access==='admin'?'anyone':'creator'}:a));
   const addField = (type,label) => {
     const clean=String(label||'').trim() || type;
     setFields(prev=>[...prev,{id:`field_${Date.now().toString(36)}`,type,label:clean,required:['Text','Number'].includes(type)}]);
@@ -77,6 +78,7 @@ export default function ExperienceBuilder({ route, navigation }) {
     version:3,
     fields,
     actions,
+    actionPermissions:Object.fromEntries(actions.map(action=>[action.id,action.access||'anyone'])),
     rules: actions.map(action=>({
       when: action.id,
       set: {
@@ -126,7 +128,7 @@ export default function ExperienceBuilder({ route, navigation }) {
       <TextInput value={webUrl} onChangeText={setWebUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="https://your-experience.example" placeholderTextColor={theme.sub}/>
 
       <View style={styles.sectionHead}><Text style={[styles.label,{color:theme.text,marginTop:0}]}>Actions</Text><Text style={{color:theme.sub,fontSize:11}}>{actions.length}</Text></View>
-      <View style={styles.list}>{actions.map(action=><View key={action.id} style={[styles.listRow,{backgroundColor:theme.surface,borderColor:theme.border}]}><View style={{flex:1}}><Text style={[styles.listTitle,{color:theme.text}]}>{action.label}</Text><Text style={{color:theme.sub,fontSize:10}}>{action.primary?'Primary action':'Secondary action'}</Text></View><TouchableOpacity onPress={()=>togglePrimary(action.id)} style={[styles.miniBtn,{backgroundColor:action.primary?theme.blue:theme.bg,borderColor:theme.border}]}><Text style={{color:action.primary?'#FFF':theme.text,fontSize:10,fontWeight:'900'}}>Primary</Text></TouchableOpacity><TouchableOpacity onPress={()=>removeAction(action.id)}><Ionicons name="trash-outline" size={18} color="#FF3B30"/></TouchableOpacity></View>)}</View>
+      <View style={styles.list}>{actions.map(action=><View key={action.id} style={[styles.listRow,{backgroundColor:theme.surface,borderColor:theme.border}]}><View style={{flex:1}}><Text style={[styles.listTitle,{color:theme.text}]}>{action.label}</Text><Text style={{color:theme.sub,fontSize:10}}>{action.primary?'Primary action':'Secondary action'} · {action.access==='creator'?'Creator only':action.access==='admin'?'Group admins':'Anyone'}</Text></View><TouchableOpacity onPress={()=>togglePrimary(action.id)} style={[styles.miniBtn,{backgroundColor:action.primary?theme.blue:theme.bg,borderColor:theme.border}]}><Text style={{color:action.primary?'#FFF':theme.text,fontSize:10,fontWeight:'900'}}>Primary</Text></TouchableOpacity><TouchableOpacity onPress={()=>cycleAccess(action.id)} style={[styles.miniBtn,{backgroundColor:theme.bg,borderColor:theme.border}]}><Text style={{color:theme.text,fontSize:10,fontWeight:'900'}}>Access</Text></TouchableOpacity><TouchableOpacity onPress={()=>removeAction(action.id)}><Ionicons name="trash-outline" size={18} color="#FF3B30"/></TouchableOpacity></View>)}</View>
       <View style={styles.chips}>{ACTION_PRESETS.map(a=><TouchableOpacity key={a} onPress={()=>addPresetAction(a)} style={[styles.option,{backgroundColor:theme.surface,borderColor:theme.border}]}><Text style={{color:theme.text,fontSize:11,fontWeight:'800'}}>+ {a}</Text></TouchableOpacity>)}</View>
       <View style={styles.inlineAdd}><TextInput value={customAction} onChangeText={setCustomAction} placeholder="Custom action (e.g. Approve request)" placeholderTextColor={theme.sub} style={[styles.input,{flex:1,color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]}/><TouchableOpacity onPress={()=>{addAction(customAction);setCustomAction('')}} style={[styles.addBtn,{backgroundColor:theme.blue}]}><Ionicons name="add" size={19} color="#FFF"/></TouchableOpacity></View>
 
