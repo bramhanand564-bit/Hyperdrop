@@ -104,8 +104,8 @@ export default function ExperienceHome({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={() => navigation.navigate('ExperienceAICreator')} style={[styles.aiButton,{backgroundColor:theme.blue}]}>
-              <Ionicons name="sparkles" size={18} color="#FFF"/><View style={{flex:1,marginLeft:9}}><Text style={{color:'#FFF',fontWeight:'900'}}>Create with AI</Text><Text style={{color:'rgba(255,255,255,.82)',fontSize:10,marginTop:2}}>Describe it → review → publish</Text></View><Ionicons name="arrow-forward" size={17} color="#FFF"/>
+            <TouchableOpacity onPress={() => navigation.navigate('AIAppBuilder')} style={[styles.aiButton,{backgroundColor:theme.blue}]}>
+              <Ionicons name="sparkles" size={18} color="#FFF"/><View style={{flex:1,marginLeft:9}}><Text style={{color:'#FFF',fontWeight:'900'}}>Build an App with AI</Text><Text style={{color:'rgba(255,255,255,.82)',fontSize:10,marginTop:2}}>AI automatically chooses the right builder</Text></View><Ionicons name="arrow-forward" size={17} color="#FFF"/>
             </TouchableOpacity>
 
             <View style={{flexDirection:'row',gap:8,marginTop:12}}>
