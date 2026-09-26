@@ -29,7 +29,7 @@ export default function MainAppTabs({ navigation }) {
 
   const renderScreen = () => {
     if (activeTab === 'Portals') {
-      const Screen = require('../portal/PortalHome').default;
+      const Screen = require('../screens/ExperienceHome').default;
       return <Screen navigation={navigation} />;
     }
     if (activeTab === 'Moments') {
