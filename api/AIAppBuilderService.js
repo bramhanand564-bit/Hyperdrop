@@ -131,7 +131,7 @@ function validateSingleHtml(html) {
   if (textBytes(source) > MAX_SINGLE_HTML_BYTES) {
     throw new Error('Generated single-file app is larger than 4 MB. Ask the AI to make it smaller.');
   }
-  if (/<script[^>]+src\s*=|<link[^>]+href\s*=\s*["']https?:/i.test(source)) {
+  if (/<script[^>]+src\s*=|<link[^>]+rel=["']stylesheet["'][^>]+href\s*=/i.test(source)) {
     throw new Error('Single HTML apps must keep JavaScript and CSS self-contained.');
   }
   return source;
