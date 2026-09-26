@@ -1,7 +1,7 @@
 # Hyperdrop / Nax Chat — Project Status & Change Lock
 
 Last verified by repository scan: 2026-09-26 20:35 IST
-Branch: feat/moments-working-ui
+Branch: main
 
 ## Goal
 Build a stable Nax Chat / Hyperdrop app with reliable private chat and media messaging, working voice/video calls, Moments/Stories/Clips, stable Google identity/usernames, Circle/Connect, safe Firebase permissions, and no regressions.
@@ -90,3 +90,11 @@ Failure mapping: steps before offer/answer = signalling; ICE failure = connectiv
 
 ## Regression rule
 WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working code.
+
+## Universal Experience Gateway & Store — IMPLEMENTED IN MAIN
+- Added a permanent Gateway contract to Experiences with stable gateway IDs, visibility, Chat presentation, entrypoints, and capability scopes.
+- Added an Experience Store for published creator-made tools/apps with search/category filters, direct use, and one-tap customizable cloning.
+- Added Store and Creator Dashboard entry points in Experience Home and Settings.
+- Shared Experience Chat messages now carry Gateway/package metadata while retaining the same Experience identity for compact Chat and full-screen runtime entry.
+- Fixed the atomic Experience action result path so participant state/action results are returned correctly.
+- Important limitation: the existing native WebRTC file-transfer helper is still capped at 15 MB and is not yet a production 100 GB resumable transfer engine. A true 100 GB Big File Transfer requires streaming/resumable chunks, receiver-side disk streaming, recovery, and device/network hardening before that claim is made.
