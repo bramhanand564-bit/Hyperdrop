@@ -119,9 +119,7 @@ export default function NaxStoreScreen({ navigation }) {
         <TouchableOpacity onPress={() => openApp(app)} style={[styles.installBtn, { backgroundColor: theme.blue }]}>
           <Text style={styles.installText}>Use</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}>
-          <Ionicons name="share-outline" size={16} color={theme.text} />
-        </TouchableOpacity>
+
       </View>
     </View>
   );
