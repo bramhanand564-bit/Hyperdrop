@@ -5,7 +5,6 @@ import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import AIAppBuilderService from '../api/AIAppBuilderService';
 import AISettingsService from '../ai/AISettingsService';
-import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 
 function previewSource(project) {
   if (!project) return '<html><body style="font-family:system-ui;padding:30px"><h2>Start building</h2><p>Describe an app below.</p></body></html>';
@@ -104,25 +103,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
 
   const files = useMemo(() => Object.keys(project?.files || {}).sort(), [project]);
   const previewHtml = useMemo(() => previewSource(project), [project]);
-
-  const publishToStore = async () => {
-    if (!project) {
-      Alert.alert('Nothing to publish', 'Build an app first.');
-      return;
-    }
-    setPublishingStore(true);
-    try {
-      const published = await NaxAppStoreAPI.publish(project);
-      Alert.alert('Published to Nax Store', project.name + ' is now public.', [
-        { text: 'Open', onPress: () => navigation.navigate('NaxAppRuntime', { appId: published.id }) },
-        { text: 'OK' },
-      ]);
-    } catch (e) {
-      Alert.alert('Publish failed', e?.message || 'Could not publish this app.');
-    } finally {
-      setPublishingStore(false);
-    }
-  };
 
   const send = async () => {
     const request = input.trim();
@@ -275,7 +255,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
             ['preview', 'eye-outline', 'Preview'],
             ['code', 'code-slash-outline', 'Code'],
             ['files', 'folder-open-outline', 'Files'],
-            ['chat', 'chatbubble-ellipses-outline', 'Chat'],
             ['chat', 'chatbubble-ellipses-outline', 'Chat'],
           ].map(([id, iconName, label]) => (
             <TouchableOpacity key={id} onPress={() => setTab(id)} style={[styles.tab, tab === id && { borderBottomColor: theme.blue }]}><Ionicons name={iconName} size={15} color={tab === id ? theme.blue : theme.sub} /><Text style={[styles.tabText, { color: tab === id ? theme.blue : theme.sub }]}>{label}</Text></TouchableOpacity>
