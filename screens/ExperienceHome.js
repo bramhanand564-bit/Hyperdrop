@@ -84,7 +84,7 @@ export default function ExperienceHome({ navigation }) {
               <TextInput
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search experiences"
+                placeholder="Search Nax apps"
                 placeholderTextColor={theme.sub}
                 style={{ flex: 1, marginLeft: 8, color: theme.text }}
                 returnKeyType="search"
@@ -114,7 +114,7 @@ export default function ExperienceHome({ navigation }) {
 
             <View style={{flexDirection:'row',gap:8,marginTop:12}}>
               <TouchableOpacity onPress={() => navigation.navigate('ExperienceStore')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
-                <Ionicons name="storefront-outline" size={17} color={theme.blue}/><Text style={{color:theme.text,fontWeight:'900'}}>Experience Store</Text>
+                <Ionicons name="storefront-outline" size={17} color={theme.blue}/><Text style={{color:theme.text,fontWeight:'900'}}>Nax Store</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('ExperienceDashboard')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
                 <Ionicons name="analytics-outline" size={17} color={theme.blue}/><Text style={{color:theme.text,fontWeight:'900'}}>My Dashboard</Text>
@@ -133,7 +133,7 @@ export default function ExperienceHome({ navigation }) {
             </View>
 
             <View style={styles.listHeader}>
-              <Text style={[styles.section, { color: theme.text }]}>Community experiences</Text>
+              <Text style={[styles.section, { color: theme.text }]}>Community apps</Text>
               <Text style={[styles.count, { color: theme.sub }]}>{filtered.length}</Text>
             </View>
           </View>
