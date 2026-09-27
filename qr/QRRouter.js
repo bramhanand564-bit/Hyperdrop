@@ -1,4 +1,5 @@
 import ExperienceAPI from '../api/ExperienceAPI';
+import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 import QRParser from './QRParser';
 import { URLValidator } from '../security/URLValidator';
 import EventBus from '../event-bus/EventBus';
@@ -18,8 +19,10 @@ export const QRRouter = {
 
   async navigate(navigation, target) {
     if (target.type === 'app') {
+      const naxApp = await NaxAppStoreAPI.get(target.id);
+      if (naxApp?.status === 'published') return navigation.navigate('NaxAppRuntime', { appId: naxApp.id });
       const experience = await ExperienceAPI.get(target.id);
-      if (!experience) throw new Error('Experience not found.');
+      if (!experience) throw new Error('Nax App not found.');
       return navigation.navigate('ExperienceRuntime', { experienceId: experience.id });
     }
 
@@ -38,8 +41,10 @@ export const QRRouter = {
     }
 
     if (target.type === 'store') {
+      const naxApp = await NaxAppStoreAPI.get(target.id);
+      if (naxApp?.status === 'published') return navigation.navigate('NaxAppRuntime', { appId: naxApp.id });
       const experience = await ExperienceAPI.get(target.id);
-      if (!experience) throw new Error('Experience not found.');
+      if (!experience) throw new Error('Nax App not found.');
       return navigation.navigate('ExperienceRuntime', { experienceId: experience.id });
     }
 
