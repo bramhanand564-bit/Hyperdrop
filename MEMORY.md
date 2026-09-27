@@ -100,3 +100,6 @@ The legacy 100-feature Chat Power Center has been removed from the active Chat p
 - Android packaging generates a Java WebView APK project plus a GitHub Actions workflow for debug APK builds. Complex native projects can extend the generated Android source.
 - Do not expose or embed API keys/secrets inside generated HTML/source.
 - Future product direction: keep Simple/Single HTML as the normal path; advanced mode is automatic, not a manual user choice.
+
+## NAX STORE ↔ GATEWAY ↔ CHAT
+Nax Store apps use the Gateway contract, share to real user chats as compact `app_invite` cards, and open from Chat in `NaxAppRuntime`. The runtime exposes a small `window.Nax` bridge for Gateway actions. Do not use fake/demo chat lists for this flow.
