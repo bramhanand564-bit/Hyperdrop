@@ -170,8 +170,7 @@ export default function NaxStoreScreen({ navigation }) {
         <View style={styles.hero}>
           <View style={styles.heroGlow} />
           <View style={styles.heroCopy}>
-            <Text style={styles.heroTitle}>Create Your App{'
-'}with <Text style={styles.heroAI}>AI</Text></Text>
+            <Text style={styles.heroTitle}>Create Your App{'\n'}with <Text style={styles.heroAI}>AI</Text></Text>
             <Text style={styles.heroText}>Just describe your idea in simple words and let AI build your app. Publish it to Nax Store and share it with everyone.</Text>
             <TouchableOpacity onPress={() => navigation.navigate('AIAppBuilder')} style={styles.heroButton}>
               <Ionicons name="sparkles" size={17} color="#FFF" />
@@ -192,8 +191,7 @@ export default function NaxStoreScreen({ navigation }) {
         <View style={styles.actionGrid}>
           <TouchableOpacity onPress={() => navigation.navigate('AIAppBuilder')} style={styles.actionTile}>
             <View style={[styles.actionIcon, { backgroundColor: '#153F2B' }]}><Ionicons name="add" size={27} color="#39E27D" /></View>
-            <Text style={styles.actionTitle}>Create App{'
-'}with AI</Text>
+            <Text style={styles.actionTitle}>Create App{'\n'}with AI</Text>
             <Text style={styles.actionText}>Describe your app and let AI build it for you.</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={importApp} style={styles.actionTile}>
