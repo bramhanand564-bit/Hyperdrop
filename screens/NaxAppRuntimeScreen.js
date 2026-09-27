@@ -6,7 +6,7 @@ import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 
-export default function NaxAppRuntimeScreen({ route }) {
+export default function NaxAppRuntimeScreen({ route, navigation }) {
   const { theme } = useTheme();
   const [app, setApp] = useState(null);
   const [error, setError] = useState('');
