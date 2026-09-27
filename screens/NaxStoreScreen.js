@@ -108,15 +108,12 @@ export default function NaxStoreScreen({ navigation }) {
         <Text style={[styles.meta, { color: theme.sub }]}>{getCategory(app)} · {app.creatorName || 'Creator'}</Text>
       </View>
       <View style={styles.featureActions}>
-        <View style={styles.featureActionsRow}>
-          <TouchableOpacity onPress={() => openApp(app)} style={[styles.installBtn, { backgroundColor: theme.blue }]}>
-            <Text style={styles.installText}>Use</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}>
-            <Ionicons name="share-outline" size={16} color={theme.text} />
-          </TouchableOpacity>
-        </View>
-
+        <TouchableOpacity onPress={() => openApp(app)} style={[styles.installBtn, { backgroundColor: theme.blue }]}>
+          <Text style={styles.installText}>Use</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}>
+          <Ionicons name="share-outline" size={16} color={theme.text} />
+        </TouchableOpacity>
       </View>
     </View>
   );
