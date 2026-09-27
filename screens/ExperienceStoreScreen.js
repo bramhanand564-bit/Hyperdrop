@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, SafeAreaView, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
@@ -143,7 +143,7 @@ export default function ExperienceStoreScreen({ navigation }) {
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>Live · v{item.version}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={2}>{item.description || 'Your public Nax app'}</Text>
         <View style={styles.actions}>
-          <TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity>
+          <TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity><TouchableOpacity onPress={()=>Share.share({message:`Open this Nax App: nax://app/${item.id}`})} style={[styles.button,{backgroundColor:theme.bg,borderWidth:1,borderColor:theme.border}]}><Ionicons name="share-outline" size={15} color={theme.text}/><Text style={{color:theme.text,fontWeight:'900',fontSize:11}}>Share</Text></TouchableOpacity>
           <TouchableOpacity onPress={async()=>{try{await NaxAppStoreAPI.unpublish(item.id);load();}catch(e){Alert.alert('Unpublish',e.message||'Could not unpublish.');}}} style={[styles.button,{backgroundColor:theme.bg,borderWidth:1,borderColor:theme.border}]}><Ionicons name="cloud-offline-outline" size={15} color={theme.text}/><Text style={{color:theme.text,fontWeight:'900',fontSize:11}}>Unpublish</Text></TouchableOpacity>
         </View>
       </View>) : <Text style={{color:theme.sub}}>Publish an AI-built or imported Single HTML app to see it here.</Text>}
@@ -152,7 +152,7 @@ export default function ExperienceStoreScreen({ navigation }) {
       {apps.length ? apps.map(item => <View key={'app_'+item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>App · by {item.creatorName}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={3}>{item.description || 'Creator-built Nax app'}</Text>
-        <View style={styles.actions}><TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity></View>
+        <View style={styles.actions}><TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity><TouchableOpacity onPress={()=>Share.share({message:`Open this Nax App: nax://app/${item.id}`})} style={[styles.button,{backgroundColor:theme.bg,borderWidth:1,borderColor:theme.border}]}><Ionicons name="share-outline" size={15} color={theme.text}/><Text style={{color:theme.text,fontWeight:'900',fontSize:11}}>Share</Text></TouchableOpacity></View>
       </View>) : <Text style={{color:theme.sub}}>No public Nax Apps yet. Be the first creator to publish one.</Text>}
 
       <Text style={[styles.section,{color:theme.text}]}>Published Nax Apps</Text>
