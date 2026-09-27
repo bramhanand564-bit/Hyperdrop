@@ -299,8 +299,8 @@ service cloud.firestore {
     // =========================================================
     match /experiences/{experienceId} {
       // Published experiences are discoverable; disabled ones remain visible only to their creator.
-      allow read: if request.auth != null
-                  && (resource.data.status != 'disabled' || resource.data.creatorId == request.auth.uid);
+      allow read: if resource.data.status != 'disabled'
+                  || (request.auth != null && resource.data.creatorId == request.auth.uid);
 
       // A creator can publish only as themselves.
       allow create: if request.auth != null
