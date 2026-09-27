@@ -57,7 +57,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         if (current) { setProject(current); setMessages(current.chat || []); }
       }
     } catch (e) { console.log('AI builder load:', e); }
-  }, [route.params?.project?.id, project]);
+  }, [route.params?.project?.id]);
 
   useEffect(() => { load(); }, [load]);
 
