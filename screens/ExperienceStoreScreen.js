@@ -6,6 +6,7 @@ import ExperienceAPI from '../api/ExperienceAPI';
 import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import { unzipSync, strFromU8 } from 'fflate';
 
 const CATEGORIES = [
   { id: '', label: 'All' },
@@ -59,6 +60,21 @@ export default function ExperienceStoreScreen({ navigation }) {
         navigation.navigate('AIAppBuilder', { importedProject });
         return;
       }
+      if (lower.endsWith('.zip')) {
+        const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+        const binary = Uint8Array.from(globalThis.atob ? globalThis.atob(base64).split('').map(ch => ch.charCodeAt(0)) : [], x => x);
+        const archive = unzipSync(binary);
+        const indexKey = Object.keys(archive).find(path => /(^|\/)index\.html$/i.test(path));
+        if (!indexKey) throw new Error('ZIP must contain an index.html file.');
+        const html = strFromU8(archive[indexKey]);
+        const name = (asset.name || 'Imported Nax App').replace(/\.zip$/i, '') || 'Imported Nax App';
+        navigation.navigate('AIAppBuilder', { importedHtml: html, importedName: name });
+        return;
+      }
+      if (lower.endsWith('.apk') || lower.endsWith('.aab')) {
+        Alert.alert('Native app import', 'APK/AAB can be imported into the Advanced project workspace for inspection, but Nax Store cannot run native APKs inside the store yet. Import the source ZIP/project for editable publishing.');
+        return;
+      }
       const html = raw;
       const name = (asset.name || 'Imported Nax App').replace(/\.html?$/i, '') || 'Imported Nax App';
       navigation.navigate('AIAppBuilder', { importedHtml: html, importedName: name });
@@ -82,7 +98,7 @@ export default function ExperienceStoreScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text}/></TouchableOpacity>
         <View style={{flex:1,marginLeft:10}}>
           <Text style={[styles.title,{color:theme.text}]}>Nax Store</Text>
-          <Text style={[styles.sub,{color:theme.sub}]}>Discover creator-made Nax apps, use them, customize them, or publish your own.</Text>
+          <Text style={[styles.sub,{color:theme.sub}]}>Discover Nax apps, use them, customize them, or publish your own.</Text>
         </View>
         <View style={{flexDirection:'row',gap:7}}><TouchableOpacity onPress={importApp} style={[styles.add,{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border}]}><Ionicons name="download-outline" size={18} color={theme.blue}/></TouchableOpacity><TouchableOpacity onPress={() => navigation.navigate('ExperienceBuilder',{template:'custom'})} style={[styles.add,{backgroundColor:theme.blue}]}><Ionicons name="add" size={21} color="#FFF"/></TouchableOpacity></View>
       </View>
