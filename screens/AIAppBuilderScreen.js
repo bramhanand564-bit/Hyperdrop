@@ -40,6 +40,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
   const [selectedFile, setSelectedFile] = useState('index.html');
   const [editorValue, setEditorValue] = useState('');
   const [savingCode, setSavingCode] = useState(false);
+  const [publishingStore, setPublishingStore] = useState(false);
   const [chatTab, setChatTab] = useState(false);
 
   const load = useCallback(async () => {
@@ -48,6 +49,18 @@ export default function AIAppBuilderScreen({ navigation, route }) {
       if (active) {
         setConnectionId(active.id);
         setModel(active.model || active.models?.[0] || null);
+      }
+      const importedHtml = route.params?.importedHtml;
+      if (importedHtml && !project) {
+        const imported = await AIAppBuilderService.createProject({
+          name: route.params?.importedName || 'Imported Nax App',
+          request: 'Imported HTML app',
+          target: 'SINGLE_HTML',
+          html: importedHtml,
+        });
+        setProject(imported);
+        setMessages([{ role: 'assistant', content: 'Imported successfully. Chat with me about what you want to change, then tell me when to build.', at: Date.now() }]);
+        return;
       }
       const id = route.params?.project?.id;
       if (id) {
@@ -173,6 +186,22 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     } catch (e) { Alert.alert('Android packaging', e?.message || 'Could not prepare the Android project.'); }
   };
 
+  const publishToStore = async () => {
+    if (!project || project.target !== 'SINGLE_HTML') {
+      Alert.alert('Nax Store', 'Public web publishing currently supports Single HTML apps. Advanced APK publishing will come with the Android release pipeline.');
+      return;
+    }
+    setPublishingStore(true);
+    try {
+      const next = await AIAppBuilderService.publishToNaxStore(project);
+      setProject(next);
+      setMessages(m => [...m, { role: 'assistant', content: 'Published to Nax Store ✓. Your app is now public in the store.', at: Date.now() }]);
+      Alert.alert('Published', 'Your app is now live in Nax Store.');
+    } catch (e) {
+      Alert.alert('Publish failed', e?.message || 'Could not publish to Nax Store.');
+    } finally { setPublishingStore(false); }
+  };
+
   const exportProject = async () => {
     if (!project) return;
     try {
@@ -290,6 +319,13 @@ export default function AIAppBuilderScreen({ navigation, route }) {
                   ))}
                 </View>
                 <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <Text style={[styles.actionTitle, { color: theme.text }]}>Nax Store</Text>
+                <Text style={[styles.actionText, { color: theme.sub }]}>Publish this Single HTML app so other Nax users can discover and use it.</Text>
+                <TouchableOpacity onPress={publishToStore} disabled={publishingStore} style={[styles.actionBtn, { backgroundColor: theme.blue, marginTop: 10, opacity: publishingStore ? .5 : 1 }]}>
+                  {publishingStore ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="cloud-upload-outline" size={15} color="#FFF" />}
+                  <Text style={styles.actionBtnText}>{publishingStore ? 'Publishing…' : 'Publish to Nax Store'}</Text>
+                </TouchableOpacity>
+                <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border, marginTop: 10 }]}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Package</Text>
                 <Text style={[styles.actionText, { color: theme.sub }]}>Generate an Android WebView project and a GitHub Actions workflow that can build an APK from the app source.</Text>
                 <View style={styles.actionRow}>
