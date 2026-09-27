@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../firebaseConfig';
 import { WebView } from 'react-native-webview';
@@ -19,10 +19,52 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
     return () => { active = false; };
   }, [route.params?.appId]);
 
+  const openGatewayEntrypoint = async entrypoint => {
+    const gateway = app?.gateway || {};
+    if (gateway.enabled === false) return false;
+    if (gateway.entrypoints?.[entrypoint] === false) return false;
+
+    if (entrypoint === 'chat') {
+      navigation.navigate('NaxAppSharePicker', { app });
+      return true;
+    }
+    if (entrypoint === 'discover') {
+      navigation.navigate('Discover', { naxGatewayAppId: app.id, naxGatewayAppName: app.name });
+      return true;
+    }
+    if (entrypoint === 'moments') {
+      navigation.navigate('Moments', { naxGatewayAppId: app.id, naxGatewayAppName: app.name });
+      return true;
+    }
+    if (entrypoint === 'settings') {
+      navigation.navigate('Settings', { naxGatewayAppId: app.id, naxGatewayAppName: app.name });
+      return true;
+    }
+    if (entrypoint === 'web') {
+      navigation.navigate('ExperienceWebView', {
+        title: app.name || 'Nax App',
+        htmlCode: app.html || '',
+      });
+      return true;
+    }
+    if (entrypoint === 'deepLink') {
+      try {
+        await Linking.openURL('nax://app/' + encodeURIComponent(app.id));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+    return false;
+  };
+
   const handleMessage = event => {
     try {
       const payload = JSON.parse(event.nativeEvent.data || '{}');
-      if (payload.type === 'NAX_SHARE_TO_CHAT') navigation.navigate('NaxAppSharePicker', { app });
+      if (payload.type === 'NAX_SHARE_TO_CHAT') openGatewayEntrypoint('chat');
+      if (payload.type === 'NAX_OPEN_ENTRYPOINT') {
+        openGatewayEntrypoint(String(payload.entrypoint || ''));
+      }
       if (payload.type === 'NAX_CLOSE') navigation.goBack();
     } catch (_) {}
   };
@@ -36,6 +78,13 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
         app:APP,user:USER,gateway:GATEWAY,
         getApp:function(){return APP;},getGateway:function(){return GATEWAY;},
         shareToChat:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_SHARE_TO_CHAT'}));},
+        openEntrypoint:function(name){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_OPEN_ENTRYPOINT',entrypoint:String(name||'')}));},
+        openChat:function(){this.openEntrypoint('chat');},
+        openDiscover:function(){this.openEntrypoint('discover');},
+        openMoments:function(){this.openEntrypoint('moments');},
+        openSettings:function(){this.openEntrypoint('settings');},
+        openWeb:function(){this.openEntrypoint('web');},
+        openDeepLink:function(){this.openEntrypoint('deepLink');},
         close:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CLOSE'}));}
       };
     })(); true;`;
