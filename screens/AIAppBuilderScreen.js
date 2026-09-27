@@ -88,6 +88,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         return;
       }
 
+      if (!current) current = await AIAppBuilderService.createProject({ name: draft.name || request.slice(0, 50), request, target: draft.target, html: draft.html });
       const next = await AIAppBuilderService.applyBuild(current, draft, request, chatHistory);
       const assistantText = [
         draft.progress || draft.summary || 'Build updated.',
