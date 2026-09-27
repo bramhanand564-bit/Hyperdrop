@@ -67,7 +67,7 @@ export default function NaxStoreScreen({ navigation }) {
     try {
       await Share.share({
         title: app.name,
-        message: 'Use ' + app.name + ' on Nax Store\nNax App ID: ' + app.id,
+        message: 'Use ' + app.name + ' on Nax Store\nNax App ID: ' + app.id + '\nOpen: nax://app/' + encodeURIComponent(app.id),
       });
     } catch (_) {}
   };
