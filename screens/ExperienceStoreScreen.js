@@ -48,11 +48,18 @@ export default function ExperienceStoreScreen({ navigation }) {
 
   const importApp = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({ type: ['text/html', 'text/plain', '*/*'], copyToCacheDirectory: true });
+      const result = await DocumentPicker.getDocumentAsync({ type: ['text/html', 'application/json', 'text/plain', '*/*'], copyToCacheDirectory: true });
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.uri) return;
-      const html = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const raw = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const lower = String(asset.name || '').toLowerCase();
+      if (lower.endsWith('.json')) {
+        const importedProject = JSON.parse(raw);
+        navigation.navigate('AIAppBuilder', { importedProject });
+        return;
+      }
+      const html = raw;
       const name = (asset.name || 'Imported Nax App').replace(/\.html?$/i, '') || 'Imported Nax App';
       navigation.navigate('AIAppBuilder', { importedHtml: html, importedName: name });
     } catch (e) { Alert.alert('Import failed', e?.message || 'Could not import the app.'); }
@@ -90,10 +97,10 @@ export default function ExperienceStoreScreen({ navigation }) {
       </ScrollView>
 
       <View style={[styles.banner,{backgroundColor:theme.surface,borderColor:theme.border}]}>
-        <Text style={{fontSize:28}}>🧩</Text><View style={{flex:1,marginLeft:11}}><Text style={[styles.bannerTitle,{color:theme.text}]}>Nax Store · discover, use, publish</Text><Text style={[styles.bannerText,{color:theme.sub}]}>Creators can publish apps here. AI-built Single HTML apps and interactive Experiences can be opened directly and shared.</Text></View>
+        <Text style={{fontSize:28}}>🧩</Text><View style={{flex:1,marginLeft:11}}><Text style={[styles.bannerTitle,{color:theme.text}]}>Nax Store · discover, use, publish</Text><Text style={[styles.bannerText,{color:theme.sub}]}>Create with AI, import a custom HTML app, publish it publicly, and let anyone open and use it from Nax Store.</Text></View>
       </View>
 
-      <Text style={[styles.section,{color:theme.text}]}>My published apps</Text>
+      <Text style={[styles.section,{color:theme.text}]}>My Nax Apps</Text>
       {mine.length ? mine.map(item => <View key={'mine_'+item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>Live · v{item.version}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={2}>{item.description || 'Your public Nax app'}</Text>
@@ -103,14 +110,14 @@ export default function ExperienceStoreScreen({ navigation }) {
         </View>
       </View>) : <Text style={{color:theme.sub}}>Publish an AI-built or imported Single HTML app to see it here.</Text>}
 
-      <Text style={[styles.section,{color:theme.text}]}>Nax Apps</Text>
+      <Text style={[styles.section,{color:theme.text}]}>Popular on Nax Store</Text>
       {apps.length ? apps.map(item => <View key={'app_'+item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>App · by {item.creatorName}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={3}>{item.description || 'Creator-built Nax app'}</Text>
         <View style={styles.actions}><TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity></View>
       </View>) : <Text style={{color:theme.sub}}>No public Nax Apps yet.</Text>}
 
-      <Text style={[styles.section,{color:theme.text}]}>Discover</Text>
+      <Text style={[styles.section,{color:theme.text}]}>All published apps</Text>
       {loading?<ActivityIndicator color={theme.blue} style={{marginTop:25}}/>:filtered.length===0?<Text style={{color:theme.sub}}>No published apps found.</Text>:filtered.map(item=><View key={item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>{item.template} · by {item.creatorName}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={3}>{item.description||'Interactive experience'}</Text>
