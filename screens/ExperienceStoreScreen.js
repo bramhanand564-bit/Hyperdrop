@@ -8,6 +8,27 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { unzipSync, strFromU8 } from 'fflate';
 
+const decodeBase64 = value => {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const clean = String(value || '').replace(/[^A-Za-z0-9+/=]/g, '');
+  const out = [];
+  let buffer = 0;
+  let bits = 0;
+  for (let i = 0; i < clean.length; i += 1) {
+    const ch = clean[i];
+    if (ch === '=') break;
+    const n = alphabet.indexOf(ch);
+    if (n < 0) continue;
+    buffer = (buffer << 6) | n;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out.push((buffer >> bits) & 255);
+    }
+  }
+  return new Uint8Array(out);
+};
+
 const CATEGORIES = [
   { id: '', label: 'All' },
   { id: 'custom', label: 'Apps' },
@@ -63,7 +84,7 @@ export default function ExperienceStoreScreen({ navigation }) {
       }
       if (lower.endsWith('.zip')) {
         const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
-        const binary = Uint8Array.from(globalThis.atob ? globalThis.atob(base64).split('').map(ch => ch.charCodeAt(0)) : [], x => x);
+        const binary = decodeBase64(base64);
         const archive = unzipSync(binary);
         const indexKey = Object.keys(archive).find(path => /(^|\/)index\.html$/i.test(path));
         if (!indexKey) throw new Error('ZIP must contain an index.html file.');
