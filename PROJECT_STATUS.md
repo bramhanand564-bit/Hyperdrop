@@ -153,3 +153,10 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - Deep links are wired through React Navigation for `nax://app/:appId` and the existing `hyperdrop://experience/:experienceId` contract. Expo app schemes are registered in `app.json`.
 - A standalone E2E test HTML was generated for manual Store import. Its Full Check distinguishes Gateway declarations from the actual native bridge methods and uses real line breaks.
 - Deep-link verification requires a fresh native APK after the scheme/config change; no device runtime result is claimed yet.
+
+
+### Portal E2E fix commits
+- Gateway bridge routing: `a41aefea024b6a237d370ee02ae85a32372fcd6d`
+- React Navigation deep-link config: `d211c171f72b9346ef7fb6b97ae71fb11469c472`
+- NAX + Hyperdrop schemes: `50ef6f5b12d18cd33df1264ca356f4c68e1a96d9`
+- Status/memory documentation updated after the routing changes.
