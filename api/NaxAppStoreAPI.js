@@ -60,13 +60,20 @@ const NaxAppStoreAPI = {
 
   async listMine({ limitCount = 60 } = {}) {
     const uid = requireUser();
-    const snap = await getDocs(query(ref, where('creatorId', '==', uid), limit(Math.min(100, Math.max(1, Number(limitCount) || 60)))));
+    const cap = Math.min(100, Math.max(1, Number(limitCount) || 60));
+    let snap;
+    try {
+      snap = await getDocs(query(publicRef, where('creatorId', '==', uid), limit(cap)));
+    } catch (_) {
+      snap = await getDocs(query(compatRef, where('storeKind', '==', 'nax_app'), limit(cap)));
+      snap = { docs: snap.docs.filter(d => d.data().creatorId === uid) };
+    }
     return snap.docs.map(d => normalize(d.id, d.data())).sort((a, b) => {
       const ta = a.updatedAt?.toMillis?.() || a.updatedAt || 0;
       const tb = b.updatedAt?.toMillis?.() || b.updatedAt || 0;
       return tb - ta;
     });
-  },
+  }
 
   async get(id) {
     if (!id) return null;
