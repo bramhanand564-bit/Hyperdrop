@@ -88,11 +88,11 @@ export default function AIAppBuilderScreen({ navigation, route }) {
 
       if (draft?.mode === 'TEST') {
         const testLines = Array.isArray(draft.tests)
-          ? draft.tests.map(test => (test.result === 'pass' ? '✓ ' : test.result === 'fail' ? '✗ ' : '? ') + test.name + (test.detail ? ': ' + test.detail : '')).join('\\n')
+          ? draft.tests.map(test => (test.result === 'pass' ? '✓ ' : test.result === 'fail' ? '✗ ' : '? ') + test.name + (test.detail ? ': ' + test.detail : '')).join('\n')
           : '';
         const assistant = {
           role: 'assistant',
-          content: [draft.reply || 'Test complete.', testLines, Array.isArray(draft.failures) && draft.failures.length ? 'Problems: ' + draft.failures.join(' · ') : 'No confirmed problems found.', Array.isArray(draft.nextSteps) && draft.nextSteps.length ? 'Next: ' + draft.nextSteps[0] : ''].filter(Boolean).join('\\n')
+          content: [draft.reply || 'Test complete.', testLines, Array.isArray(draft.failures) && draft.failures.length ? 'Problems: ' + draft.failures.join(' · ') : 'No confirmed problems found.', Array.isArray(draft.nextSteps) && draft.nextSteps.length ? 'Next: ' + draft.nextSteps[0] : ''].filter(Boolean).join('\n')
         };
         setMessages(m => [...m, assistant]);
         setInput('');
@@ -105,7 +105,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         draft.progress || draft.summary || 'Build updated.',
         Array.isArray(draft.remaining) && draft.remaining.length ? 'Baki: ' + draft.remaining.join(' · ') : 'Baki: kuch critical nahi.',
         Array.isArray(draft.nextSteps) && draft.nextSteps.length ? 'Next: ' + draft.nextSteps[0] : 'Next: jo change chahiye bol do.',
-      ].join('\\n');
+      ].join('\n');
       const assistant = { role: 'assistant', content: assistantText };
       setProject(next);
       setMessages(m => [...m, assistant]);
