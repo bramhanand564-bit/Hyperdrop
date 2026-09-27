@@ -14,8 +14,7 @@
       "bundleIdentifier": "com.nax.chat"
     },
     "android": {
-      "package": "com.nax.chat",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.nax.chat"
     },
     "plugins": [
       [
