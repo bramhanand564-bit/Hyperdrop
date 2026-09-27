@@ -77,8 +77,9 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
    </View>:null}
    {item.type==='app_invite'?<View style={[s.appInvite,{backgroundColor:isMe?'rgba(255,255,255,.12)':theme.surface,borderColor:theme.border}]}>
     <View style={s.inviteHead}><View style={[s.inviteIcon,{backgroundColor:'rgba(8,126,255,.12)'}]}><Ionicons name={item.appIcon||'game-controller'} size={25} color={theme.blue}/></View><View style={{flex:1,marginLeft:10}}><Text style={{color:isMe?'#FFF':theme.text,fontSize:15,fontWeight:'900'}} numberOfLines={1}>{item.appName||'Nax App'}</Text><Text style={{color:isMe?'rgba(255,255,255,.75)':theme.sub,fontSize:11,marginTop:3}} numberOfLines={2}>{item.appDescription||'Open this Nax app invite.'}</Text></View></View>
+    {item.appGateway?.enabled!==false?<Text style={{color:isMe?'rgba(255,255,255,.58)':theme.sub,fontSize:9,marginTop:8}}>Gateway · {item.appGateway?.chat?.presentation||'card'} · same Nax Store app</Text>:null}
     {item.sessionId?<Text style={{color:isMe?'rgba(255,255,255,.72)':theme.sub,fontSize:10,marginTop:8}}>Multiplayer room • {String(item.sessionId).slice(0,8)}</Text>:null}
-    <TouchableOpacity style={[s.joinBtn,{backgroundColor:theme.blue}]} onPress={()=>navigation?.navigate('MiniAppViewer',{title:item.appName||'Nax App',appConfig:item.appConfig||{id:item.appId,name:item.appName,description:item.appDescription,icon:item.appIcon,htmlCode:item.htmlCode},url:item.url,htmlCode:item.htmlCode,entryType:item.entryType||((item.htmlCode)?'html':'declarative'),appId:item.appId,sessionId:item.sessionId,maxPlayers:item.maxPlayers||4})}>
+    <TouchableOpacity style={[s.joinBtn,{backgroundColor:theme.blue}]} onPress={()=>navigation?.navigate('NaxAppRuntime',{appId:item.appId})}>
       <Ionicons name="play" size={16} color="#FFF"/><Text style={{color:'#FFF',fontWeight:'900',marginLeft:7}}>{item.sessionId?'Join & Open':'Open App'}</Text>
     </TouchableOpacity>
    </View>:null}
