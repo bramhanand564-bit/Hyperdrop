@@ -12,6 +12,7 @@ export default function NaxAppSharePicker({ route, navigation }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -64,10 +65,10 @@ export default function NaxAppSharePicker({ route, navigation }) {
       </View>
       <View style={[styles.search, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Ionicons name="search-outline" size={18} color={theme.sub} />
-        <TextInput placeholder="Find a chat or group" placeholderTextColor={theme.sub} style={{ flex: 1, marginLeft: 8, color: theme.text }} />
+        <TextInput value={search} onChangeText={setSearch} placeholder="Find a chat or group" placeholderTextColor={theme.sub} style={{ flex: 1, marginLeft: 8, color: theme.text }} />
       </View>
       {loading ? <ActivityIndicator color={theme.blue} style={{ marginTop: 30 }} /> : (
-        <FlatList data={chats} keyExtractor={item => item.id} contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        <FlatList data={chats.filter(item => { const name = item.name || item.groupName || item.friendName || item.username || ''; return !search.trim() || String(name).toLowerCase().includes(search.trim().toLowerCase()); })} keyExtractor={item => item.id} contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
           ListEmptyComponent={<Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40 }}>No chats available.</Text>}
           renderItem={({ item }) => {
             const name = item.name || item.groupName || item.friendName || 'Nax Chat';
