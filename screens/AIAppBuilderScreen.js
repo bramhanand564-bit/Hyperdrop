@@ -184,19 +184,20 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     catch (e) { Alert.alert('Undo', e?.message || 'Could not restore the previous version.'); }
   };
 
-  const publishToNaxStore = async () => {
+  const publishToStore = async () => {
     if (!project || project.target !== 'SINGLE_HTML') {
-      Alert.alert('Nax Store', 'Only Single HTML apps can be published to Nax Store right now. Advanced apps need the Android/web packaging pipeline first.');
+      Alert.alert('Nax Store', 'Only Single HTML apps can be published to Nax Store right now.');
       return;
     }
     if (publishingStore) return;
     setPublishingStore(true);
     try {
-      const published = await NaxAppStoreAPI.publish(project);
-      Alert.alert('Published ✓', 'Your app is live on Nax Store. Other users can now open and use it.');
-      setMessages(m => [...m, { role: 'assistant', content: 'Published to Nax Store ✓\nLive app ID: ' + published.id, at: Date.now() }]);
+      const next = await AIAppBuilderService.publishToNaxStore(project);
+      setProject(next);
+      setMessages(m => [...m, { role: 'assistant', content: 'Published to Nax Store ✓\\nYour app is now public and ready to use.', at: Date.now() }]);
+      Alert.alert('Published ✓', 'Your app is now live on Nax Store.');
     } catch (e) {
-      Alert.alert('Publish failed', e?.message || 'Could not publish to Nax Store. Check that you are signed in and try again.');
+      Alert.alert('Publish failed', e?.message || 'Could not publish to Nax Store. Check that you are signed in.');
     } finally {
       setPublishingStore(false);
     }
@@ -346,22 +347,21 @@ export default function AIAppBuilderScreen({ navigation, route }) {
                   ))}
                 </View>
                 <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Nax Store</Text>
-                <Text style={[styles.actionText, { color: theme.sub }]}>Publish this Single HTML app so other Nax users can discover and use it.</Text>
-                <TouchableOpacity onPress={publishToStore} disabled={publishingStore} style={[styles.actionBtn, { backgroundColor: theme.blue, marginTop: 10, opacity: publishingStore ? .5 : 1 }]}>
-                  {publishingStore ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="cloud-upload-outline" size={15} color="#FFF" />}
-                  <Text style={styles.actionBtnText}>{publishingStore ? 'Publishing…' : 'Publish to Nax Store'}</Text>
-                </TouchableOpacity>
-                <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border, marginTop: 10 }]}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Package</Text>
-                <Text style={[styles.actionText, { color: theme.sub }]}>Generate an Android WebView project and a GitHub Actions workflow that can build an APK from the app source.</Text>
-                <View style={styles.actionRow}>
-                  <TouchableOpacity onPress={publishToStore} disabled={publishingStore} style={[styles.actionBtn, { backgroundColor: theme.blue, opacity: publishingStore ? .55 : 1 }]}><Ionicons name="cloud-upload-outline" size={15} color="#FFF" /><Text style={styles.actionBtnText}>{publishingStore ? 'Publishing…' : 'Publish to Nax Store'}</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={prepareAndroid} style={[styles.actionBtn, { backgroundColor: theme.surfaceStrong, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="logo-android" size={15} color={theme.text} /><Text style={[styles.actionBtnText,{color:theme.text}]}>Prepare APK</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={exportProject} style={[styles.actionBtn, { backgroundColor: theme.surfaceStrong, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="download-outline" size={15} color={theme.text} /><Text style={[styles.actionBtnText, { color: theme.text }]}>Export</Text></TouchableOpacity>
-                  </View>
+                  <Text style={[styles.actionTitle, { color: theme.text }]}>Nax Store</Text>
+                  <Text style={[styles.actionText, { color: theme.sub }]}>Publish this Single HTML app so other Nax users can discover and use it.</Text>
+                  <TouchableOpacity onPress={publishToStore} disabled={publishingStore} style={[styles.actionBtn, { backgroundColor: theme.blue, marginTop: 10, opacity: publishingStore ? .5 : 1 }]}>
+                    {publishingStore ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="cloud-upload-outline" size={15} color="#FFF" />}
+                    <Text style={styles.actionBtnText}>{publishingStore ? 'Publishing…' : (project.naxStoreStatus === 'published' ? 'Update Live App' : 'Publish to Nax Store')}</Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
+                <View style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border, marginTop: 10 }]}>
+                  <Text style={[styles.actionTitle, { color: theme.text }]}>Package</Text>
+                  <Text style={[styles.actionText, { color: theme.sub }]}>Generate an Android WebView project and a GitHub Actions workflow that can build an APK from the app source.</Text>
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity onPress={prepareAndroid} style={[styles.actionBtn, { backgroundColor: theme.blue }]}><Ionicons name="logo-android" size={15} color="#FFF" /><Text style={styles.actionBtnText}>Prepare APK</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={exportProject} style={[styles.actionBtn, { backgroundColor: theme.surfaceStrong, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="download-outline" size={15} color={theme.text} /><Text style={[styles.actionBtnText, { color: theme.text }]}>Export</Text></TouchableOpacity>
+                  </View>
+                </View>              </View>
             ) : null}
           </ScrollView>
         )}
