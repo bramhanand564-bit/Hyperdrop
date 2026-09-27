@@ -40,6 +40,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
   const [selectedFile, setSelectedFile] = useState('index.html');
   const [editorValue, setEditorValue] = useState('');
   const [savingCode, setSavingCode] = useState(false);
+  const [chatTab, setChatTab] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -54,7 +55,9 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         if (full) { setProject(full); setMessages(full.chat || []); }
       } else if (!project) {
         const current = await AIAppBuilderService.getCurrent();
-        if (current) { setProject(current); setMessages(current.chat || []); }
+        if (current) setProject(current);
+        const workspaceChat = await AIAppBuilderService.getWorkspaceChat();
+        if (workspaceChat.length) setMessages(workspaceChat);
       }
     } catch (e) { console.log('AI builder load:', e); }
   }, [route.params?.project?.id]);
@@ -67,6 +70,17 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     else setEditorValue('');
   }, [project, selectedFile]);
 
+  useEffect(() => {
+    if (!busy) return;
+    const timer = setInterval(() => {}, 1000);
+    return () => clearInterval(timer);
+  }, [busy]);
+
+  const persistChat = async nextMessages => {
+    setMessages(nextMessages);
+    try { await AIAppBuilderService.saveChat(project, nextMessages); } catch (_) {}
+  };
+
   const files = useMemo(() => Object.keys(project?.files || {}).sort(), [project]);
   const previewHtml = useMemo(() => previewSource(project), [project]);
 
@@ -74,13 +88,16 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     const request = input.trim();
     if (!request || busy) return;
     setBusy(true);
-    setMessages(m => [...m, { role: 'user', content: request }]);
+    const userMessage = { role: 'user', content: request, at: Date.now() };
+    const nextUserMessages = [...messages, userMessage];
+    setMessages(nextUserMessages);
     try {
       let current = project;
-      const chatHistory = [...messages, { role: 'user', content: request }];
+      const chatHistory = nextUserMessages;
       const draft = await AIAppBuilderService.buildWithAI({ project: current, request, connectionId, model, chat: chatHistory });
       if (draft?.mode === 'CHAT') {
-        const assistant = { role: 'assistant', content: draft.reply || draft.progress || 'Haan bhai, bolo. Hum is app par saath mein kaam kar sakte hain.' };
+        const assistant = { role: 'assistant', content: draft.reply || draft.progress || 'Haan bhai, bolo. Hum is app par saath mein kaam kar sakte hain.', at: Date.now(), mode: 'CHAT' };
+        await AIAppBuilderService.saveChat(current, [...nextUserMessages, assistant]);
         setMessages(m => [...m, assistant]);
         setInput('');
         return;
@@ -94,6 +111,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
           role: 'assistant',
           content: [draft.reply || 'Test complete.', testLines, Array.isArray(draft.failures) && draft.failures.length ? 'Problems: ' + draft.failures.join(' · ') : 'No confirmed problems found.', Array.isArray(draft.nextSteps) && draft.nextSteps.length ? 'Next: ' + draft.nextSteps[0] : ''].filter(Boolean).join('\n')
         };
+        await AIAppBuilderService.saveChat(current, [...nextUserMessages, assistant]);
         setMessages(m => [...m, assistant]);
         setInput('');
         return;
@@ -167,6 +185,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     setEditorValue('');
     setMessages([]);
     setInput('');
+    AIAppBuilderService.clearWorkspaceChat().catch(() => {});
     setTab('preview');
   };
 
@@ -193,12 +212,34 @@ export default function AIAppBuilderScreen({ navigation, route }) {
             ['preview', 'eye-outline', 'Preview'],
             ['code', 'code-slash-outline', 'Code'],
             ['files', 'folder-open-outline', 'Files'],
+            ['chat', 'chatbubble-ellipses-outline', 'Chat'],
           ].map(([id, iconName, label]) => (
             <TouchableOpacity key={id} onPress={() => setTab(id)} style={[styles.tab, tab === id && { borderBottomColor: theme.blue }]}><Ionicons name={iconName} size={15} color={tab === id ? theme.blue : theme.sub} /><Text style={[styles.tabText, { color: tab === id ? theme.blue : theme.sub }]}>{label}</Text></TouchableOpacity>
           ))}
         </View>
 
-        {tab === 'preview' ? (
+        {tab === 'chat' ? (
+          <View style={[styles.fullChat, { backgroundColor: theme.bg }]}>
+            <View style={[styles.chatHeader, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
+              <View>
+                <Text style={[styles.chatTitle, { color: theme.text }]}>AI Chat</Text>
+                <Text style={[styles.chatSub, { color: theme.sub }]}>{busy ? 'AI is thinking / implementing…' : 'Discuss first. Build only when you ask.'}</Text>
+              </View>
+              <View style={[styles.livePill, { borderColor: busy ? theme.blue : theme.border }]}>
+                <View style={[styles.liveDot, { backgroundColor: busy ? theme.blue : theme.green }]} />
+                <Text style={[styles.liveText, { color: theme.text }]}>{busy ? 'IMPLEMENTING' : 'LIVE'}</Text>
+              </View>
+            </View>
+            <ScrollView style={styles.chatHistory} contentContainerStyle={{ padding: 12 }}>
+              {messages.length ? messages.map((m, i) => (
+                <View key={i} style={[styles.messageBubble, { backgroundColor: m.role === 'user' ? theme.surface : theme.surfaceStrong, borderColor: theme.border, alignSelf: m.role === 'user' ? 'flex-end' : 'stretch' }]}>
+                  <Text style={[styles.messageRole, { color: m.role === 'user' ? theme.blue : theme.sub }]}>{m.role === 'user' ? 'You' : 'AI'}{m.at ? ' · ' + new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
+                  <Text style={[styles.msg, { color: theme.text }]}>{m.content}</Text>
+                </View>
+              )) : <Text style={[styles.tip, { color: theme.sub }]}>Start by talking to the AI. You can discuss the idea, purpose, UI, behavior and workflow before asking it to build anything.</Text>}
+            </ScrollView>
+          </View>
+        ) : tab === 'preview' ? (
           <View style={styles.preview}><WebView originWhitelist={['*']} source={{ html: previewHtml }} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} /></View>
         ) : tab === 'code' ? (
           <View style={{ flex: 1 }}>
@@ -283,5 +324,5 @@ export default function AIAppBuilderScreen({ navigation, route }) {
 }
 
 const styles=StyleSheet.create({
-  safe:{flex:1},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},historyRow:{flexDirection:'row',alignItems:'center',paddingVertical:7},historyVersion:{fontSize:11,fontWeight:'900',width:36},historyAction:{fontSize:10,flex:1},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},chat:{minHeight:205,maxHeight:300,padding:11,borderTopWidth:1},progressCard:{borderWidth:1,borderRadius:12,padding:8,marginBottom:6},progressHeader:{flexDirection:'row',alignItems:'center',gap:5},progressLabel:{fontSize:8,fontWeight:'900',letterSpacing:1},progressText:{fontSize:10,fontWeight:'800',lineHeight:14,marginTop:3},remainingText:{fontSize:9,lineHeight:13,marginTop:2},log:{flex:1},messageBubble:{borderWidth:1,borderRadius:12,paddingHorizontal:9,paddingVertical:6,marginBottom:5,maxWidth:'94%'},messageRole:{fontSize:9,fontWeight:'900',marginBottom:2},msg:{fontSize:11,lineHeight:16,marginBottom:1},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
+  safe:{flex:1},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},historyRow:{flexDirection:'row',alignItems:'center',paddingVertical:7},historyVersion:{fontSize:11,fontWeight:'900',width:36},historyAction:{fontSize:10,flex:1},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},fullChat:{flex:1},chatHeader:{minHeight:58,paddingHorizontal:14,paddingVertical:9,borderBottomWidth:1,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},chatTitle:{fontSize:16,fontWeight:'900'},chatSub:{fontSize:10,marginTop:2},livePill:{borderWidth:1,borderRadius:14,paddingHorizontal:9,paddingVertical:5,flexDirection:'row',alignItems:'center',gap:5},liveDot:{width:6,height:6,borderRadius:3},liveText:{fontSize:8,fontWeight:'900',letterSpacing:1},chatHistory:{flex:1},chat:{minHeight:205,maxHeight:300,padding:11,borderTopWidth:1},progressCard:{borderWidth:1,borderRadius:12,padding:8,marginBottom:6},progressHeader:{flexDirection:'row',alignItems:'center',gap:5},progressLabel:{fontSize:8,fontWeight:'900',letterSpacing:1},progressText:{fontSize:10,fontWeight:'800',lineHeight:14,marginTop:3},remainingText:{fontSize:9,lineHeight:13,marginTop:2},log:{flex:1},messageBubble:{borderWidth:1,borderRadius:12,paddingHorizontal:9,paddingVertical:6,marginBottom:5,maxWidth:'94%'},messageRole:{fontSize:9,fontWeight:'900',marginBottom:2},msg:{fontSize:11,lineHeight:16,marginBottom:1},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
 });
