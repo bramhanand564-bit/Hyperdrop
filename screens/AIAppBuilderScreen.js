@@ -78,7 +78,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     setMessages(m => [...m, { role: 'user', content: request }]);
     try {
       let current = project;
-      if (!current) current = await AIAppBuilderService.createProject({ name: request.slice(0, 50), request });
       const chatHistory = [...messages, { role: 'user', content: request }];
       const draft = await AIAppBuilderService.buildWithAI({ project: current, request, connectionId, model, chat: chatHistory });
       if (draft?.mode === 'CHAT') {
