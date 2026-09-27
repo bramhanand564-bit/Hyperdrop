@@ -65,6 +65,16 @@ const NaxStoreScreen = lazyRequire(() => require('./screens/NaxStoreScreen').def
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
 
+const linking = {
+  prefixes: ['nax://', 'hyperdrop://'],
+  config: {
+    screens: {
+      NaxAppRuntime: 'app/:appId',
+      ExperienceRuntime: 'experience/:experienceId',
+    },
+  },
+};
+
 function AppNavigator() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -101,7 +111,7 @@ function AppNavigator() {
         <CallManager user={user} navigationRef={navigationRef} />
       </>}
 
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {user ? <>
             <Stack.Screen name="MainTabs" component={MainAppTabs} />
