@@ -144,7 +144,6 @@ function AppNavigator() {
             <Stack.Screen name="ExperienceStore" component={NaxStoreScreen} />
             <Stack.Screen name="NaxStore" component={NaxStoreScreen} />
             <Stack.Screen name="NaxAppRuntime" component={NaxAppRuntimeScreen} />
-            <Stack.Screen name="NaxStore" component={ExperienceStoreScreen} />
 
           </> : <Stack.Screen name="Auth" component={AuthScreen} />}
         </Stack.Navigator>
