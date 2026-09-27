@@ -117,3 +117,11 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - Single-file apps keep `index.html` as the canonical runtime and carry `MEMORY.md` in project metadata/version snapshots.
 - Advanced projects are the foundation for native Android/source builds; APK/AAB packaging remains a follow-up build stage.
 - Create → Build an App with AI is now the primary AI creator entry point.
+
+## Nax Store redesign — latest
+
+- `screens/NaxStoreScreen.js` now uses the premium dark Nax Store layout based on the provided reference: branded header, search, category pills, AI hero, four creator actions, Popular horizontal cards, Featured/Latest two-column cards, and bottom navigation.
+- Store content remains backed by `NaxAppStoreAPI`; the redesign does not introduce fake published-app records or fake ratings.
+- Import/Create/My Apps/Use/Share actions remain connected to the existing builder/store flows.
+- Latest redesign commit: `e0410ceaf06abe0253a3a04158d1fed2c5eb8836`.
+- Fresh Android build/device verification is still required after this UI change.
