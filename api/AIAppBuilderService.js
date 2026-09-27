@@ -4,6 +4,7 @@ import AIService from '../ai/AIService';
 
 const PROJECTS_KEY = 'nax.ai-app-builder.projects.v2';
 const CURRENT_KEY = 'nax.ai-app-builder.current.v2';
+const WORKSPACE_CHAT_KEY = 'nax.ai-app-builder.workspace-chat.v1';
 const ROOT_DIR = `${FileSystem.documentDirectory || ''}hyperdrop-apps/`;
 const MAX_VERSIONS = 8;
 const MAX_SINGLE_HTML_BYTES = 4 * 1024 * 1024;
@@ -686,6 +687,34 @@ jobs:
     const files = project.files || {};
     for (const [path, content] of Object.entries(files)) await writeTextFile(exportRoot, path, content);
     return exportRoot;
+  },
+
+  async saveChat(project, messages) {
+    const normalized = (Array.isArray(messages) ? messages : []).slice(-80).map(item => ({
+      role: item.role === 'assistant' ? 'assistant' : 'user',
+      content: String(item.content || ''),
+      at: item.at || Date.now(),
+      mode: item.mode || undefined,
+    }));
+    if (project?.id) {
+      const next = { ...project, chat: normalized, updatedAt: Date.now() };
+      return this.saveProject(next, { action: 'chat updated', createVersion: false });
+    }
+    await AsyncStorage.setItem(WORKSPACE_CHAT_KEY, JSON.stringify(normalized));
+    return normalized;
+  },
+
+  async getWorkspaceChat() {
+    try {
+      const raw = await AsyncStorage.getItem(WORKSPACE_CHAT_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  },
+
+  async clearWorkspaceChat() {
+    await AsyncStorage.removeItem(WORKSPACE_CHAT_KEY);
   },
 
   async getCurrent() {
