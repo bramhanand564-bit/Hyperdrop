@@ -143,3 +143,13 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - Nax Store app cards no longer show the separate share icon.
 - Latest fixes: `b022011a1a9a469d6129869e730675c8f591d7c7`, `7847a0c2bab6da41ecf63878db06923f9d11d633`, `f4d454b254b839cec0d0811673e32d2194a75b92`, `1bcfd1109541f997b91e2becb41a7f55c2f155c1`, `021d7e16b207f772f2459ed394874694822e751b`.
 - Fresh Android build/device verification is required.
+
+
+## NAX Gateway portal E2E routing — latest
+- Nax Store app runtime now exposes real native Gateway entrypoint methods: `openChat()`, `openDiscover()`, `openMoments()`, `openSettings()`, `openWeb()`, and `openDeepLink()`.
+- Chat continues to use the real Firebase-backed Nax App share picker and `app_invite` card flow.
+- Discover/Moments/Settings entrypoints now route to their real Hyperdrop screens with the current Store app ID/name in route params.
+- Web entrypoint opens the existing secure `ExperienceWebView` renderer with the current app HTML.
+- Deep links are wired through React Navigation for `nax://app/:appId` and the existing `hyperdrop://experience/:experienceId` contract. Expo app schemes are registered in `app.json`.
+- A standalone E2E test HTML was generated for manual Store import. Its Full Check distinguishes Gateway declarations from the actual native bridge methods and uses real line breaks.
+- Deep-link verification requires a fresh native APK after the scheme/config change; no device runtime result is claimed yet.
