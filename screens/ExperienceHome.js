@@ -65,10 +65,10 @@ export default function ExperienceHome({ navigation }) {
           <View>
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.eyebrow, { color: theme.sub }]}>HYPERDROP</Text>
-                <Text style={[styles.title, { color: theme.text }]}>Create</Text>
+                <Text style={[styles.eyebrow, { color: theme.sub }]}>NAX</Text>
+                <Text style={[styles.title, { color: theme.text }]}>Nax Apps</Text>
                 <Text style={[styles.subtitle, { color: theme.sub }]}>
-                  Build something people can use, share and complete in Chat.
+                  Create, publish, use and share apps from Nax Store.
                 </Text>
               </View>
               <TouchableOpacity
@@ -84,7 +84,7 @@ export default function ExperienceHome({ navigation }) {
               <TextInput
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search Nax apps"
+                placeholder="Search Nax apps, games, tools..."
                 placeholderTextColor={theme.sub}
                 style={{ flex: 1, marginLeft: 8, color: theme.text }}
                 returnKeyType="search"
@@ -94,9 +94,9 @@ export default function ExperienceHome({ navigation }) {
 
             <View style={[styles.hero, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.heroTitle, { color: theme.text }]}>One creator system</Text>
+                <Text style={[styles.heroTitle, { color: theme.text }]}>Nax App Creator</Text>
                 <Text style={[styles.heroText, { color: theme.sub }]}>
-                  Tasks, games, rewards, forms, media, workflows and more—share the same live experience in Chat.
+                  Build apps, games, tools and experiences with one creator system.
                 </Text>
               </View>
               <TouchableOpacity style={[styles.heroButton, { backgroundColor: theme.blue }]} onPress={() => create(TEMPLATES[TEMPLATES.length - 1])}>
@@ -133,7 +133,7 @@ export default function ExperienceHome({ navigation }) {
             </View>
 
             <View style={styles.listHeader}>
-              <Text style={[styles.section, { color: theme.text }]}>Community apps</Text>
+              <Text style={[styles.section, { color: theme.text }]}>Nax apps</Text>
               <Text style={[styles.count, { color: theme.sub }]}>{filtered.length}</Text>
             </View>
           </View>
