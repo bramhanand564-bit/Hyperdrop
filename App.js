@@ -53,6 +53,7 @@ const ExperienceAICreatorScreen = lazyRequire(() => require('./screens/Experienc
 const AIAppBuilderScreen = lazyRequire(() => require('./screens/AIAppBuilderScreen').default);
 const AIAppProjectsScreen = lazyRequire(() => require('./screens/AIAppProjectsScreen').default);
 const AIAppRuntimeScreen = lazyRequire(() => require('./screens/AIAppRuntimeScreen').default);
+const NaxAppRuntimeScreen = lazyRequire(() => require('./screens/NaxAppRuntimeScreen').default);
 const ExperienceBuilder = lazyRequire(() => require('./screens/ExperienceBuilder').default);
 const ExperienceRuntime = lazyRequire(() => require('./screens/ExperienceRuntime').default);
 const ExperienceSharePicker = lazyRequire(() => require('./screens/ExperienceSharePicker').default);
@@ -134,6 +135,7 @@ function AppNavigator() {
             <Stack.Screen name="AIAppBuilder" component={AIAppBuilderScreen} />
             <Stack.Screen name="AIAppProjects" component={AIAppProjectsScreen} />
             <Stack.Screen name="AIAppRuntime" component={AIAppRuntimeScreen} />
+            <Stack.Screen name="NaxAppRuntime" component={NaxAppRuntimeScreen} />
             <Stack.Screen name="ExperienceBuilder" component={ExperienceBuilder} />
             <Stack.Screen name="ExperienceRuntime" component={ExperienceRuntime} />
             <Stack.Screen name="ExperienceSharePicker" component={ExperienceSharePicker} />
