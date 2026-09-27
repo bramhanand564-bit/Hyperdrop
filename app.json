@@ -68,9 +68,6 @@
     "scheme": [
       "nax",
       "hyperdrop"
-    ],
-    "extra": {
-      "gatewayScheme": "nax"
-    }
+    ]
   }
 }
