@@ -81,6 +81,14 @@ export default function AIAppBuilderScreen({ navigation, route }) {
       if (!current) current = await AIAppBuilderService.createProject({ name: request.slice(0, 50), request });
       const chatHistory = [...messages, { role: 'user', content: request }];
       const draft = await AIAppBuilderService.buildWithAI({ project: current, request, connectionId, model, chat: chatHistory });
+      if (draft?.mode === 'CHAT') {
+        const assistant = { role: 'assistant', content: draft.reply || draft.progress || 'Haan bhai, bolo. Hum is app par saath mein kaam kar sakte hain.' };
+        setSuggestions(Array.isArray(draft.suggestedReplies) ? draft.suggestedReplies.slice(0, 4) : []);
+        setMessages(m => [...m, assistant]);
+        setInput('');
+        return;
+      }
+
       const next = await AIAppBuilderService.applyBuild(current, draft, request, chatHistory);
       const assistantText = [
         draft.progress || draft.summary || 'Build updated.',
