@@ -367,5 +367,32 @@ service cloud.firestore {
       }
     }
 
+    // =========================================================
+    // 11. NAX STORE PUBLIC APPS
+    // =========================================================
+    match /nax_apps/{appId} {
+      // Published Nax Apps are public. Draft/disabled apps are creator-only.
+      allow read: if resource.data.status == 'published'
+                  || (request.auth != null && resource.data.creatorId == request.auth.uid);
+
+      allow create: if request.auth != null
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 80
+                    && request.resource.data.html is string
+                    && request.resource.data.html.size() <= 850000;
+
+      allow update: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid
+                    && request.resource.data.creatorId == resource.data.creatorId
+                    && request.resource.data.html is string
+                    && request.resource.data.html.size() <= 850000;
+
+      allow delete: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid;
+    }
+
+
   }
 }
