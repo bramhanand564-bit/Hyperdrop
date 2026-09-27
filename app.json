@@ -64,6 +64,10 @@
         }
       ],
       "@react-native-google-signin/google-signin"
-    ]
+    ],
+    "scheme": "nax",
+    "extra": {
+      "gatewayScheme": "nax"
+    }
   }
 }
