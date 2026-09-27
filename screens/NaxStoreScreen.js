@@ -52,11 +52,10 @@ export default function NaxStoreScreen({ navigation }) {
       if (!asset?.uri) return;
       const html = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
       const name = (asset.name || 'Imported App').replace(/\.html?$/i, '') || 'Imported App';
-      const project = await navigation.navigate('AIAppBuilder', {
+      navigation.navigate('AIAppBuilder', {
         importedHtml: html,
         importedName: name,
       });
-      return project;
     } catch (e) {
       Alert.alert('Import failed', e?.message || 'Could not import the app.');
     }
