@@ -307,11 +307,16 @@ service cloud.firestore {
                     && request.resource.data.creatorId == request.auth.uid
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
-                    && request.resource.data.name.size() <= 80;
+                    && request.resource.data.name.size() <= 80
+                    && request.resource.data.status == 'published';
 
       // Only the creator can change the experience definition/status.
-      allow update, delete: if request.auth != null
-                            && resource.data.creatorId == request.auth.uid;
+      // Creator identity cannot be reassigned by a client update.
+      allow update: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid
+                    && request.resource.data.creatorId == resource.data.creatorId;
+      allow delete: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid;
 
       // Per-user participation state. User can only write their own
       // participation; the creator can read it for management/analytics.
@@ -377,6 +382,7 @@ service cloud.firestore {
 
       allow create: if request.auth != null
                     && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.status == 'published'
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.name.size() <= 80
