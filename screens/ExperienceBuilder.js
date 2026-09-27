@@ -172,7 +172,7 @@ export default function ExperienceBuilder({ route, navigation }) {
         <Text style={[styles.noteTitle,{color:theme.text}]}>Publish flow</Text>
         <Text style={[styles.noteText,{color:theme.sub}]}>Create → publish to Nax Store → share → users open and interact → creator can inspect activity in the dashboard.</Text>
       </View>
-      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:(publishing||loadingExisting)?.6:1}]} onPress={publish} disabled={publishing||loadingExisting}><Text style={styles.publishText}{publishing?(experienceId?'Saving…':'Publishing…'):(experienceId?'Save changes':'Publish to Nax Store')}</Text></TouchableOpacity>
+      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:(publishing||loadingExisting)?.6:1}]} onPress={publish} disabled={publishing||loadingExisting}><Text style={styles.publishText}>{publishing?(experienceId?'Saving…':'Publishing…'):(experienceId?'Save changes':'Publish to Nax Store')}</Text></TouchableOpacity>
     </ScrollView>
   </SafeAreaView>;
 }
