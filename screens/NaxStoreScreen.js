@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   phoneTop:{height:24,backgroundColor:'#4659C9',borderRadius:8,paddingHorizontal:7,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
   phoneTitle:{fontSize:9,fontWeight:'900',color:'#FFF'},
   phoneDot:{width:7,height:7,borderRadius:4,backgroundColor:'#5DE1B1'},
-  phoneGrid:{flex:1,marginTop:9,flexDirection:'row',flexWrap:'wrap',gap:5}
+  phoneGrid:{flex:1,marginTop:9,flexDirection:'row',flexWrap:'wrap',gap:5},
   publishPill:{height:24,borderRadius:7,backgroundColor:'#1687FF',alignItems:'center',justifyContent:'center'},
   publishPillText:{fontSize:8,fontWeight:'900',color:'#FFF'},
   actionGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginTop:14},
@@ -341,7 +341,4 @@ const styles = StyleSheet.create({
   bottomItem:{alignItems:'center',justifyContent:'center',minWidth:58},
   bottomLabel:{fontSize:10,color:'#AEB9CF',marginTop:3},
   bottomActive:{color:'#1687FF',fontWeight:'900'},
-  appIcon:{width:57,height:57,borderRadius:16,backgroundColor:'#172844',alignItems:'center',justifyContent:'center'},
-  appEmoji:{fontSize:31},
-  phoneGrid:{flex:1,marginTop:9,flexDirection:'row',flexWrap:'wrap',gap:5},
 });
