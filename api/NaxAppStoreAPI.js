@@ -143,7 +143,7 @@ const NaxAppStoreAPI = {
       title: String(input.title ?? input.name ?? project.name ?? 'Nax App').trim().slice(0, 100),
       description: String(input.description ?? project.memory?.summary ?? '').trim().slice(0, 500),
       icon: String(input.icon || '🚀').slice(0, 8),
-      iconUrl: String(input.iconUrl || '').slice(0, 2000),
+      iconUrl: String(input.iconUrl || '').trim(),
       screenshots: [],
       category: String(input.category || project.category || 'apps').toLowerCase().slice(0, 20),
       creatorId: uid,
