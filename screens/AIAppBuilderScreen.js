@@ -5,6 +5,7 @@ import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import AIAppBuilderService from '../api/AIAppBuilderService';
 import AISettingsService from '../ai/AISettingsService';
+import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 
 function previewSource(project) {
   if (!project) return '<html><body style="font-family:system-ui;padding:30px"><h2>Start building</h2><p>Describe an app below.</p></body></html>';
@@ -183,6 +184,24 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     catch (e) { Alert.alert('Undo', e?.message || 'Could not restore the previous version.'); }
   };
 
+  const publishToNaxStore = async () => {
+    if (!project || project.target !== 'SINGLE_HTML') {
+      Alert.alert('Nax Store', 'Only Single HTML apps can be published to Nax Store right now. Advanced apps need the Android/web packaging pipeline first.');
+      return;
+    }
+    if (publishingStore) return;
+    setPublishingStore(true);
+    try {
+      const published = await NaxAppStoreAPI.publish(project);
+      Alert.alert('Published ✓', 'Your app is live on Nax Store. Other users can now open and use it.');
+      setMessages(m => [...m, { role: 'assistant', content: 'Published to Nax Store ✓\nLive app ID: ' + published.id, at: Date.now() }]);
+    } catch (e) {
+      Alert.alert('Publish failed', e?.message || 'Could not publish to Nax Store. Check that you are signed in and try again.');
+    } finally {
+      setPublishingStore(false);
+    }
+  };
+
   const prepareAndroid = async () => {
     if (!project) return;
     try {
@@ -337,7 +356,8 @@ export default function AIAppBuilderScreen({ navigation, route }) {
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Package</Text>
                 <Text style={[styles.actionText, { color: theme.sub }]}>Generate an Android WebView project and a GitHub Actions workflow that can build an APK from the app source.</Text>
                 <View style={styles.actionRow}>
-                  <TouchableOpacity onPress={prepareAndroid} style={[styles.actionBtn, { backgroundColor: theme.blue }]}><Ionicons name="logo-android" size={15} color="#FFF" /><Text style={styles.actionBtnText}>Prepare APK</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={publishToNaxStore} disabled={publishingStore} style={[styles.actionBtn, { backgroundColor: theme.blue, opacity: publishingStore ? .55 : 1 }]}><Ionicons name="cloud-upload-outline" size={15} color="#FFF" /><Text style={styles.actionBtnText}>{publishingStore ? 'Publishing…' : 'Publish to Nax Store'}</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={prepareAndroid} style={[styles.actionBtn, { backgroundColor: theme.surfaceStrong, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="logo-android" size={15} color={theme.text} /><Text style={[styles.actionBtnText,{color:theme.text}]}>Prepare APK</Text></TouchableOpacity>
                   <TouchableOpacity onPress={exportProject} style={[styles.actionBtn, { backgroundColor: theme.surfaceStrong, borderColor: theme.border, borderWidth: 1 }]}><Ionicons name="download-outline" size={15} color={theme.text} /><Text style={[styles.actionBtnText, { color: theme.text }]}>Export</Text></TouchableOpacity>
                   </View>
                 </View>
