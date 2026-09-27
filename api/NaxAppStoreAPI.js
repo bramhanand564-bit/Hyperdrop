@@ -92,7 +92,17 @@ const NaxAppStoreAPI = {
     if (!id) return null;
     try {
       const snap = await getDoc(doc(db, PRIMARY_COLLECTION, id));
-      if (snap.exists()) return normalize(snap.id, snap.data());
+      if (snap.exists()) {
+        const normalized = normalize(snap.id, snap.data());
+        const mediaSnap = await getDocs(collection(db, PRIMARY_COLLECTION, id, 'media')).catch(() => ({ docs: [] }));
+        const media = mediaSnap.docs.map(item => item.data()).filter(item => item.kind === 'screenshot').sort((a, b) => (a.index || 0) - (b.index || 0));
+        const iconMedia = mediaSnap.docs.find(item => item.data().kind === 'icon')?.data();
+        return {
+          ...normalized,
+          screenshots: media.map(item => item.dataUrl).filter(Boolean),
+          iconUrl: normalized.iconUrl || iconMedia?.dataUrl || '',
+        };
+      }
     } catch (_) {}
     const compat = await getDoc(doc(db, COMPAT_COLLECTION, id));
     return compat.exists() && compat.data().storeKind === 'nax_app' ? normalize(compat.id, compat.data()) : null;
