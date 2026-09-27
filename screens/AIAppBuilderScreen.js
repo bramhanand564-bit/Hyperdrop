@@ -50,6 +50,13 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         setConnectionId(active.id);
         setModel(active.model || active.models?.[0] || null);
       }
+      const importedProject = route.params?.importedProject;
+      if (importedProject && !project) {
+        const imported = await AIAppBuilderService.importProject(importedProject);
+        setProject(imported);
+        setMessages([{ role: 'assistant', content: 'Custom project imported successfully. Tell me what it is, what you want to change, and how it should work. I will discuss first and only build when you ask.', at: Date.now() }]);
+        return;
+      }
       const importedHtml = route.params?.importedHtml;
       if (importedHtml && !project) {
         const imported = await AIAppBuilderService.createProject({
