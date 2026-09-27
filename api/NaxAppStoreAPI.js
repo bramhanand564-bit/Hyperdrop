@@ -14,7 +14,10 @@ import {
   where,
 } from 'firebase/firestore';
 
-const ref = collection(db, 'nax_apps');
+const PRIMARY_COLLECTION = 'nax_apps';
+const COMPAT_COLLECTION = 'mini_apps';
+const publicRef = collection(db, PRIMARY_COLLECTION);
+const compatRef = collection(db, COMPAT_COLLECTION);
 const MAX_HTML_BYTES = 850000;
 
 const requireUser = () => {
@@ -67,8 +70,12 @@ const NaxAppStoreAPI = {
 
   async get(id) {
     if (!id) return null;
-    const snap = await getDoc(doc(db, 'nax_apps', id));
-    return snap.exists() ? normalize(snap.id, snap.data()) : null;
+    try {
+      const snap = await getDoc(doc(db, PRIMARY_COLLECTION, id));
+      if (snap.exists()) return normalize(snap.id, snap.data());
+    } catch (_) {}
+    const compat = await getDoc(doc(db, COMPAT_COLLECTION, id));
+    return compat.exists() && compat.data().storeKind === 'nax_app' ? normalize(compat.id, compat.data()) : null;
   },
 
   async publish(project, input = {}) {
@@ -77,9 +84,8 @@ const NaxAppStoreAPI = {
     const html = String(project.html || project.files?.['index.html'] || '').trim();
     if (!html) throw new Error('Your app has no index.html to publish.');
     if (sizeOf(html) > MAX_HTML_BYTES) throw new Error('This app is too large for the current Nax Store publisher. Keep the HTML under 850 KB.');
-    const id = input.id || doc(ref).id;
-    const existing = input.id ? await getDoc(doc(db, 'nax_apps', input.id)) : null;
-    if (existing?.exists() && existing.data().creatorId !== uid) throw new Error('You can only update your own Nax app.');
+
+    const id = input.id || doc(publicRef).id;
     const payload = {
       name: String(project.name || 'Nax App').trim().slice(0, 80),
       description: String(input.description ?? project.memory?.summary ?? '').trim().slice(0, 500),
@@ -91,15 +97,33 @@ const NaxAppStoreAPI = {
       html,
       version: Number(project.version || 1),
       updatedAt: serverTimestamp(),
-      ...(existing?.exists() ? {} : { createdAt: serverTimestamp() }),
+      naxStoreVersion: 1,
+      ...(input.id ? {} : { createdAt: serverTimestamp() }),
     };
-    await setDoc(doc(db, 'nax_apps', id), payload, { merge: false });
-    return { id, ...payload };
+
+    try {
+      const existing = input.id ? await getDoc(doc(publicRef, input.id)) : null;
+      if (existing?.exists() && existing.data().creatorId !== uid) throw new Error('You can only update your own Nax app.');
+      await setDoc(doc(publicRef, id), payload, { merge: true });
+      return { id, ...payload, link: 'nax://app/' + id };
+    } catch (primaryError) {
+      if (primaryError?.message === 'You can only update your own Nax app.') throw primaryError;
+      const compatPayload = { ...payload, storeKind: 'nax_app', createdAt: payload.createdAt || serverTimestamp() };
+      try {
+        const existing = input.id ? await getDoc(doc(compatRef, id)) : null;
+        if (existing?.exists() && existing.data().creatorId !== uid) throw new Error('You can only update your own Nax app.');
+        await setDoc(doc(compatRef, id), compatPayload, { merge: true });
+        return { id, ...compatPayload, link: 'nax://app/' + id, storage: 'compat' };
+      } catch (fallbackError) {
+        throw new Error('Nax Store publishing failed. Your account may not have permission to publish apps yet.');
+      }
+    }
   },
 
   async unpublish(id) {
     const uid = requireUser();
-    const snap = await getDoc(doc(db, 'nax_apps', id));
+    let snap = await getDoc(doc(db, PRIMARY_COLLECTION, id)).catch(() => null);
+    if (!snap?.exists()) snap = await getDoc(doc(db, COMPAT_COLLECTION, id));
     if (!snap.exists()) return false;
     if (snap.data().creatorId !== uid) throw new Error('You can only unpublish your own Nax app.');
     await updateDoc(snap.ref, { status: 'disabled', updatedAt: serverTimestamp() });
@@ -108,7 +132,8 @@ const NaxAppStoreAPI = {
 
   async remove(id) {
     const uid = requireUser();
-    const snap = await getDoc(doc(db, 'nax_apps', id));
+    let snap = await getDoc(doc(db, PRIMARY_COLLECTION, id)).catch(() => null);
+    if (!snap?.exists()) snap = await getDoc(doc(db, COMPAT_COLLECTION, id));
     if (!snap.exists()) return false;
     if (snap.data().creatorId !== uid) throw new Error('You can only delete your own Nax app.');
     await deleteDoc(snap.ref);
