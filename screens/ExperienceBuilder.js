@@ -102,25 +102,25 @@ export default function ExperienceBuilder({ route, navigation }) {
   }),[actions,fields,rewardEnabled,rewardPoints,trigger,webUrl,gatewayEnabled,chatEnabled,chatPresentation,visibility]);
 
   const publish=async()=>{
-    if(!name.trim())return Alert.alert('Name required','Give your experience a name.');
-    if(!actions.length)return Alert.alert('Action required','Add at least one action.');
-    if(webUrl.trim() && !URLValidator.validateExternalLink(webUrl.trim()).valid)return Alert.alert('Invalid URL','Only a valid HTTPS URL can be used.');
+    if(!name.trim())return Alert.alert('Nax App name required','Give your Nax App a name.');
+    if(!actions.length)return Alert.alert('Nax App action required','Add at least one action to the Nax App.');
+    if(webUrl.trim() && !URLValidator.validateExternalLink(webUrl.trim()).valid)return Alert.alert('Invalid live URL','Only a valid HTTPS URL can be used.');
     setPublishing(true);
     try{
       const saved=experienceId
         ? await ExperienceAPI.update(experienceId,{name,description,icon,template,schema,gateway:schema.gateway})
         : await ExperienceAPI.create({name,description,icon,template,schema,gateway:schema.gateway});
-      Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Nax app was updated.':'Your Nax app is live and shareable in Chat.',[
+      Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Nax app was updated in Nax Store.':'Your Nax app is live in Nax Store and shareable.',[
         {text:'Open',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:saved.id})},
         {text:'Dashboard',onPress:()=>navigation.replace('ExperienceDashboard')}
       ]);
-    }catch(e){Alert.alert('Publish failed',e.message||'Unable to publish.')}
+    }catch(e){Alert.alert('Nax publish failed',e.message||'Unable to publish.')}
     finally{setPublishing(false);}
   };
 
   return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}>
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">{loadingExisting?<View style={{padding:12,borderRadius:12,backgroundColor:theme.surface,marginBottom:10}}><Text style={{color:theme.sub,fontSize:12}}>Loading existing Experience…</Text></View>:null}
-      <View style={styles.top}><TouchableOpacity onPress={()=>navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text}/></TouchableOpacity><Text style={[styles.title,{color:theme.text}]}>Create</Text><View style={{width:26}}/></View>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">{loadingExisting?<View style={{padding:12,borderRadius:12,backgroundColor:theme.surface,marginBottom:10}}><Text style={{color:theme.sub,fontSize:12}}>Loading existing Nax App…</Text></View>:null}
+      <View style={styles.top}><TouchableOpacity onPress={()=>navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text}/></TouchableOpacity><Text style={[styles.title,{color:theme.text}]}>Nax App</Text><View style={{width:26}}/></View>
 
       <View style={[styles.preview,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <Text style={styles.previewIcon}>{icon}</Text>
@@ -134,9 +134,9 @@ export default function ExperienceBuilder({ route, navigation }) {
       <Text style={[styles.label,{color:theme.text}]}>Basic</Text>
       <View style={styles.row}><TextInput value={icon} onChangeText={setIcon} maxLength={2} style={[styles.iconInput,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]}/><TextInput value={name} onChangeText={setName} maxLength={80} style={[styles.input,{flex:1,color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="Name" placeholderTextColor={theme.sub}/></View>
       <TextInput value={description} onChangeText={setDescription} multiline maxLength={500} style={[styles.textarea,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="Describe what people can do" placeholderTextColor={theme.sub}/>
-      <Text style={[styles.label,{color:theme.text}]}>Universal Gateway</Text>
+      <Text style={[styles.label,{color:theme.text}]}>Nax Gateway</Text>
       <View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border}]}>
-        <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Gateway enabled</Text><Text style={[styles.rowSub,{color:theme.sub}]}>One Experience identity can open from Chat, Discover, Moments, Settings and full screen.</Text></View>
+        <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Gateway enabled</Text><Text style={[styles.rowSub,{color:theme.sub}]}>One Nax App identity can open from Chat, Discover, Moments, Settings and full screen.</Text></View>
         <Switch value={gatewayEnabled} onValueChange={setGatewayEnabled}/>
       </View>
       {gatewayEnabled ? (
@@ -150,7 +150,7 @@ export default function ExperienceBuilder({ route, navigation }) {
         </View>
       ) : null}
 
-      <Text style={[styles.label,{color:theme.text}]}>Full experience URL (optional)</Text>
+      <Text style={[styles.label,{color:theme.text}]}>Live web URL (optional)</Text>
       <TextInput value={webUrl} onChangeText={setWebUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="https://your-experience.example" placeholderTextColor={theme.sub}/>
 
       <View style={styles.sectionHead}><Text style={[styles.label,{color:theme.text,marginTop:0}]}>Actions</Text><Text style={{color:theme.sub,fontSize:11}}>{actions.length}</Text></View>
@@ -170,9 +170,9 @@ export default function ExperienceBuilder({ route, navigation }) {
 
       <View style={[styles.note,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <Text style={[styles.noteTitle,{color:theme.text}]}>Publish flow</Text>
-        <Text style={[styles.noteText,{color:theme.sub}]}>Create → publish → share to Chat → users interact → participant state and immutable events update → creator can inspect activity in the dashboard.</Text>
+        <Text style={[styles.noteText,{color:theme.sub}]}>Create → publish to Nax Store → share → users open and interact → creator can inspect activity in the dashboard.</Text>
       </View>
-      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:(publishing||loadingExisting)?.6:1}]} onPress={publish} disabled={publishing||loadingExisting}><Text style={styles.publishText}>{publishing?(experienceId?'Saving…':'Publishing…'):(experienceId?'Save changes':'Publish')}</Text></TouchableOpacity>
+      <TouchableOpacity style={[styles.publish,{backgroundColor:theme.blue,opacity:(publishing||loadingExisting)?.6:1}]} onPress={publish} disabled={publishing||loadingExisting}><Text style={styles.publishText}{publishing?(experienceId?'Saving…':'Publishing…'):(experienceId?'Save changes':'Publish to Nax Store')}</Text></TouchableOpacity>
     </ScrollView>
   </SafeAreaView>;
 }
