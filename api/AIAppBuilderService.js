@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import AIService from '../ai/AIService';
+import NaxAppStoreAPI from './NaxAppStoreAPI';
 
 const PROJECTS_KEY = 'nax.ai-app-builder.projects.v2';
 const CURRENT_KEY = 'nax.ai-app-builder.current.v2';
@@ -687,6 +688,12 @@ jobs:
     const files = project.files || {};
     for (const [path, content] of Object.entries(files)) await writeTextFile(exportRoot, path, content);
     return exportRoot;
+  },
+
+  async publishToNaxStore(project, options = {}) {
+    if (!project) throw new Error('No app selected.');
+    const published = await NaxAppStoreAPI.publish(project, options);
+    return { ...project, naxStoreId: published.id, naxStoreStatus: 'published', naxStoreVersion: published.version, updatedAt: Date.now() };
   },
 
   async saveChat(project, messages) {
