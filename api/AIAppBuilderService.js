@@ -688,8 +688,9 @@ jobs:
     const html = String(source.html || files['index.html'] || '').trim();
     if (!html && !Object.keys(files).length) throw new Error('Imported project has no files.');
     const target = source.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML';
+    const generatedId = source.id || ('app_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
     const project = {
-      id: source.id || null,
+      id: generatedId,
       name: String(source.name || 'Imported Nax App').slice(0, 80),
       target,
       html: target === 'SINGLE_HTML' ? html : undefined,
