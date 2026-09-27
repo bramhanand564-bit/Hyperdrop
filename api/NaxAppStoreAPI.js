@@ -1,4 +1,4 @@
-import { auth, db } from '../firebaseConfig';
+import { app, auth, db } from '../firebaseConfig';
 import {
   collection,
   deleteDoc,
@@ -13,6 +13,9 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
+
+const storage = getStorage(app);
 
 const PRIMARY_COLLECTION = 'nax_apps';
 const COMPAT_COLLECTION = 'mini_apps';
@@ -29,8 +32,11 @@ const requireUser = () => {
 const normalize = (id, data = {}) => ({
   id,
   name: data.name || 'Untitled App',
+  title: data.title || data.name || 'Untitled App',
   description: data.description || '',
   icon: data.icon || '🚀',
+  iconUrl: data.iconUrl || '',
+  screenshots: Array.isArray(data.screenshots) ? data.screenshots : [],
   creatorId: data.creatorId || '',
   creatorName: data.creatorName || 'Creator',
   status: data.status || 'published',
@@ -91,6 +97,24 @@ const NaxAppStoreAPI = {
     return compat.exists() && compat.data().storeKind === 'nax_app' ? normalize(compat.id, compat.data()) : null;
   },
 
+  async uploadImage({ appId, uri, kind = 'screenshot', index = 0 } = {}) {
+    const uid = requireUser();
+    if (!appId || !uri) throw new Error('Missing image information.');
+    const FileSystem = await import('expo-file-system');
+    const ImageManipulator = await import('expo-image-manipulator');
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1280 } }],
+      { compress: 0.78, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    const base64 = result.base64;
+    if (!base64) throw new Error('Could not prepare image for upload.');
+    const path = `nax-apps/${uid}/${appId}/${kind}-${index}.jpg`;
+    const objectRef = storageRef(storage, path);
+    await uploadString(objectRef, base64, 'base64', { contentType: 'image/jpeg' });
+    return getDownloadURL(objectRef);
+  },
+
   async publish(project, input = {}) {
     const uid = requireUser();
     if (!project || project.target !== 'SINGLE_HTML') throw new Error('Only Single HTML apps can be published to Nax Store right now.');
@@ -100,9 +124,12 @@ const NaxAppStoreAPI = {
 
     const id = input.id || doc(publicRef).id;
     const payload = {
-      name: String(project.name || 'Nax App').trim().slice(0, 80),
+      name: String(input.name ?? project.name ?? 'Nax App').trim().slice(0, 80),
+      title: String(input.title ?? input.name ?? project.name ?? 'Nax App').trim().slice(0, 100),
       description: String(input.description ?? project.memory?.summary ?? '').trim().slice(0, 500),
       icon: String(input.icon || '🚀').slice(0, 8),
+      iconUrl: String(input.iconUrl || '').slice(0, 2000),
+      screenshots: Array.isArray(input.screenshots) ? input.screenshots.slice(0, 6) : [],
       category: String(input.category || project.category || 'apps').toLowerCase().slice(0, 20),
       creatorId: uid,
       creatorName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'Creator',
