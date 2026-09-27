@@ -133,3 +133,12 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - `NaxAppStoreAPI.publish` now stores title, icon/iconUrl, screenshots, category, description, and version metadata.
 - Firebase Storage rules are configured in `storage.rules` and referenced by `firebase.json`; deployment remains manual/explicit per the project's Firebase deployment policy.
 - Latest related commits: `977246be619c6f5872de618dc27a0ebb93de0469`, `d7dc238a7cc1207886d5e6f82c10d1cc1f46421a`.
+
+## Nax Store publish fixes — latest
+- Publish now loads the complete local project with `AIAppBuilderService.getProject` before publishing, so `index.html` is not lost when My Apps metadata is passed to the publisher.
+- Publisher accepts both `index.html` and `src/index.html` as a valid HTML entry.
+- React Native media publishing no longer uses Firebase Web SDK Blob/ArrayBuffer uploads. App screenshots are compressed on-device and stored as dedicated Firestore media documents; custom icons are stored with the listing and displayed in Nax Store.
+- Publish listing now supports a gallery-selected custom icon as well as emoji fallback.
+- Nax Store app cards no longer show the separate share icon.
+- Latest fixes: `b022011a1a9a469d6129869e730675c8f591d7c7`, `7847a0c2bab6da41ecf63878db06923f9d11d633`, `f4d454b254b839cec0d0811673e32d2194a75b92`, `1bcfd1109541f997b91e2becb41a7f55c2f155c1`, `021d7e16b207f772f2459ed394874694822e751b`.
+- Fresh Android build/device verification is required.
