@@ -143,7 +143,6 @@ function AppNavigator() {
             <Stack.Screen name="ExperienceDashboard" component={ExperienceDashboard} />
             <Stack.Screen name="ExperienceStore" component={NaxStoreScreen} />
             <Stack.Screen name="NaxStore" component={NaxStoreScreen} />
-            <Stack.Screen name="NaxAppRuntime" component={NaxAppRuntimeScreen} />
 
           </> : <Stack.Screen name="Auth" component={AuthScreen} />}
         </Stack.Navigator>
