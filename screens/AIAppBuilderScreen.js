@@ -255,7 +255,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}><Ionicons name="chevron-back" size={22} color={theme.text} /></TouchableOpacity>
-          <TouchableOpacity onPress={publishToStore} disabled={publishingStore || !project} style={[styles.publishBtn,{backgroundColor:theme.blue,opacity:publishingStore||!project?.html?.trim()?.length?.toString?1:1}]}><Ionicons name="cloud-upload-outline" size={17} color="#FFF" /></TouchableOpacity>
+          <TouchableOpacity onPress={publishToStore} disabled={publishingStore || !project} style={[styles.publishBtn,{backgroundColor:theme.blue,opacity:publishingStore ? 0.5 : 1}]}><Ionicons name="cloud-upload-outline" size={17} color="#FFF" /></TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{project?.name || 'AI App Builder'}</Text>
             <View style={styles.statusRow}>
