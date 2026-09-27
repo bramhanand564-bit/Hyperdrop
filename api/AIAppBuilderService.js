@@ -681,6 +681,32 @@ jobs:
     return this.saveProject(next, { action: 'prepared Android APK project', createVersion: true });
   },
 
+  async importProject(input = {}) {
+    const source = input?.project || input;
+    if (!source || typeof source !== 'object') throw new Error('Invalid Nax project file.');
+    const files = source.files && typeof source.files === 'object' ? source.files : {};
+    const html = String(source.html || files['index.html'] || '').trim();
+    if (!html && !Object.keys(files).length) throw new Error('Imported project has no files.');
+    const target = source.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML';
+    const project = {
+      id: source.id || null,
+      name: String(source.name || 'Imported Nax App').slice(0, 80),
+      target,
+      html: target === 'SINGLE_HTML' ? html : undefined,
+      files: target === 'SINGLE_HTML'
+        ? { 'index.html': html, 'MEMORY.md': source.memoryMarkdown || memoryMarkdown(source.memory || MEMORY_TEMPLATE({ name: source.name || 'Imported Nax App', target })) }
+        : { ...files, 'MEMORY.md': files['MEMORY.md'] || memoryMarkdown(source.memory || MEMORY_TEMPLATE({ name: source.name || 'Imported Nax App', target })) },
+      memory: source.memory || MEMORY_TEMPLATE({ name: source.name || 'Imported Nax App', target }),
+      versions: [],
+      chat: [],
+      version: Number(source.version || 1),
+      status: 'imported',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    return this.saveProject(project, { action: 'imported custom project', createVersion: true });
+  },
+
   async exportProject(project) {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const exportRoot = (FileSystem.documentDirectory || '') + 'HyperdropExports/' + safeSlug(project.name) + '-' + stamp + '/';
