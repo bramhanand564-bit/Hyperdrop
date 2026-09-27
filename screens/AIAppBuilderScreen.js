@@ -126,7 +126,9 @@ export default function AIAppBuilderScreen({ navigation, route }) {
       ].join('\n');
       const assistant = { role: 'assistant', content: assistantText };
       setProject(next);
-      setMessages(m => [...m, assistant]);
+      const finalChat = [...nextUserMessages, assistant];
+      setMessages(finalChat);
+      await AIAppBuilderService.saveChat(next, finalChat).catch(() => {});
       const selected = next.files?.[selectedFile] != null ? selectedFile : (next.target === 'SINGLE_HTML' ? 'index.html' : Object.keys(next.files || {})[0]);
       if (selected) setSelectedFile(selected);
       setInput('');
