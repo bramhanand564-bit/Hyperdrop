@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -94,7 +94,7 @@ export default function NaxStoreScreen({ navigation }) {
 
   const AppIcon = ({ app, small = false }) => (
     <View style={[styles.appIcon, small && styles.smallIcon]}>
-      <Text style={[styles.appEmoji, small && styles.smallEmoji]}>{iconFor(app)}</Text>
+      {app.iconUrl ? <Image source={{ uri: app.iconUrl }} style={styles.appImage} /> : <Text style={[styles.appEmoji, small && styles.smallEmoji]}>{iconFor(app)}</Text>}
     </View>
   );
 
@@ -322,6 +322,7 @@ const styles = StyleSheet.create({
   featureCard:{width:'48.6%',minHeight:156,borderRadius:16,borderWidth:1,padding:10},
   appIcon:{width:57,height:57,borderRadius:16,backgroundColor:'#172844',alignItems:'center',justifyContent:'center'},
   appEmoji:{fontSize:31},
+  appImage:{width:'100%',height:'100%',borderRadius:16},
   featureBody:{flex:1,marginTop:7},
   featureName:{fontSize:12,fontWeight:'900'},
   featureDesc:{fontSize:9,lineHeight:13,marginTop:3,minHeight:26},
