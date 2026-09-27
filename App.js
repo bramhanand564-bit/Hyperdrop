@@ -59,6 +59,8 @@ const ExperienceRuntime = lazyRequire(() => require('./screens/ExperienceRuntime
 const ExperienceSharePicker = lazyRequire(() => require('./screens/ExperienceSharePicker').default);
 const ExperienceDashboard = lazyRequire(() => require('./screens/ExperienceDashboard').default);
 const ExperienceStoreScreen = lazyRequire(() => require('./screens/ExperienceStoreScreen').default);
+const NaxStoreScreen = lazyRequire(() => require('./screens/NaxStoreScreen').default);
+const NaxAppRuntimeScreen = lazyRequire(() => require('./screens/NaxAppRuntimeScreen').default);
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
@@ -140,7 +142,9 @@ function AppNavigator() {
             <Stack.Screen name="ExperienceRuntime" component={ExperienceRuntime} />
             <Stack.Screen name="ExperienceSharePicker" component={ExperienceSharePicker} />
             <Stack.Screen name="ExperienceDashboard" component={ExperienceDashboard} />
-            <Stack.Screen name="ExperienceStore" component={ExperienceStoreScreen} />
+            <Stack.Screen name="ExperienceStore" component={NaxStoreScreen} />
+            <Stack.Screen name="NaxStore" component={NaxStoreScreen} />
+            <Stack.Screen name="NaxAppRuntime" component={NaxAppRuntimeScreen} />
             <Stack.Screen name="NaxStore" component={ExperienceStoreScreen} />
 
           </> : <Stack.Screen name="Auth" component={AuthScreen} />}
