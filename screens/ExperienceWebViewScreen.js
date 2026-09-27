@@ -12,11 +12,11 @@ import AuditLogger from '../security/AuditLogger';
 
 export default function ExperienceWebViewScreen({ route, navigation }) {
   // 📥 Nax Studio से AI जनरेटेड `htmlCode` आएगा, या फिर नॉर्मल `url`
-  const { title = 'Mini-App', url, htmlCode, isPremium = false } = route.params || {};
+  const { title = 'Nax App', url, htmlCode, isPremium = false } = route.params || {};
   const { isDark } = useTheme();
   const user = auth?.currentUser;
   const portalUser = { uid: user?.uid || 'guest', name: user?.displayName || 'User', isPremium: Boolean(isPremium) };
-  const urlCheck = url ? URLValidator.scanMiniAppUrl(url) : { isSafe: !!htmlCode };
+  const urlCheck = url ? (() => { const result = URLValidator.validateMiniAppURL(url); return { isSafe: result.valid, message: (result.errors || []).join(' ') || 'Invalid URL' }; })() : { isSafe: !!htmlCode, message: htmlCode ? '' : 'App content is missing.' };
 
   
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +30,7 @@ export default function ExperienceWebViewScreen({ route, navigation }) {
 
   // 🧠 THE SUPER BRIDGE: Nax Data & Local AI Hardware Check
   const injectedCode = `
-    window.NaxExperience = {
+    window.NaxApp = {
       user: {
         uid: ${JSON.stringify(portalUser.uid)},
         name: ${JSON.stringify(portalUser.name)},
@@ -51,10 +51,10 @@ export default function ExperienceWebViewScreen({ route, navigation }) {
 
   // 🔥 ACTION RECEIVER (Tokens, Watch Party, AI Settings)
   const handleMessage = (event) => {
-    if (!RateLimiter.allow(`miniapp:${user?.uid || 'guest'}`)) return;
+    if (!RateLimiter.allow(`naxapp:${user?.uid || 'guest'}`)) return;
     try {
       const message = JSON.parse(event.nativeEvent.data);
-      console.log("Mini-App Action Received:", message);
+      console.log("Nax App Action Received:", message);
 
       if (message.action === 'REQUEST_PAYMENT') {
         const amount = Number(message.data?.amount);
@@ -91,7 +91,7 @@ export default function ExperienceWebViewScreen({ route, navigation }) {
     }
   };
 
-  useEffect(() => { if (!urlCheck.isSafe && !htmlCode) AuditLogger.log('miniapp.blocked', { url, reason: urlCheck.message }); }, [url, htmlCode, urlCheck.isSafe]);
+  useEffect(() => { if (!urlCheck.isSafe && !htmlCode) AuditLogger.log('naxapp.blocked', { url, reason: urlCheck.message }); }, [url, htmlCode, urlCheck.isSafe]);
 
   if (!urlCheck.isSafe && !htmlCode) {
     return <SafeAreaView style={[styles.container, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}><Ionicons name="shield-checkmark" size={48} color="#FF3B30" /><Text style={{ color: textMain, marginTop: 12, fontWeight: '700' }}>App blocked by security policy</Text><Text style={{ color: textSub, marginTop: 6 }}>{urlCheck.message}</Text></SafeAreaView>;
