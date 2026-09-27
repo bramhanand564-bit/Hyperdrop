@@ -24,6 +24,7 @@ export default function ExperienceStoreScreen({ navigation }) {
   const [template, setTemplate] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
+  const [mine, setMine] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,8 +35,9 @@ export default function ExperienceStoreScreen({ navigation }) {
       ]);
       setItems(experienceItems);
       setApps(naxApps);
+      setMine(await NaxAppStoreAPI.listMine({ limitCount: 30 }).catch(() => []));
     }
-    catch (e) { Alert.alert('Store', e.message || 'Could not load the Experience Store.'); }
+    catch (e) { Alert.alert('Nax Store', e.message || 'Could not load Nax Store.'); }
     finally { setLoading(false); }
   }, [query, template]);
 
@@ -70,7 +72,7 @@ export default function ExperienceStoreScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text}/></TouchableOpacity>
         <View style={{flex:1,marginLeft:10}}>
           <Text style={[styles.title,{color:theme.text}]}>Nax Store</Text>
-          <Text style={[styles.sub,{color:theme.sub}]}>Discover apps made by Nax creators, use them, customize them, or publish your own.</Text>
+          <Text style={[styles.sub,{color:theme.sub}]}>Discover creator-made Nax apps, use them, customize them, or publish your own.</Text>
         </View>
         <View style={{flexDirection:'row',gap:7}}><TouchableOpacity onPress={importApp} style={[styles.add,{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border}]}><Ionicons name="download-outline" size={18} color={theme.blue}/></TouchableOpacity><TouchableOpacity onPress={() => navigation.navigate('ExperienceBuilder',{template:'custom'})} style={[styles.add,{backgroundColor:theme.blue}]}><Ionicons name="add" size={21} color="#FFF"/></TouchableOpacity></View>
       </View>
@@ -87,6 +89,16 @@ export default function ExperienceStoreScreen({ navigation }) {
       <View style={[styles.banner,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <Text style={{fontSize:28}}>🧩</Text><View style={{flex:1,marginLeft:11}}><Text style={[styles.bannerTitle,{color:theme.text}]}>Nax Store · discover, use, publish</Text><Text style={[styles.bannerText,{color:theme.sub}]}>Creators can publish apps here. AI-built Single HTML apps and interactive Experiences can be opened directly and shared.</Text></View>
       </View>
+
+      <Text style={[styles.section,{color:theme.text}]}>My published apps</Text>
+      {mine.length ? mine.map(item => <View key={'mine_'+item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
+        <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>Live · v{item.version}</Text></View></View>
+        <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={2}>{item.description || 'Your public Nax app'}</Text>
+        <View style={styles.actions}>
+          <TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity>
+          <TouchableOpacity onPress={async()=>{try{await NaxAppStoreAPI.unpublish(item.id);load();}catch(e){Alert.alert('Unpublish',e.message||'Could not unpublish.');}}} style={[styles.button,{backgroundColor:theme.bg,borderWidth:1,borderColor:theme.border}]}><Ionicons name="cloud-offline-outline" size={15} color={theme.text}/><Text style={{color:theme.text,fontWeight:'900',fontSize:11}}>Unpublish</Text></TouchableOpacity>
+        </View>
+      </View>) : <Text style={{color:theme.sub}}>Publish an AI-built or imported Single HTML app to see it here.</Text>}
 
       <Text style={[styles.section,{color:theme.text}]}>Nax Apps</Text>
       {apps.length ? apps.map(item => <View key={'app_'+item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
