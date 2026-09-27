@@ -10,11 +10,12 @@ import { unzipSync, strFromU8 } from 'fflate';
 
 const CATEGORIES = [
   { id: '', label: 'All' },
-  { id: 'transfer', label: 'Tools' },
-  { id: 'media', label: 'Media' },
+  { id: 'custom', label: 'Apps' },
   { id: 'game', label: 'Games' },
+  { id: 'transfer', label: 'Tools' },
+  { id: 'quiz', label: 'AI' },
+  { id: 'media', label: 'Media' },
   { id: 'task', label: 'Work' },
-  { id: 'custom', label: 'Custom' },
 ];
 
 export default function ExperienceStoreScreen({ navigation }) {
@@ -131,9 +132,9 @@ export default function ExperienceStoreScreen({ navigation }) {
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>App · by {item.creatorName}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={3}>{item.description || 'Creator-built Nax app'}</Text>
         <View style={styles.actions}><TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity></View>
-      </View>) : <Text style={{color:theme.sub}}>No public Nax Apps yet.</Text>}
+      </View>) : <Text style={{color:theme.sub}}>No public Nax Apps yet. Be the first creator to publish one.</Text>}
 
-      <Text style={[styles.section,{color:theme.text}]}>All published apps</Text>
+      <Text style={[styles.section,{color:theme.text}]}>Published Nax Apps</Text>
       {loading?<ActivityIndicator color={theme.blue} style={{marginTop:25}}/>:filtered.length===0?<Text style={{color:theme.sub}}>No published apps found.</Text>:filtered.map(item=><View key={item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>{item.template} · by {item.creatorName}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={3}>{item.description||'Interactive experience'}</Text>
