@@ -16,7 +16,6 @@ Build a stable Nax Chat / Hyperdrop app with reliable private chat and media mes
 | Moments media viewer | WORKING | Full-screen vertical viewer and Clips UI are present. |
 | Moments Connect/Circle | WORKING | followingIds update with rollback. |
 | Chat core | WORKING | Existing messaging/media/reply/forward flows retained. |
-| Chat Power Center | NEW | 100 additional actions added; needs regression testing. |
 | Voice call | PARTIAL | Signalling/media pipeline exists; audio cleanup was explicitly handled. |
 | Video call | HARDENED / DEVICE VERIFICATION PENDING | Remote RTCView no longer force-remounts; video-call remote stream is published only after a video track exists; SDP/ICE diagnostics added. Still needs two-device APK verification. |
 | Call cleanup / speaker restore | FIXED IN CODE | WebRTC tracks and Expo audio mode are restored on cleanup. |
@@ -96,6 +95,7 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - Added an Experience Store for published creator-made tools/apps with search/category filters, direct use, and one-tap customizable cloning.
 - Added Store and Creator Dashboard entry points in Experience Home and Settings.
 - Shared Experience Chat messages now carry Gateway/package metadata while retaining the same Experience identity for compact Chat and full-screen runtime entry.
+- Removed the legacy Chat Power Center / 100-feature Chat toolkit entrypoint and its dedicated component; normal Chat Toolkit filters and controls remain.
 - Fixed the atomic Experience action result path so participant state/action results are returned correctly.
 - Important limitation: the existing native WebRTC file-transfer helper is still capped at 15 MB and is not yet a production 100 GB resumable transfer engine. A true 100 GB Big File Transfer requires streaming/resumable chunks, receiver-side disk streaming, recovery, and device/network hardening before that claim is made.
 
