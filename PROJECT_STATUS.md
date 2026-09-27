@@ -91,6 +91,7 @@ Failure mapping: steps before offer/answer = signalling; ICE failure = connectiv
 WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working code.
 
 ## Universal Experience Gateway & Store — IMPLEMENTED IN MAIN
+- Nax Store apps now carry persistent Gateway metadata, can be shared from Store to real user chats as `app_invite` messages, render as compact Chat cards, and open through `NaxAppRuntime` with a native Gateway bridge (`window.Nax.shareToChat()` / `window.Nax.close()`). The Chat share picker reads real `users/{uid}/user_chats` and sends through `MessagingService`; no demo/fake chat selection was added.
 - Added a permanent Gateway contract to Experiences with stable gateway IDs, visibility, Chat presentation, entrypoints, and capability scopes.
 - Added an Experience Store for published creator-made tools/apps with search/category filters, direct use, and one-tap customizable cloning.
 - Added Store and Creator Dashboard entry points in Experience Home and Settings.
