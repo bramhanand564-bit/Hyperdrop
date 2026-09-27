@@ -60,7 +60,6 @@ const ExperienceSharePicker = lazyRequire(() => require('./screens/ExperienceSha
 const ExperienceDashboard = lazyRequire(() => require('./screens/ExperienceDashboard').default);
 const ExperienceStoreScreen = lazyRequire(() => require('./screens/ExperienceStoreScreen').default);
 const NaxStoreScreen = lazyRequire(() => require('./screens/NaxStoreScreen').default);
-const NaxAppRuntimeScreen = lazyRequire(() => require('./screens/NaxAppRuntimeScreen').default);
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
