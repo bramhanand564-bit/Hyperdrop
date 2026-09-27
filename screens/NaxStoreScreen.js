@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '../context/ThemeContext';
 import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
+import AIAppBuilderService from '../api/AIAppBuilderService';
 
 const CATEGORIES = ['All', 'Apps', 'Games', 'Tools', 'AI', 'Media', 'Work'];
 
@@ -44,18 +45,21 @@ export default function NaxStoreScreen({ navigation }) {
   const importApp = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/html', 'text/plain'],
+        type: ['text/html', 'application/json', 'text/plain'],
         copyToCacheDirectory: true,
       });
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.uri) return;
-      const html = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const raw = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const isJson = /\.json$/i.test(asset.name || '');
+      if (isJson) {
+        const importedProject = await AIAppBuilderService.importProject(JSON.parse(raw));
+        navigation.navigate('AIAppBuilder', { project: importedProject });
+        return;
+      }
       const name = (asset.name || 'Imported App').replace(/\.html?$/i, '') || 'Imported App';
-      navigation.navigate('AIAppBuilder', {
-        importedHtml: html,
-        importedName: name,
-      });
+      navigation.navigate('AIAppBuilder', { importedHtml: raw, importedName: name });
     } catch (e) {
       Alert.alert('Import failed', e?.message || 'Could not import the app.');
     }
@@ -120,7 +124,7 @@ export default function NaxStoreScreen({ navigation }) {
           <TouchableOpacity onPress={importApp} style={[styles.actionTile, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={[styles.tileIcon,{backgroundColor:'rgba(8,126,255,.12)'}]}><Ionicons name="arrow-up" size={22} color={theme.blue} /></View>
             <Text style={[styles.tileTitle,{color:theme.text}]}>Import App</Text>
-            <Text style={[styles.tileText,{color:theme.sub}]}>Bring your custom HTML app.</Text>
+            <Text style={[styles.tileText,{color:theme.sub}]}>Bring your custom HTML app or project.</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('AIAppProjects')} style={[styles.actionTile, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={[styles.tileIcon,{backgroundColor:'rgba(175,82,222,.12)'}]}><Ionicons name="cloud-upload-outline" size={22} color="#AF52DE" /></View>
