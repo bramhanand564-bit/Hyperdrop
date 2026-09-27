@@ -3,7 +3,6 @@ import { Alert, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, T
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
-import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 import { URLValidator } from '../security/URLValidator';
 import { DEFAULT_GATEWAY, normalizeGateway } from '../api/ExperienceGateway';
 
