@@ -141,6 +141,7 @@ function AppNavigator() {
             <Stack.Screen name="ExperienceSharePicker" component={ExperienceSharePicker} />
             <Stack.Screen name="ExperienceDashboard" component={ExperienceDashboard} />
             <Stack.Screen name="ExperienceStore" component={ExperienceStoreScreen} />
+            <Stack.Screen name="NaxStore" component={ExperienceStoreScreen} />
 
           </> : <Stack.Screen name="Auth" component={AuthScreen} />}
         </Stack.Navigator>
