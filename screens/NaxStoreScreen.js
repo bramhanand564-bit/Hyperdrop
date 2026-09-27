@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -81,15 +81,7 @@ export default function NaxStoreScreen({ navigation }) {
     return tb - ta;
   }).slice(0, 6);
 
-  const shareApp = async app => {
-    try {
-      await Share.share({
-        title: app.name,
-        message: 'Use ' + app.name + ' on Nax Store\nNax App ID: ' + app.id + '\nOpen: nax://app/' + encodeURIComponent(app.id),
-      });
-    } catch (_) {}
-  };
-
+  const shareApp = app => navigation.navigate('NaxAppSharePicker', { app });
   const openApp = app => navigation.navigate('NaxAppRuntime', { appId: app.id });
 
   const AppIcon = ({ app, small = false }) => (
@@ -116,9 +108,14 @@ export default function NaxStoreScreen({ navigation }) {
         <Text style={[styles.meta, { color: theme.sub }]}>{getCategory(app)} · {app.creatorName || 'Creator'}</Text>
       </View>
       <View style={styles.featureActions}>
-        <TouchableOpacity onPress={() => openApp(app)} style={[styles.installBtn, { backgroundColor: theme.blue }]}>
-          <Text style={styles.installText}>Use</Text>
-        </TouchableOpacity>
+        <View style={styles.featureActionsRow}>
+          <TouchableOpacity onPress={() => openApp(app)} style={[styles.installBtn, { backgroundColor: theme.blue }]}>
+            <Text style={styles.installText}>Use</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}>
+            <Ionicons name="share-outline" size={16} color={theme.text} />
+          </TouchableOpacity>
+        </View>
 
       </View>
     </View>
