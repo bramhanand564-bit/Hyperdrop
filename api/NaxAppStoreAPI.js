@@ -46,10 +46,16 @@ const sizeOf = value => String(value || '').length * 2;
 const NaxAppStoreAPI = {
   async list({ search = '', limitCount = 60 } = {}) {
     const cap = Math.min(100, Math.max(1, Number(limitCount) || 60));
-    const snap = await getDocs(query(ref, where('status', '==', 'published'), limit(cap)));
     const q = String(search || '').trim().toLowerCase();
+    let snap;
+    try {
+      snap = await getDocs(query(publicRef, where('status', '==', 'published'), limit(cap)));
+    } catch (_) {
+      snap = await getDocs(query(compatRef, where('storeKind', '==', 'nax_app'), limit(cap)));
+    }
     return snap.docs
       .map(d => normalize(d.id, d.data()))
+      .filter(app => app.status === 'published')
       .filter(app => !q || [app.name, app.description, app.creatorName].some(v => String(v || '').toLowerCase().includes(q)))
       .sort((a, b) => {
         const ta = a.updatedAt?.toMillis?.() || a.updatedAt || 0;
