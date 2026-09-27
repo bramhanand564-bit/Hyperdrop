@@ -15,7 +15,6 @@ permissions:
 
 jobs:
   deploy:
-    if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' || secrets.FIREBASE_TOKEN != '' }}
     runs-on: ubuntu-latest
     env:
       FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
@@ -26,7 +25,17 @@ jobs:
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
 
+      - name: Check Firebase CI credentials
+        shell: bash
+        run: |
+          if [ -z "${FIREBASE_SERVICE_ACCOUNT_JSON:-}" ] && [ -z "${FIREBASE_TOKEN:-}" ]; then
+            echo "::warning::Firebase CI credentials are not configured; skipping Firestore rules deployment."
+            echo "Configure FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_TOKEN to enable automatic deployment."
+            exit 0
+          fi
+
       - name: Deploy Firestore rules
+        if: ${{ env.FIREBASE_SERVICE_ACCOUNT_JSON != '' || env.FIREBASE_TOKEN != '' }}
         shell: bash
         run: |
           set -euo pipefail
