@@ -235,6 +235,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
           <TouchableOpacity onPress={undo} disabled={!project || (project.versions || []).length < 2} style={[styles.icon, { borderColor: theme.border, opacity: project && (project.versions || []).length > 1 ? 1 : .35 }]}><Ionicons name="arrow-undo" size={18} color={theme.text} /></TouchableOpacity>
           <TouchableOpacity onPress={redo} disabled={!project || !(project.redo || []).length} style={[styles.icon, { borderColor: theme.border, marginLeft: 5, opacity: project && (project.redo || []).length ? 1 : .35 }]}><Ionicons name="arrow-redo" size={18} color={theme.text} /></TouchableOpacity>
           {project && <TouchableOpacity onPress={() => navigation.navigate('AIAppRuntime', { projectId: project.id, title: project.name })} style={[styles.icon, { borderColor: theme.border, marginLeft: 5 }]}><Ionicons name="play" size={17} color={theme.text} /></TouchableOpacity>}
+          {project?.target === 'SINGLE_HTML' && <TouchableOpacity onPress={publishToStore} disabled={publishingStore} style={[styles.icon, { borderColor: theme.border, marginLeft: 5, opacity: publishingStore ? .5 : 1 }]}><Ionicons name="cloud-upload-outline" size={17} color={theme.blue} /></TouchableOpacity>}
           <TouchableOpacity onPress={startNew} style={[styles.icon, { borderColor: theme.border, marginLeft: 6 }]}><Ionicons name="add" size={18} color={theme.text} /></TouchableOpacity>
         </View>
 
