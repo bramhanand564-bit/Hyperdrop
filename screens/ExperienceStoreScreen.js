@@ -29,13 +29,16 @@ export default function ExperienceStoreScreen({ navigation }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [experienceItems, naxApps] = await Promise.all([
+      const [experienceResult, naxResult, mineResult] = await Promise.allSettled([
         ExperienceAPI.list({ search: query, template, limitCount: 80 }),
-        NaxAppStoreAPI.list({ search: query, limitCount: 60 }).catch(() => []),
+        NaxAppStoreAPI.list({ search: query, limitCount: 60 }),
+        NaxAppStoreAPI.listMine({ limitCount: 30 }),
       ]);
-      setItems(experienceItems);
-      setApps(naxApps);
-      setMine(await NaxAppStoreAPI.listMine({ limitCount: 30 }).catch(() => []));
+      setItems(experienceResult.status === 'fulfilled' ? experienceResult.value : []);
+      setApps(naxResult.status === 'fulfilled' ? naxResult.value : []);
+      setMine(mineResult.status === 'fulfilled' ? mineResult.value : []);
+      const failed = [experienceResult, naxResult].find(result => result.status === 'rejected');
+      if (failed) console.log('Nax Store partial load:', failed.reason?.message || failed.reason);
     }
     catch (e) { Alert.alert('Nax Store', e.message || 'Could not load Nax Store.'); }
     finally { setLoading(false); }
