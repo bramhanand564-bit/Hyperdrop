@@ -100,7 +100,6 @@ const NaxAppStoreAPI = {
   async uploadImage({ appId, uri, kind = 'screenshot', index = 0 } = {}) {
     const uid = requireUser();
     if (!appId || !uri) throw new Error('Missing image information.');
-    const FileSystem = await import('expo-file-system');
     const ImageManipulator = await import('expo-image-manipulator');
     const result = await ImageManipulator.manipulateAsync(
       uri,
@@ -135,7 +134,7 @@ const NaxAppStoreAPI = {
       creatorName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'Creator',
       status: 'published',
       html,
-      version: Number(project.versions?.[project.versions.length - 1]?.version || project.version || 1),
+      version: Number(input.version || project.versions?.[project.versions.length - 1]?.version || project.version || 1),
       updatedAt: serverTimestamp(),
       naxStoreVersion: 1,
       ...(input.id ? {} : { createdAt: serverTimestamp() }),
