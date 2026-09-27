@@ -213,22 +213,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     } catch (e) { Alert.alert('Android packaging', e?.message || 'Could not prepare the Android project.'); }
   };
 
-  const publishToStore = async () => {
-    if (!project || project.target !== 'SINGLE_HTML') {
-      Alert.alert('Nax Store', 'Public web publishing currently supports Single HTML apps. Advanced APK publishing will come with the Android release pipeline.');
-      return;
-    }
-    setPublishingStore(true);
-    try {
-      const next = await AIAppBuilderService.publishToNaxStore(project);
-      setProject(next);
-      setMessages(m => [...m, { role: 'assistant', content: 'Published to Nax Store ✓. Your app is now public in the store.', at: Date.now() }]);
-      Alert.alert('Published', 'Your app is now live in Nax Store.');
-    } catch (e) {
-      Alert.alert('Publish failed', e?.message || 'Could not publish to Nax Store.');
-    } finally { setPublishingStore(false); }
-  };
-
   const exportProject = async () => {
     if (!project) return;
     try {
