@@ -125,3 +125,11 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - Import/Create/My Apps/Use/Share actions remain connected to the existing builder/store flows.
 - Latest redesign commit: `e0410ceaf06abe0253a3a04158d1fed2c5eb8836`.
 - Fresh Android build/device verification is still required after this UI change.
+
+## Nax Store publishing metadata — latest
+- Publish is now a listing editor instead of an immediate one-tap live action.
+- Listing fields: app name, Store title, description, icon picker/custom emoji, category, version, and up to 6 screenshots.
+- Screenshots are resized/compressed on-device and uploaded to Firebase Storage before the public listing is written.
+- `NaxAppStoreAPI.publish` now stores title, icon/iconUrl, screenshots, category, description, and version metadata.
+- Firebase Storage rules are configured in `storage.rules` and referenced by `firebase.json`; deployment remains manual/explicit per the project's Firebase deployment policy.
+- Latest related commits: `977246be619c6f5872de618dc27a0ebb93de0469`, `d7dc238a7cc1207886d5e6f82c10d1cc1f46421a`.
