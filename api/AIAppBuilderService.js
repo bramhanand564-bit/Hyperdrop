@@ -640,6 +640,9 @@ Conversation behavior: act like a real coding agent. Do the requested work direc
   async prepareAndroidPackage(project) {
     const existing = project?.files || {};
     const hasAndroidProject = Object.keys(existing).some(path => path === 'android/settings.gradle' || path === 'android/build.gradle' || path === 'android/app/build.gradle');
+    if (hasAndroidProject && existing['.github/workflows/build-apk.yml']) {
+      return project;
+    }
     const wrapper = hasAndroidProject ? { ...existing } : { ...existing, ...androidWrapper(project) };
     if (hasAndroidProject && !wrapper['.github/workflows/build-apk.yml']) {
       const html = project.html || existing['index.html'] || existing['src/index.html'] || DEFAULT_HTML(project.name);
