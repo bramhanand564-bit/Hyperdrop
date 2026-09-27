@@ -18,6 +18,7 @@ export default function AIAppProjectsScreen({ navigation }) {
   const [publishing, setPublishing] = useState(false);
   const [form, setForm] = useState({ name: '', title: '', description: '', icon: '🚀', category: 'apps', version: '1.0' });
   const [screenshots, setScreenshots] = useState([]);
+  const [iconUri, setIconUri] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,6 +55,26 @@ export default function AIAppProjectsScreen({ navigation }) {
       version: String(item.version || '1.0'),
     });
     setScreenshots(Array.isArray(item.screenshots) ? item.screenshots.map(uri => ({ uri })) : []);
+    setIconUri(item.iconUrl || '');
+  };
+
+  const pickIcon = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Photos permission', 'Allow photo access to select your app icon.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: false,
+        quality: 0.9,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+      setIconUri(result.assets[0].uri);
+    } catch (e) {
+      Alert.alert('App icon', e?.message || 'Could not select the icon.');
+    }
   };
 
   const pickScreenshots = async () => {
@@ -90,7 +111,9 @@ export default function AIAppProjectsScreen({ navigation }) {
 
     setPublishing(true);
     try {
-      const id = publishItem.id;
+      const fullProject = await AIAppBuilderService.getProject(publishItem.id);
+      if (!fullProject) throw new Error('Could not load the app project. Please reopen My Apps and try again.');
+      const id = fullProject.id;
       const uploaded = [];
       for (let i = 0; i < screenshots.length; i += 1) {
         const item = screenshots[i];
@@ -98,7 +121,12 @@ export default function AIAppProjectsScreen({ navigation }) {
         else uploaded.push(await NaxAppStoreAPI.uploadImage({ appId: id, uri: item.uri, kind: 'screenshot', index: i }));
       }
 
-      const published = await NaxAppStoreAPI.publish(publishItem, {
+      let uploadedIcon = iconUri;
+      if (uploadedIcon && !uploadedIcon.startsWith('data:image/') && !uploadedIcon.startsWith('https://')) {
+        uploadedIcon = await NaxAppStoreAPI.uploadImage({ appId: id, uri: uploadedIcon, kind: 'icon', index: 0 });
+      }
+
+      const published = await NaxAppStoreAPI.publish(fullProject, {
         id,
         name: form.name.trim(),
         title: form.title.trim(),
@@ -107,6 +135,7 @@ export default function AIAppProjectsScreen({ navigation }) {
         category: form.category,
         version: Number.parseFloat(form.version) || 1,
         screenshots: uploaded,
+        iconUrl: uploadedIcon || '',
       });
 
       setPublishItem(null);
@@ -191,11 +220,19 @@ export default function AIAppProjectsScreen({ navigation }) {
 
               <View style={styles.twoInputs}>
                 <View style={{flex:1}}>
-                  <Text style={[styles.label,{color:theme.text}]}>Icon</Text>
-                  <TextInput value={form.icon} onChangeText={v=>setForm({...form,icon:v})} placeholder="🚀" placeholderTextColor={theme.sub} style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface,fontSize:22,textAlign:'center'}]}/>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:6,marginTop:6}}>
-                    {['🚀','💬','🎮','🛠️','🤖','🎨','📚','💰','🎵','📸','⚡','🌟'].map(icon=><TouchableOpacity key={icon} onPress={()=>setForm({...form,icon})} style={[styles.iconChoice,{backgroundColor:form.icon===icon?theme.blue:theme.surface,borderColor:form.icon===icon?theme.blue:theme.border}]}><Text style={{fontSize:18}}>{icon}</Text></TouchableOpacity>)}
-                  </ScrollView>
+                  <Text style={[styles.label,{color:theme.text}]}>App icon</Text>
+                  <View style={styles.iconRow}>
+                    <View style={[styles.iconPreview,{backgroundColor:theme.surface,borderColor:theme.border}]}>
+                      {iconUri ? <Image source={{uri:iconUri}} style={styles.iconImage}/> : <Text style={{fontSize:26}}>{form.icon || '🚀'}</Text>}
+                    </View>
+                    <View style={{flex:1}}>
+                      <TouchableOpacity onPress={pickIcon} style={[styles.galleryButton,{backgroundColor:theme.blue}]}>
+                        <Ionicons name="images-outline" size={17} color="#FFF"/><Text style={styles.galleryText}>Choose from Gallery</Text>
+                      </TouchableOpacity>
+                      <Text style={[styles.iconHint,{color:theme.sub}]}>PNG/JPG recommended · square icon</Text>
+                    </View>
+                  </View>
+                  <TextInput value={form.icon} onChangeText={v=>{setForm({...form,icon:v}); if(v) setIconUri('')}} placeholder="Or use an emoji 🚀" placeholderTextColor={theme.sub} style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface,marginTop:7}]}/>
                 </View>
                 <View style={{width:105}}>
                   <Text style={[styles.label,{color:theme.text}]}>Version</Text>
