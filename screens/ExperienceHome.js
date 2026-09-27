@@ -113,7 +113,7 @@ export default function ExperienceHome({ navigation }) {
             </TouchableOpacity>
 
             <View style={{flexDirection:'row',gap:8,marginTop:12}}>
-              <TouchableOpacity onPress={() => navigation.navigate('ExperienceStore')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
+              <TouchableOpacity onPress={() => navigation.navigate('NaxStore')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
                 <Ionicons name="storefront-outline" size={17} color={theme.blue}/><Text style={{color:theme.text,fontWeight:'900'}}>Nax Store</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('ExperienceDashboard')} style={{flex:1,height:44,borderRadius:13,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:7}}>
