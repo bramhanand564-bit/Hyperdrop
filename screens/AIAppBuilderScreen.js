@@ -88,6 +88,20 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         return;
       }
 
+      if (draft?.mode === 'TEST') {
+        const testLines = Array.isArray(draft.tests)
+          ? draft.tests.map(test => (test.result === 'pass' ? '✓ ' : test.result === 'fail' ? '✗ ' : '? ') + test.name + (test.detail ? ': ' + test.detail : '')).join('\\n')
+          : '';
+        const assistant = {
+          role: 'assistant',
+          content: [draft.reply || 'Test complete.', testLines, Array.isArray(draft.failures) && draft.failures.length ? 'Problems: ' + draft.failures.join(' · ') : 'No confirmed problems found.', Array.isArray(draft.nextSteps) && draft.nextSteps.length ? 'Next: ' + draft.nextSteps[0] : ''].filter(Boolean).join('\\n')
+        };
+        setSuggestions(Array.isArray(draft.suggestedReplies) ? draft.suggestedReplies.slice(0, 4) : ['Fix it', 'Test again']);
+        setMessages(m => [...m, assistant]);
+        setInput('');
+        return;
+      }
+
       if (!current) current = await AIAppBuilderService.createProject({ name: draft.name || request.slice(0, 50), request, target: draft.target, html: draft.html });
       const next = await AIAppBuilderService.applyBuild(current, draft, request, chatHistory);
       const assistantText = [
