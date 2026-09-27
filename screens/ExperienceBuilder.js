@@ -3,6 +3,7 @@ import { Alert, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, T
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
+import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 import { URLValidator } from '../security/URLValidator';
 import { DEFAULT_GATEWAY, normalizeGateway } from '../api/ExperienceGateway';
 
@@ -110,7 +111,7 @@ export default function ExperienceBuilder({ route, navigation }) {
       const saved=experienceId
         ? await ExperienceAPI.update(experienceId,{name,description,icon,template,schema,gateway:schema.gateway})
         : await ExperienceAPI.create({name,description,icon,template,schema,gateway:schema.gateway});
-      Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Experience was updated.':'Your Experience is live and shareable in Chat.',[
+      Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Nax app was updated.':'Your Nax app is live and shareable in Chat.',[
         {text:'Open',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:saved.id})},
         {text:'Dashboard',onPress:()=>navigation.replace('ExperienceDashboard')}
       ]);
