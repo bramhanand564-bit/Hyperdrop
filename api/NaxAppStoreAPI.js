@@ -41,16 +41,27 @@ const sizeOf = value => String(value || '').length * 2;
 
 const NaxAppStoreAPI = {
   async list({ search = '', limitCount = 60 } = {}) {
-    const snap = await getDocs(query(
-      ref,
-      where('status', '==', 'published'),
-      orderBy('updatedAt', 'desc'),
-      limit(Math.min(100, Math.max(1, Number(limitCount) || 60))),
-    ));
+    const cap = Math.min(100, Math.max(1, Number(limitCount) || 60));
+    const snap = await getDocs(query(ref, where('status', '==', 'published'), limit(cap)));
     const q = String(search || '').trim().toLowerCase();
     return snap.docs
       .map(d => normalize(d.id, d.data()))
-      .filter(app => !q || [app.name, app.description, app.creatorName].some(v => String(v || '').toLowerCase().includes(q)));
+      .filter(app => !q || [app.name, app.description, app.creatorName].some(v => String(v || '').toLowerCase().includes(q)))
+      .sort((a, b) => {
+        const ta = a.updatedAt?.toMillis?.() || a.updatedAt || 0;
+        const tb = b.updatedAt?.toMillis?.() || b.updatedAt || 0;
+        return tb - ta;
+      });
+  },
+
+  async listMine({ limitCount = 60 } = {}) {
+    const uid = requireUser();
+    const snap = await getDocs(query(ref, where('creatorId', '==', uid), limit(Math.min(100, Math.max(1, Number(limitCount) || 60)))));
+    return snap.docs.map(d => normalize(d.id, d.data())).sort((a, b) => {
+      const ta = a.updatedAt?.toMillis?.() || a.updatedAt || 0;
+      const tb = b.updatedAt?.toMillis?.() || b.updatedAt || 0;
+      return tb - ta;
+    });
   },
 
   async get(id) {
