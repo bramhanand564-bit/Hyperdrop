@@ -103,3 +103,7 @@ The legacy 100-feature Chat Power Center has been removed from the active Chat p
 
 ## NAX STORE ↔ GATEWAY ↔ CHAT
 Nax Store apps use the Gateway contract, share to real user chats as compact `app_invite` cards, and open from Chat in `NaxAppRuntime`. The runtime exposes a small `window.Nax` bridge for Gateway actions. Do not use fake/demo chat lists for this flow.
+
+
+## NAX GATEWAY PORTAL ROUTING
+Nax Store app runtime now exposes real Gateway entrypoint methods for Chat, Discover, Moments, Settings, Web and Deep Link. Chat remains the real Firebase chat picker flow; no fake/demo chat selection is used. Store apps use `nax://app/<appId>` while Experiences retain the canonical `hyperdrop://experience/<experienceId>` link. Deep-link handling is registered in App.js/app.json.
