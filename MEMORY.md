@@ -29,7 +29,7 @@ Build one stable communication app where chat, media, identity, social sharing, 
 **Keep the working video-call system stable while improving the rest of Hyperdrop without regressions.**
 
 ## Main Areas
-- **Chat:** messaging, media, reply, forward, Power Center actions.
+- **Chat:** messaging, media, reply, forward, filters and standard chat controls.
 - **Calls:** WebRTC voice/video, Firebase signalling, ICE/STUN/TURN, call cleanup.
 - **Moments:** publishing, viewer, Stories/Clips, Connect/Circle.
 - **Identity:** Firebase Auth + persistent Google username/profile.
@@ -78,6 +78,9 @@ A → B call → offer/answer saved → ICE candidates present → ICE connected
 main
 
 **Priority:** Preserve the working video call and make targeted improvements elsewhere.
+
+## CHAT POWER CENTER REMOVAL
+The legacy 100-feature Chat Power Center has been removed from the active Chat path. Do not reintroduce its dedicated UI/component unless explicitly requested.
 
 ## Branch Workflow
 - Use `main` as the primary/default development branch going forward.
