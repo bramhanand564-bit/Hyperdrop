@@ -15,6 +15,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
+import { DEFAULT_GATEWAY, normalizeGateway, createGatewayId } from './ExperienceGateway';
 
 const storage = getStorage(app);
 
@@ -44,6 +45,9 @@ const normalize = (id, data = {}) => ({
   category: data.category || 'apps',
   html: data.html || '',
   version: Number(data.version || 1),
+  gateway: normalizeGateway(data.gateway),
+  gatewayId: data.gatewayId || createGatewayId(id),
+  package: data.package || { type: 'nax_app', sourceId: id, version: 1 },
   createdAt: data.createdAt || null,
   updatedAt: data.updatedAt || null,
 });
@@ -151,6 +155,9 @@ const NaxAppStoreAPI = {
       status: 'published',
       html,
       version: Number(input.version || project.versions?.[project.versions.length - 1]?.version || project.version || 1),
+      gateway: normalizeGateway(input.gateway || DEFAULT_GATEWAY),
+      gatewayId: input.gatewayId || createGatewayId(id),
+      package: { type: 'nax_app', sourceId: id, version: 1 },
       updatedAt: serverTimestamp(),
       naxStoreVersion: 1,
       ...(input.id ? {} : { createdAt: serverTimestamp() }),
