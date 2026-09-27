@@ -40,7 +40,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
   const [selectedFile, setSelectedFile] = useState('index.html');
   const [editorValue, setEditorValue] = useState('');
   const [savingCode, setSavingCode] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
 
   const load = useCallback(async () => {
     try {
@@ -82,7 +81,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
       const draft = await AIAppBuilderService.buildWithAI({ project: current, request, connectionId, model, chat: chatHistory });
       if (draft?.mode === 'CHAT') {
         const assistant = { role: 'assistant', content: draft.reply || draft.progress || 'Haan bhai, bolo. Hum is app par saath mein kaam kar sakte hain.' };
-        setSuggestions(Array.isArray(draft.suggestedReplies) ? draft.suggestedReplies.slice(0, 4) : []);
         setMessages(m => [...m, assistant]);
         setInput('');
         return;
@@ -96,7 +94,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
           role: 'assistant',
           content: [draft.reply || 'Test complete.', testLines, Array.isArray(draft.failures) && draft.failures.length ? 'Problems: ' + draft.failures.join(' · ') : 'No confirmed problems found.', Array.isArray(draft.nextSteps) && draft.nextSteps.length ? 'Next: ' + draft.nextSteps[0] : ''].filter(Boolean).join('\\n')
         };
-        setSuggestions(Array.isArray(draft.suggestedReplies) ? draft.suggestedReplies.slice(0, 4) : ['Fix it', 'Test again']);
         setMessages(m => [...m, assistant]);
         setInput('');
         return;
@@ -110,7 +107,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         Array.isArray(draft.nextSteps) && draft.nextSteps.length ? 'Next: ' + draft.nextSteps[0] : 'Next: jo change chahiye bol do.',
       ].join('\\n');
       const assistant = { role: 'assistant', content: assistantText };
-      setSuggestions(Array.isArray(draft.suggestedReplies) ? draft.suggestedReplies.slice(0, 4) : []);
       setProject(next);
       setMessages(m => [...m, assistant]);
       const selected = next.files?.[selectedFile] != null ? selectedFile : (next.target === 'SINGLE_HTML' ? 'index.html' : Object.keys(next.files || {})[0]);
@@ -120,7 +116,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     } catch (e) {
       const errorText = e?.message || 'Unknown error';
       setMessages(m => [...m, { role: 'assistant', content: 'Issue mila: ' + errorText + '\\nMain isko fix kar sakta hoon. “Fix it” bhejo.' }]);
-      setSuggestions(['Fix it', 'Check what is broken', 'Test the app', 'What is left?']);
     } finally { setBusy(false); }
   };
 
@@ -171,7 +166,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     setSelectedFile('index.html');
     setEditorValue('');
     setMessages([]);
-    setSuggestions([]);
     setInput('');
     setTab('preview');
   };
@@ -278,15 +272,6 @@ export default function AIAppBuilderScreen({ navigation, route }) {
               </View>
             )) : <Text style={[styles.tip, { color: theme.sub }]}>{project ? 'AI is your coding partner. Say “make this better”, “fix it”, or ask what should happen next.' : 'Tell me what app to build. I will build it, test the structure, and tell you what is done and what remains.'}</Text>}
           </View>
-          {suggestions.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionRow}>
-              {suggestions.map((suggestion, i) => (
-                <TouchableOpacity key={i} onPress={() => { setInput(suggestion); }} style={[styles.suggestion, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-                  <Text style={[styles.suggestionText, { color: theme.text }]}>{suggestion}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : null}
           <View style={[styles.inputRow, { backgroundColor: theme.bg, borderColor: theme.border }]}>
             <TextInput value={input} onChangeText={setInput} placeholder={project ? 'Tell AI what to change…' : 'Describe the app you want…'} placeholderTextColor={theme.sub} style={[styles.input, { color: theme.text }]} multiline />
             <TouchableOpacity onPress={send} disabled={busy || !input.trim()} style={[styles.send, { backgroundColor: theme.blue, opacity: busy || !input.trim() ? .4 : 1 }]}>{busy ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="arrow-up" size={19} color="#FFF" />}</TouchableOpacity>
@@ -298,5 +283,5 @@ export default function AIAppBuilderScreen({ navigation, route }) {
 }
 
 const styles=StyleSheet.create({
-  safe:{flex:1},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},historyRow:{flexDirection:'row',alignItems:'center',paddingVertical:7},historyVersion:{fontSize:11,fontWeight:'900',width:36},historyAction:{fontSize:10,flex:1},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},chat:{minHeight:205,maxHeight:300,padding:11,borderTopWidth:1},progressCard:{borderWidth:1,borderRadius:12,padding:8,marginBottom:6},progressHeader:{flexDirection:'row',alignItems:'center',gap:5},progressLabel:{fontSize:8,fontWeight:'900',letterSpacing:1},progressText:{fontSize:10,fontWeight:'800',lineHeight:14,marginTop:3},remainingText:{fontSize:9,lineHeight:13,marginTop:2},log:{flex:1},messageBubble:{borderWidth:1,borderRadius:12,paddingHorizontal:9,paddingVertical:6,marginBottom:5,maxWidth:'94%'},messageRole:{fontSize:9,fontWeight:'900',marginBottom:2},msg:{fontSize:11,lineHeight:16,marginBottom:1},suggestionRow:{paddingVertical:5,gap:7},suggestion:{borderWidth:1,borderRadius:14,paddingHorizontal:11,paddingVertical:7},suggestionText:{fontSize:10,fontWeight:'800'},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
+  safe:{flex:1},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},historyRow:{flexDirection:'row',alignItems:'center',paddingVertical:7},historyVersion:{fontSize:11,fontWeight:'900',width:36},historyAction:{fontSize:10,flex:1},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},chat:{minHeight:205,maxHeight:300,padding:11,borderTopWidth:1},progressCard:{borderWidth:1,borderRadius:12,padding:8,marginBottom:6},progressHeader:{flexDirection:'row',alignItems:'center',gap:5},progressLabel:{fontSize:8,fontWeight:'900',letterSpacing:1},progressText:{fontSize:10,fontWeight:'800',lineHeight:14,marginTop:3},remainingText:{fontSize:9,lineHeight:13,marginTop:2},log:{flex:1},messageBubble:{borderWidth:1,borderRadius:12,paddingHorizontal:9,paddingVertical:6,marginBottom:5,maxWidth:'94%'},messageRole:{fontSize:9,fontWeight:'900',marginBottom:2},msg:{fontSize:11,lineHeight:16,marginBottom:1},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
 });
