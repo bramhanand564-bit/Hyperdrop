@@ -65,7 +65,10 @@
       ],
       "@react-native-google-signin/google-signin"
     ],
-    "scheme": "nax",
+    "scheme": [
+      "nax",
+      "hyperdrop"
+    ],
     "extra": {
       "gatewayScheme": "nax"
     }
