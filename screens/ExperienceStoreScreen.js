@@ -3,6 +3,9 @@ import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, T
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
+import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 const CATEGORIES = [
   { id: '', label: 'All' },
@@ -16,6 +19,7 @@ const CATEGORIES = [
 export default function ExperienceStoreScreen({ navigation }) {
   const { theme } = useTheme();
   const [items, setItems] = useState([]);
+  const [apps, setApps] = useState([]);
   const [query, setQuery] = useState('');
   const [template, setTemplate] = useState('');
   const [loading, setLoading] = useState(true);
@@ -23,12 +27,31 @@ export default function ExperienceStoreScreen({ navigation }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { setItems(await ExperienceAPI.list({ search: query, template, limitCount: 80 })); }
+    try {
+      const [experienceItems, naxApps] = await Promise.all([
+        ExperienceAPI.list({ search: query, template, limitCount: 80 }),
+        NaxAppStoreAPI.list({ search: query, limitCount: 60 }).catch(() => []),
+      ]);
+      setItems(experienceItems);
+      setApps(naxApps);
+    }
     catch (e) { Alert.alert('Store', e.message || 'Could not load the Experience Store.'); }
     finally { setLoading(false); }
   }, [query, template]);
 
   useEffect(() => { load(); }, [load]);
+
+  const importApp = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ['text/html', 'text/plain', '*/*'], copyToCacheDirectory: true });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset?.uri) return;
+      const html = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const name = (asset.name || 'Imported Nax App').replace(/\.html?$/i, '') || 'Imported Nax App';
+      navigation.navigate('AIAppBuilder', { importedHtml: html, importedName: name });
+    } catch (e) { Alert.alert('Import failed', e?.message || 'Could not import the app.'); }
+  };
 
   const customize = async item => {
     setBusy(item.id);
@@ -46,15 +69,15 @@ export default function ExperienceStoreScreen({ navigation }) {
       <View style={styles.top}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="chevron-back" size={26} color={theme.text}/></TouchableOpacity>
         <View style={{flex:1,marginLeft:10}}>
-          <Text style={[styles.title,{color:theme.text}]}>Experience Store</Text>
-          <Text style={[styles.sub,{color:theme.sub}]}>Discover creator-built Experiences, customize them, or start a new one.</Text>
+          <Text style={[styles.title,{color:theme.text}]}>Nax Store</Text>
+          <Text style={[styles.sub,{color:theme.sub}]}>Discover apps made by Nax creators, use them, customize them, or publish your own.</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('ExperienceBuilder',{template:'custom'})} style={[styles.add,{backgroundColor:theme.blue}]}><Ionicons name="add" size={21} color="#FFF"/></TouchableOpacity>
+        <View style={{flexDirection:'row',gap:7}}><TouchableOpacity onPress={importApp} style={[styles.add,{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border}]}><Ionicons name="download-outline" size={18} color={theme.blue}/></TouchableOpacity><TouchableOpacity onPress={() => navigation.navigate('ExperienceBuilder',{template:'custom'})} style={[styles.add,{backgroundColor:theme.blue}]}><Ionicons name="add" size={21} color="#FFF"/></TouchableOpacity></View>
       </View>
 
       <View style={[styles.search,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <Ionicons name="search" size={18} color={theme.sub}/>
-        <TextInput value={query} onChangeText={setQuery} placeholder="Search experiences, tools, games..." placeholderTextColor={theme.sub} style={{flex:1,color:theme.text,marginLeft:8}} returnKeyType="search"/>
+        <TextInput value={query} onChangeText={setQuery} placeholder="Search apps, games, tools..." placeholderTextColor={theme.sub} style={{flex:1,color:theme.text,marginLeft:8}} returnKeyType="search"/>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8}}>
@@ -62,11 +85,18 @@ export default function ExperienceStoreScreen({ navigation }) {
       </ScrollView>
 
       <View style={[styles.banner,{backgroundColor:theme.surface,borderColor:theme.border}]}>
-        <Text style={{fontSize:28}}>🧩</Text><View style={{flex:1,marginLeft:11}}><Text style={[styles.bannerTitle,{color:theme.text}]}>Discover, customize, publish</Text><Text style={[styles.bannerText,{color:theme.sub}]}>Start from a creator-built Experience, customize its Gateway, then share the same live Experience in Chat.</Text></View>
+        <Text style={{fontSize:28}}>🧩</Text><View style={{flex:1,marginLeft:11}}><Text style={[styles.bannerTitle,{color:theme.text}]}>Nax Store · discover, use, publish</Text><Text style={[styles.bannerText,{color:theme.sub}]}>Creators can publish apps here. AI-built Single HTML apps and interactive Experiences can be opened directly and shared.</Text></View>
       </View>
 
+      <Text style={[styles.section,{color:theme.text}]}>Nax Apps</Text>
+      {apps.length ? apps.map(item => <View key={'app_'+item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
+        <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>App · by {item.creatorName}</Text></View></View>
+        <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={3}>{item.description || 'Creator-built Nax app'}</Text>
+        <View style={styles.actions}><TouchableOpacity onPress={()=>navigation.navigate('NaxAppRuntime',{appId:item.id})} style={[styles.button,{backgroundColor:theme.blue}]}><Ionicons name="play" size={15} color="#FFF"/><Text style={styles.buttonText}>Use</Text></TouchableOpacity></View>
+      </View>) : <Text style={{color:theme.sub}}>No public Nax Apps yet.</Text>}
+
       <Text style={[styles.section,{color:theme.text}]}>Discover</Text>
-      {loading?<ActivityIndicator color={theme.blue} style={{marginTop:25}}/>:filtered.length===0?<Text style={{color:theme.sub}}>No published Experiences found.</Text>:filtered.map(item=><View key={item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
+      {loading?<ActivityIndicator color={theme.blue} style={{marginTop:25}}/>:filtered.length===0?<Text style={{color:theme.sub}}>No published apps found.</Text>:filtered.map(item=><View key={item.id} style={[styles.card,{backgroundColor:theme.surface,borderColor:theme.border}]}>
         <View style={styles.head}><Text style={styles.icon}>{item.icon}</Text><View style={{flex:1}}><Text style={[styles.name,{color:theme.text}]}>{item.name}</Text><Text style={[styles.meta,{color:theme.sub}]}>{item.template} · by {item.creatorName}</Text></View></View>
         <Text style={[styles.desc,{color:theme.sub}]} numberOfLines={3}>{item.description||'Interactive experience'}</Text>
         <View style={styles.actions}>
