@@ -295,6 +295,34 @@ service cloud.firestore {
     }
 
     // =========================================================
+    // 10. NAX STORE PUBLIC APPS
+    // =========================================================
+    match /nax_apps/{appId} {
+      // Signed-in Nax users can discover and run published apps.
+      allow read: if request.auth != null
+                  && resource.data.status == 'published';
+
+      // Creators publish only their own app.
+      allow create: if request.auth != null
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.status == 'published'
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 80
+                    && request.resource.data.html is string
+                    && request.resource.data.html.size() <= 900000;
+
+      allow update: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid
+                    && request.resource.data.creatorId == resource.data.creatorId
+                    && request.resource.data.html is string
+                    && request.resource.data.html.size() <= 900000;
+
+      allow delete: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid;
+    }
+
+    // =========================================================
     // 10. HYPERDROP EXPERIENCES
     // =========================================================
     match /experiences/{experienceId} {
