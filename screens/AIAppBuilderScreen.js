@@ -229,7 +229,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
             <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{project?.name || 'AI App Builder'}</Text>
             <View style={styles.statusRow}>
               <View style={[styles.dot, { backgroundColor: project?.target === 'ADVANCED_PROJECT' ? '#FF9500' : theme.green }]} />
-              <Text style={[styles.sub, { color: theme.sub }]}>{project?.target === 'ADVANCED_PROJECT' ? 'Advanced project' : 'Single HTML'}{model ? ' · AI ready' : ' · Configure AI in Settings'}</Text>
+              <Text style={[styles.sub, { color: theme.sub }]}>{project?.target === 'ADVANCED_PROJECT' ? 'Advanced project' : 'Single HTML'}{project?.naxStoreStatus === 'published' ? ' · 🟢 Live on Nax Store' : model ? ' · AI ready' : ' · Configure AI in Settings'}</Text>
             </View>
           </View>
           <TouchableOpacity onPress={undo} disabled={!project || (project.versions || []).length < 2} style={[styles.icon, { borderColor: theme.border, opacity: project && (project.versions || []).length > 1 ? 1 : .35 }]}><Ionicons name="arrow-undo" size={18} color={theme.text} /></TouchableOpacity>
