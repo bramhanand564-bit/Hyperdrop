@@ -8,7 +8,6 @@ import { useTheme } from '../context/ThemeContext';
 
 // 🔥 REAL FIREBASE IMPORTS
 import { db, auth } from '../firebaseConfig';
-import { MiniAppAPI } from '../api/MiniAppAPI';
 import BotAPI from '../api/BotAPI';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
@@ -43,14 +42,14 @@ export default function SecurityPermissionsScreen({ navigation }) {
         const docSnap = await getDoc(docRef);
         const saved = docSnap.exists() ? docSnap.data() : { globalLocation: true, globalCamera: true, walletAutoPay: false };
         const [installed, bots] = await Promise.all([
-          MiniAppAPI.getInstalledApps().catch(() => []),
+          Promise.resolve([]),
           BotAPI.getUserBots(user.uid).catch(() => []),
         ]);
         const installedApps = (installed || []).map(app => {
           const granted = Array.isArray(app.grantedPermissions) ? app.grantedPermissions : [];
           return {
             id: app.appId || app.id,
-            name: app.name || 'Mini-App',
+            name: app.name || 'Nax App',
             type: 'app',
             wallet: granted.includes('payments'),
             location: granted.includes('location.coarse') || granted.includes('location.precise') || granted.includes('device.location'),
@@ -111,7 +110,7 @@ export default function SecurityPermissionsScreen({ navigation }) {
   const handleKillSwitch = () => {
     Alert.alert(
       "Revoke All Access 🛑", 
-      "This will disconnect your Wallet and GPS from ALL Mini-Apps and AI Bots instantly. Proceed?",
+      "This will disconnect your Wallet and device access from ALL Nax Apps and AI Bots instantly. Proceed?",
       [
         { text: "Cancel", style: "cancel" },
         { 
@@ -217,7 +216,7 @@ export default function SecurityPermissionsScreen({ navigation }) {
             <Ionicons name="shield-checkmark" size={32} color="#34C759" style={{ marginRight: 15 }} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: textMain, fontSize: 16, fontWeight: '700', marginBottom: 2 }}>Nax Sandbox Active</Text>
-              <Text style={{ color: textSub, fontSize: 12, lineHeight: 18 }}>Mini-Apps run in isolated environments and cannot access your phone data without permission.</Text>
+              <Text style={{ color: textSub, fontSize: 12, lineHeight: 18 }}>Nax Apps run in an isolated surface and cannot use protected device features without permission.</Text>
             </View>
           </View>
 
