@@ -692,8 +692,9 @@ jobs:
 
   async publishToNaxStore(project, options = {}) {
     if (!project) throw new Error('No app selected.');
-    const published = await NaxAppStoreAPI.publish(project, options);
-    return { ...project, naxStoreId: published.id, naxStoreStatus: 'published', naxStoreVersion: published.version, updatedAt: Date.now() };
+    const published = await NaxAppStoreAPI.publish(project, { ...options, id: options.id || project.naxStoreId });
+    const next = { ...project, naxStoreId: published.id, naxStoreStatus: 'published', naxStoreVersion: published.version, updatedAt: Date.now() };
+    return project.id ? this.saveProject(next, { action: 'published to Nax Store', createVersion: false }) : next;
   },
 
   async saveChat(project, messages) {
