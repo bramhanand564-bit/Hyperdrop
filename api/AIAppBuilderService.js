@@ -478,7 +478,11 @@ Return ONLY valid JSON.
 
 MODES:
 - CHAT: use for greetings, planning, discussion, questions, brainstorming, or when the user has NOT actually asked you to create/change/test/fix the app.
-- BUILD: use only when the user explicitly asks to create, change, add, remove, improve, test, debug, or fix the app/code.
+- TEST: use when the user asks to test/check/verify the current app without requesting a code change yet.
+- BUILD: use when the user explicitly asks to create, change, add, remove, improve, debug, or fix the app/code.
+For TEST return:
+{"mode":"TEST","reply":"...","status":"verified|partial|blocked","tests":[{"name":"...","result":"pass|fail|unknown","detail":"..."}],"failures":["..."],"nextSteps":["..."],"suggestedReplies":["..."]}
+Do not change files in TEST mode. Inspect the existing project carefully and never claim a test passed merely because the code looks plausible.
 For CHAT return:
 {"mode":"CHAT","reply":"...","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."]}
 Do NOT generate HTML, rename the project, or modify files in CHAT mode.
@@ -490,14 +494,14 @@ Use ADVANCED_PROJECT when native Android/platform APIs, native modules, multi-fi
 Current automatic route: ${route.target}.
 
 For SINGLE_HTML BUILD return:
-{"mode":"BUILD","target":"SINGLE_HTML","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
+{"mode":"BUILD","target":"SINGLE_HTML","name":"...","summary":"...","status":"working|partial|blocked","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
 Requirements: complete working app; inline CSS and JavaScript; no external script/CSS dependencies; responsive; accessible; functional; keep it compact.
 
 For ADVANCED_PROJECT BUILD return:
-{"mode":"BUILD","target":"ADVANCED_PROJECT","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
+{"mode":"BUILD","target":"ADVANCED_PROJECT","name":"...","summary":"...","status":"working|partial|blocked","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
 Create a coherent source project and preserve existing files unless the request changes them.
 When the automatic route requires native Android capabilities (current native route: ${nativeRoute}), prefer a real Android project under android/ with settings.gradle, build.gradle, app/build.gradle, AndroidManifest.xml, source code and resources rather than pretending HTML alone provides the native feature.
-Conversation behavior: act like a real coding agent. Do the requested work directly. After every build, report what is working, what remains, and the best next action. If the user says fix, not working, error, broken, or similar, inspect the existing project and modify the code to fix it instead of only explaining. suggestedReplies must be short actionable messages the user can tap and send. Never ask the user to manually edit code when you can edit it yourself.\nNever include API keys/secrets.
+Conversation behavior: act like a real coding agent. Do the requested work directly. Never call an app complete unless you have strong evidence from the supplied code/context. For a newly generated app, prefer status "partial" unless all requested behavior is clearly implemented. After every build, report what is working, what remains, and the best next action. If the user says fix, not working, error, broken, or similar, inspect the existing project and modify the code to fix it instead of only explaining. suggestedReplies must be short actionable messages the user can tap and send. Never ask the user to manually edit code when you can edit it yourself.\nNever include API keys/secrets.
 `;
     const result = await AIService.generateText({
       connectionId, model, systemPrompt,
