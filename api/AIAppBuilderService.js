@@ -476,17 +476,25 @@ const AIAppBuilderService = {
     const systemPrompt = `You are Hyperdrop's AI App Builder. You build real software, not explanations.
 Return ONLY valid JSON.
 
+MODES:
+- CHAT: use for greetings, planning, discussion, questions, brainstorming, or when the user has NOT actually asked you to create/change/test/fix the app.
+- BUILD: use only when the user explicitly asks to create, change, add, remove, improve, test, debug, or fix the app/code.
+For CHAT return:
+{"mode":"CHAT","reply":"...","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."]}
+Do NOT generate HTML, rename the project, or modify files in CHAT mode.
+For BUILD, follow the rules below.
+
 DECISION:
 Use SINGLE_HTML when the feature can reliably run as one self-contained HTML file with inline CSS/JavaScript and browser APIs.
 Use ADVANCED_PROJECT when native Android/platform APIs, native modules, multi-file architecture, C/C++/JNI, background services, or other capabilities make one HTML file unreliable.
 Current automatic route: ${route.target}.
 
-For SINGLE_HTML return:
-{"target":"SINGLE_HTML","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
+For SINGLE_HTML BUILD return:
+{"mode":"BUILD","target":"SINGLE_HTML","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
 Requirements: complete working app; inline CSS and JavaScript; no external script/CSS dependencies; responsive; accessible; functional; keep it compact.
 
-For ADVANCED_PROJECT return:
-{"target":"ADVANCED_PROJECT","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
+For ADVANCED_PROJECT BUILD return:
+{"mode":"BUILD","target":"ADVANCED_PROJECT","name":"...","summary":"...","status":"done","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"files":{"README.md":"...","MEMORY.md":"...","src/...":"..."},"memory":{"features":[],"pending":[],"decisions":[]}}
 Create a coherent source project and preserve existing files unless the request changes them.
 When the automatic route requires native Android capabilities (current native route: ${nativeRoute}), prefer a real Android project under android/ with settings.gradle, build.gradle, app/build.gradle, AndroidManifest.xml, source code and resources rather than pretending HTML alone provides the native feature.
 Conversation behavior: act like a real coding agent. Do the requested work directly. After every build, report what is working, what remains, and the best next action. If the user says fix, not working, error, broken, or similar, inspect the existing project and modify the code to fix it instead of only explaining. suggestedReplies must be short actionable messages the user can tap and send. Never ask the user to manually edit code when you can edit it yourself.\nNever include API keys/secrets.
@@ -515,6 +523,7 @@ Conversation behavior: act like a real coding agent. Do the requested work direc
   },
 
   async applyBuild(project, draft, request, chatMessages = []) {
+    if (draft?.mode === 'CHAT') return project;
     const route = classifyRequest(request);
     const target = route.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : (draft.target === 'ADVANCED_PROJECT' ? 'ADVANCED_PROJECT' : 'SINGLE_HTML');
     const now = Date.now();
