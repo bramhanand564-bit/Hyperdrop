@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
   where,
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
@@ -98,26 +99,31 @@ const NaxAppStoreAPI = {
   },
 
   async uploadImage({ appId, uri, kind = 'screenshot', index = 0 } = {}) {
-    const uid = requireUser();
+    requireUser();
     if (!appId || !uri) throw new Error('Missing image information.');
     const ImageManipulator = await import('expo-image-manipulator');
+    const isIcon = kind === 'icon';
     const result = await ImageManipulator.manipulateAsync(
       uri,
-      [{ resize: { width: 1280 } }],
-      { compress: 0.78, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      [{ resize: { width: isIcon ? 256 : 720 } }],
+      { compress: isIcon ? 0.72 : 0.58, format: ImageManipulator.SaveFormat.JPEG, base64: true }
     );
-    const base64 = result.base64;
-    if (!base64) throw new Error('Could not prepare image for upload.');
-    const path = `nax-apps/${uid}/${appId}/${kind}-${index}.jpg`;
-    const objectRef = storageRef(storage, path);
-    await uploadString(objectRef, base64, 'base64', { contentType: 'image/jpeg' });
-    return getDownloadURL(objectRef);
+    if (!result.base64) throw new Error('Could not prepare image.');
+    // React Native's Firebase Web SDK can fail when it tries to construct Blob
+    // objects from ArrayBuffer/ArrayBufferView. Keep media as compact data URLs
+    // in dedicated Firestore documents instead of using the Blob upload path.
+    return `data:image/jpeg;base64,${result.base64}`;
   },
 
   async publish(project, input = {}) {
     const uid = requireUser();
     if (!project || project.target !== 'SINGLE_HTML') throw new Error('Only Single HTML apps can be published to Nax Store right now.');
-    const html = String(project.html || project.files?.['index.html'] || '').trim();
+    const html = String(
+      project.html ||
+      project.files?.['index.html'] ||
+      project.files?.['src/index.html'] ||
+      ''
+    ).trim();
     if (!html) throw new Error('Your app has no index.html to publish.');
     if (sizeOf(html) > MAX_HTML_BYTES) throw new Error('This app is too large for the current Nax Store publisher. Keep the HTML under 850 KB.');
 
@@ -128,7 +134,7 @@ const NaxAppStoreAPI = {
       description: String(input.description ?? project.memory?.summary ?? '').trim().slice(0, 500),
       icon: String(input.icon || '🚀').slice(0, 8),
       iconUrl: String(input.iconUrl || '').slice(0, 2000),
-      screenshots: Array.isArray(input.screenshots) ? input.screenshots.slice(0, 6) : [],
+      screenshots: [],
       category: String(input.category || project.category || 'apps').toLowerCase().slice(0, 20),
       creatorId: uid,
       creatorName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'Creator',
@@ -144,7 +150,26 @@ const NaxAppStoreAPI = {
       const existing = input.id ? await getDoc(doc(publicRef, input.id)) : null;
       if (existing?.exists() && existing.data().creatorId !== uid) throw new Error('You can only update your own Nax app.');
       await setDoc(doc(publicRef, id), payload, { merge: true });
-      return { id, ...payload, link: 'nax://app/' + id };
+      const media = Array.isArray(input.screenshots) ? input.screenshots.slice(0, 6) : [];
+      const mediaBatch = writeBatch(db);
+      media.forEach((value, index) => {
+        if (!String(value || '').startsWith('data:image/')) return;
+        mediaBatch.set(doc(db, PRIMARY_COLLECTION, id, 'media', 'screenshot-' + index), {
+          kind: 'screenshot',
+          index,
+          dataUrl: String(value),
+          updatedAt: serverTimestamp(),
+        });
+      });
+      if (input.iconUrl && String(input.iconUrl).startsWith('data:image/')) {
+        mediaBatch.set(doc(db, PRIMARY_COLLECTION, id, 'media', 'icon'), {
+          kind: 'icon',
+          dataUrl: String(input.iconUrl),
+          updatedAt: serverTimestamp(),
+        });
+      }
+      await mediaBatch.commit();
+      return { id, ...payload, screenshots: media.map((_, index) => 'nax-media://' + id + '/screenshot-' + index), iconUrl: input.iconUrl || '', link: 'nax://app/' + id };
     } catch (primaryError) {
       if (primaryError?.message === 'You can only update your own Nax app.') throw primaryError;
       const compatPayload = { ...payload, storeKind: 'nax_app', createdAt: payload.createdAt || serverTimestamp() };
