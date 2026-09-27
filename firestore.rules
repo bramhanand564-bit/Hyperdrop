@@ -373,6 +373,7 @@ service cloud.firestore {
     }
 
     // =========================================================
+    // NAX_STORE_RULES_V2_DEPLOY_MARKER
     // 11. NAX STORE PUBLIC APPS
     // =========================================================
     match /nax_apps/{appId} {
