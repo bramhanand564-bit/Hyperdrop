@@ -79,7 +79,7 @@ const NaxAppStoreAPI = {
       const tb = b.updatedAt?.toMillis?.() || b.updatedAt || 0;
       return tb - ta;
     });
-  }
+  },
 
   async get(id) {
     if (!id) return null;
