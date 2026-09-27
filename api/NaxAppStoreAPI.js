@@ -37,7 +37,6 @@ const normalize = (id, data = {}) => ({
   category: data.category || 'apps',
   html: data.html || '',
   version: Number(data.version || 1),
-  category: data.category || 'apps',
   createdAt: data.createdAt || null,
   updatedAt: data.updatedAt || null,
 });
@@ -104,8 +103,7 @@ const NaxAppStoreAPI = {
       name: String(project.name || 'Nax App').trim().slice(0, 80),
       description: String(input.description ?? project.memory?.summary ?? '').trim().slice(0, 500),
       icon: String(input.icon || '🚀').slice(0, 8),
-      category: String(input.category || project.category || 'apps').toLowerCase().slice(0, 30),
-      category: String(input.category || 'apps').toLowerCase().slice(0, 20),
+      category: String(input.category || project.category || 'apps').toLowerCase().slice(0, 20),
       creatorId: uid,
       creatorName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'Creator',
       status: 'published',
