@@ -25,7 +25,7 @@ const FEATURES = [
   ['media','All media','Show every media message','albums-outline'],
 ];
 
-export default function ChatFeatureHub({ visible, onClose, onFilter, activeFilter='all', onSearch, onMute, muted=false, onTimer, onMarkRead, onExport, onJumpLatest, onFocusComposer, onSettings }) {
+export default function ChatFeatureHub({ visible, onClose, onFilter, activeFilter='all', onSearch, onMute, muted=false, onTimer, onMarkRead, onExport, onJumpLatest, onFocusComposer, onSettings, onCreateNaxTool }) {
   const { theme } = useTheme();
   const [search, setSearch] = useState('');
 
@@ -68,6 +68,15 @@ export default function ChatFeatureHub({ visible, onClose, onFilter, activeFilte
             </View>
             <TouchableOpacity onPress={onClose} style={s.close}><Ionicons name="close" size={23} color={theme.text}/></TouchableOpacity>
           </View>
+
+          <TouchableOpacity onPress={()=>{onCreateNaxTool?.();onClose?.();}} style={[s.createTool,{backgroundColor:theme.blue}]}>
+            <Ionicons name="sparkles" size={18} color="#FFF"/>
+            <View style={{flex:1,marginLeft:9}}>
+              <Text style={s.createToolTitle}>Create a Nax Tool with AI</Text>
+              <Text style={s.createToolSub}>Describe a working mini-tool and build it inside Nax Chat</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={17} color="#FFF"/>
+          </TouchableOpacity>
 
           <View style={[s.searchBox,{backgroundColor:theme.input,borderColor:theme.border}]}>
             <Ionicons name="search-outline" size={18} color={theme.sub}/>
@@ -122,6 +131,8 @@ const s=StyleSheet.create({
   header:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12},
   title:{fontSize:20,fontWeight:'900'},sub:{fontSize:11,fontWeight:'700',marginTop:2},
   close:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(128,128,128,.10)'},
+  createTool:{borderRadius:16,padding:12,flexDirection:'row',alignItems:'center',marginBottom:10},
+  createToolTitle:{color:'#FFF',fontSize:13,fontWeight:'900'},createToolSub:{color:'rgba(255,255,255,.78)',fontSize:10,marginTop:2},
   searchBox:{minHeight:44,borderWidth:1,borderRadius:15,flexDirection:'row',alignItems:'center',paddingHorizontal:12},
   searchInput:{flex:1,fontSize:14,paddingVertical:9,marginLeft:7},
   content:{paddingBottom:20},
