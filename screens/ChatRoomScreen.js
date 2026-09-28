@@ -107,7 +107,7 @@ export default function ChatRoomScreen({route,navigation}){
    <View style={composerSize==='large'?{transform:[{scaleY:1.06}],marginBottom:4}:composerSize==='minimal'?{transform:[{scaleY:.93}],marginBottom:-4}:null}><ChatInput inputRef={inputRef}value={inputText}onChangeText={setInputText}onSend={handleSend}sending={sending}onAttachImage={()=>handleMediaPick('image')}onAttachVideo={()=>handleMediaPick('video')}onAttachDocument={handleDocumentPick}onAttachVoice={handleVoiceRecord}onAttachLocation={handleLocationPick}onAttachContact={handleContactPick}onPoll={handlePoll}/></View>
   </View></GlassScene>
 
-  <ChatFeatureHub visible={featuresOpen}onClose={()=>setFeaturesOpen(false)}activeFilter={activeFilter}onFilter={applyFilter}onSearch={runSearch}muted={muted}onMute={toggleMute}onTimer={setTimer}onMarkRead={markAllRead}onExport={exportChat}onJumpLatest={()=>listRef.current?.scrollToOffset?.({offset:0,animated:true})}onFocusComposer={()=>{setFeaturesOpen(false);setTimeout(()=>inputRef.current?.focus?.(),220)}}onSettings={()=>navigation.navigate('ChatSettings',{chatId,friendId,chatName,messageTTL})}/>
+  <ChatFeatureHub visible={featuresOpen}onClose={()=>setFeaturesOpen(false)}activeFilter={activeFilter}onFilter={applyFilter}onSearch={runSearch}muted={muted}onMute={toggleMute}onTimer={setTimer}onMarkRead={markAllRead}onExport={exportChat}onJumpLatest={()=>listRef.current?.scrollToOffset?.({offset:0,animated:true})}onFocusComposer={()=>{setFeaturesOpen(false);setTimeout(()=>inputRef.current?.focus?.(),220)}}onSettings={()=>navigation.navigate('ChatSettings',{chatId,friendId,chatName,messageTTL})}onCreateNaxTool={()=>navigation.navigate('ExperienceAICreator',{source:'chat',chatId,chatName})}/>
 
  </SafeAreaView>;
 }
