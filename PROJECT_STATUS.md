@@ -160,3 +160,12 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - React Navigation deep-link config: `d211c171f72b9346ef7fb6b97ae71fb11469c472`
 - NAX + Hyperdrop schemes: `50ef6f5b12d18cd33df1264ca356f4c68e1a96d9`
 - Status/memory documentation updated after the routing changes.
+
+
+## NAX CHAT → AI WORKING TOOLS — IMPLEMENTED
+- Chat Toolkit now has a direct **Create a Nax Tool with AI** entrypoint.
+- The creator receives the originating chat context and passes it through AI draft → Experience Builder.
+- Publishing a newly created AI tool from a Chat-origin flow writes a real `experience` message into that originating Firebase chat, carrying the Experience ID/schema/Gateway/package metadata.
+- The existing Chat `MessageBubble` already renders Experience messages as compact interactive cards with inline fields/actions and an Open button, so the user can operate the tool without leaving Chat.
+- Experience participant state and immutable events remain separated per user; creator/admin access remains governed by the Experience model and Firestore rules.
+- Runtime/device verification is still required; no APK runtime result is claimed by this code-only change.
