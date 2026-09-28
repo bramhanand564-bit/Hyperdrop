@@ -43,6 +43,7 @@ export default function ExperienceBuilder({ route, navigation }) {
   const [rewardEnabled,setRewardEnabled]=useState(Boolean(aiDraft?.rewardEnabled)),[rewardPoints,setRewardPoints]=useState(String(aiDraft?.rewardPoints || 100));
   const [webUrl,setWebUrl]=useState('');
   const [gatewayEnabled,setGatewayEnabled]=useState(true),[chatEnabled,setChatEnabled]=useState(true),[chatPresentation,setChatPresentation]=useState('card'),[visibility,setVisibility]=useState('public');
+  const [chatSurface,setChatSurface]=useState({enabled:true,mode:'auto',maxFields:3,maxActions:3,showDescription:false,showStatus:true,showProgress:true,allowInlineActions:true});
   const [customAction,setCustomAction]=useState(''),[customFieldLabel,setCustomFieldLabel]=useState('');
   const [publishing,setPublishing]=useState(false),[loadingExisting,setLoadingExisting]=useState(Boolean(experienceId));
   useEffect(()=>{
@@ -58,6 +59,7 @@ export default function ExperienceBuilder({ route, navigation }) {
       setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
       setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||(item.schema?.actions?.[0] ? (item.schema.actions[0].id || slug(item.schema.actions[0].label)) : ''));setWebUrl(item.schema?.web?.url||'');
       const gateway=normalizeGateway(item.gateway || item.schema?.gateway || DEFAULT_GATEWAY);setGatewayEnabled(gateway.enabled);setChatEnabled(gateway.chat.enabled);setChatPresentation(gateway.chat.presentation||'card');setVisibility(gateway.visibility||'public');
+      setChatSurface({...chatSurface,...(item.schema?.chatSurface||gateway.chat?.surface||{})});
     }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
     return ()=>{mounted=false;};
   },[experienceId]);
@@ -101,8 +103,9 @@ export default function ExperienceBuilder({ route, navigation }) {
     ui:{card:['icon','name','description','primaryActions'],full:['header','fields','status','actions','web']},
     web:webUrl.trim()?{url:webUrl.trim()}:null,
     settings:{rewardEnabled,rewardPoints:Math.max(0,Number(rewardPoints)||0),trigger},
-    gateway:{...normalizeGateway(DEFAULT_GATEWAY),enabled:gatewayEnabled,visibility,entrypoints:{...DEFAULT_GATEWAY.entrypoints,chat:chatEnabled},chat:{...DEFAULT_GATEWAY.chat,enabled:chatEnabled,presentation:chatPresentation}},
-  }),[actions,fields,rewardEnabled,rewardPoints,trigger,webUrl,gatewayEnabled,chatEnabled,chatPresentation,visibility]);
+    chatSurface,
+    gateway:{...normalizeGateway(DEFAULT_GATEWAY),enabled:gatewayEnabled,visibility,entrypoints:{...DEFAULT_GATEWAY.entrypoints,chat:chatEnabled},chat:{...DEFAULT_GATEWAY.chat,enabled:chatEnabled,presentation:chatPresentation,surface:chatSurface}},
+  }),[actions,fields,rewardEnabled,rewardPoints,trigger,webUrl,gatewayEnabled,chatEnabled,chatPresentation,visibility,chatSurface]);
 
   const publish=async()=>{
     if(!name.trim())return Alert.alert('Nax App name required','Give your Nax App a name.');
@@ -171,6 +174,34 @@ export default function ExperienceBuilder({ route, navigation }) {
           <View style={styles.chips}>{['public','private','invite-only'].map(mode=><TouchableOpacity key={mode} onPress={()=>setVisibility(mode)} style={[styles.option,{backgroundColor:visibility===mode?theme.blue:theme.surface,borderColor:visibility===mode?theme.blue:theme.border}]}><Text style={{color:visibility===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>Visibility: {mode}</Text></TouchableOpacity>)}</View>
         </View>
       ) : null}
+
+      <Text style={[styles.label,{color:theme.text}]}>Chat Mini-Surface</Text>
+      <View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border}]}>
+        <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Use this App inside Chat</Text><Text style={[styles.rowSub,{color:theme.sub}]}>Shows only the selected part of this full app. Users can act here without opening the full app.</Text></View>
+        <Switch value={chatSurface.enabled} onValueChange={v=>setChatSurface(s=>({...s,enabled:v}))}/>
+      </View>
+      {chatSurface.enabled ? <View>
+        <Text style={[styles.rowSub,{color:theme.sub,marginTop:8}]}>Size adapts automatically to the number of controls. You can override it.</Text>
+        <View style={styles.chips}>{['auto','compact','standard','large'].map(mode=><TouchableOpacity key={mode} onPress={()=>setChatSurface(s=>({...s,mode}))} style={[styles.option,{backgroundColor:chatSurface.mode===mode?theme.blue:theme.surface,borderColor:chatSurface.mode===mode?theme.blue:theme.border}]}><Text style={{color:chatSurface.mode===mode?'#FFF':theme.text,fontSize:11,fontWeight:'800'}}>{mode}</Text></TouchableOpacity>)}</View>
+        <View style={styles.chips}>
+          {[1,2,3,4,6,8].map(n=><TouchableOpacity key={'f'+n} onPress={()=>setChatSurface(s=>({...s,maxFields:n}))} style={[styles.option,{backgroundColor:chatSurface.maxFields===n?theme.blue:theme.surface,borderColor:chatSurface.maxFields===n?theme.blue:theme.border}]}><Text style={{color:chatSurface.maxFields===n?'#FFF':theme.text,fontSize:10,fontWeight:'800'}}>Fields {n}</Text></TouchableOpacity>)}
+        </View>
+        <View style={styles.chips}>
+          {[1,2,3,4,6,8].map(n=><TouchableOpacity key={'a'+n} onPress={()=>setChatSurface(s=>({...s,maxActions:n}))} style={[styles.option,{backgroundColor:chatSurface.maxActions===n?theme.blue:theme.surface,borderColor:chatSurface.maxActions===n?theme.blue:theme.border}]}><Text style={{color:chatSurface.maxActions===n?'#FFF':theme.text,fontSize:10,fontWeight:'800'}}>Actions {n}</Text></TouchableOpacity>)}
+        </View>
+        <View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border,marginTop:8}]}>
+          <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Inline actions</Text><Text style={[styles.rowSub,{color:theme.sub}]}>Run the same Experience action/state system directly from the Chat surface.</Text></View>
+          <Switch value={chatSurface.allowInlineActions} onValueChange={v=>setChatSurface(s=>({...s,allowInlineActions:v}))}/>
+        </View>
+        <View style={[styles.rowCard,{backgroundColor:theme.surface,borderColor:theme.border,marginTop:8}]}>
+          <View style={{flex:1}}><Text style={[styles.rowTitle,{color:theme.text}]}>Progress + status</Text><Text style={[styles.rowSub,{color:theme.sub}]}>Show required-field progress and the latest action state inside Chat.</Text></View>
+          <Switch value={chatSurface.showProgress} onValueChange={v=>setChatSurface(s=>({...s,showProgress:v,showStatus:v}))}/>
+        </View>
+        <View style={[styles.note,{backgroundColor:theme.surface,borderColor:theme.border,marginTop:8}]}>
+          <Text style={[styles.noteTitle,{color:theme.text}]}>Example</Text>
+          <Text style={[styles.noteText,{color:theme.sub}]}>A large Task app can expose only “Approve / Reject” in Chat. A simple Yes/No app stays tiny. More fields/actions make the Chat surface expand automatically.</Text>
+        </View>
+      </View> : null}
 
       <Text style={[styles.label,{color:theme.text}]}>Live web URL (optional)</Text>
       <TextInput value={webUrl} onChangeText={setWebUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={[styles.input,{color:theme.text,borderColor:theme.border,backgroundColor:theme.surface}]} placeholder="https://your-experience.example" placeholderTextColor={theme.sub}/>
