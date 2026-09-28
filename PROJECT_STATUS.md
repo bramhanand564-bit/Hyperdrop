@@ -169,3 +169,15 @@ WORKING = LOCKED. BROKEN = ISOLATED. New work must not rewrite unrelated working
 - The existing Chat `MessageBubble` already renders Experience messages as compact interactive cards with inline fields/actions and an Open button, so the user can operate the tool without leaving Chat.
 - Experience participant state and immutable events remain separated per user; creator/admin access remains governed by the Experience model and Firestore rules.
 - Runtime/device verification is still required; no APK runtime result is claimed by this code-only change.
+
+
+## CHAT MINI-SURFACE — IMPLEMENTED
+- Experience messages can now render an adaptive **live Chat Mini-Surface** instead of forcing the user to open the full Experience.
+- The surface uses the same Experience schema, ExperienceAPI.performAction(), participant state and immutable event system.
+- Builders can configure Auto/Compact/Standard/Large sizing, inline action count, field count, progress/status and inline actions.
+- Auto sizing grows with the number of controls; larger surfaces can use a wider two-column field layout while simple Yes/No flows stay compact.
+- Chat Surface never requires a full-app open for configured inline actions.
+- Required-field progress, latest action status and successful action feedback are shown inside the Chat surface.
+- Gateway now carries a normalized chat.surface contract.
+- API validates surface mode/field/action limits.
+- Device/runtime verification is still required before calling this production-verified.
