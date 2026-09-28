@@ -111,3 +111,10 @@ Nax Store app runtime now exposes real Gateway entrypoint methods for Chat, Disc
 
 ## NAX CHAT → AI WORKING TOOLS
 Every user can start **Create a Nax Tool with AI** directly from the Chat Toolkit. The originating chat ID is preserved through the AI creator and builder. A newly published tool from that flow is automatically inserted into the originating chat as a real `experience` message. The Chat card is interactive and uses the existing Experience runtime/state/event system. Do not turn this flow into an app-share-only flow.
+
+
+## CHAT MINI-SURFACE
+- A Nax/Experience can expose only a functional part of the full app directly inside Chat.
+- The Chat surface is adaptive: simple controls stay compact; more fields/actions expand to standard/large layouts.
+- Inline controls execute the same Experience action/state/event pipeline; Chat is not a fake preview and does not need to open the full app for those actions.
+- Surface metadata lives in the Experience schema/Gateway and is configurable from the Experience Builder.
