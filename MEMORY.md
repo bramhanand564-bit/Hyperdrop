@@ -107,3 +107,7 @@ Nax Store apps use the Gateway contract, share to real user chats as compact `ap
 
 ## NAX GATEWAY PORTAL ROUTING
 Nax Store app runtime now exposes real Gateway entrypoint methods for Chat, Discover, Moments, Settings, Web and Deep Link. Chat remains the real Firebase chat picker flow; no fake/demo chat selection is used. Store apps use `nax://app/<appId>` while Experiences retain the canonical `hyperdrop://experience/<experienceId>` link. Deep-link handling is registered in App.js/app.json.
+
+
+## NAX CHAT → AI WORKING TOOLS
+Every user can start **Create a Nax Tool with AI** directly from the Chat Toolkit. The originating chat ID is preserved through the AI creator and builder. A newly published tool from that flow is automatically inserted into the originating chat as a real `experience` message. The Chat card is interactive and uses the existing Experience runtime/state/event system. Do not turn this flow into an app-share-only flow.
