@@ -32,8 +32,10 @@ function parseDraft(text) {
   };
 }
 
-export default function ExperienceAICreatorScreen({ navigation }) {
+export default function ExperienceAICreatorScreen({ route, navigation }) {
   const { theme }=useTheme();
+  const sourceChatId=route?.params?.chatId || null;
+  const source=route?.params?.source || null;
   const [prompt,setPrompt]=useState('');
   const [busy,setBusy]=useState(false);
 
@@ -51,7 +53,7 @@ export default function ExperienceAICreatorScreen({ navigation }) {
       ].join(' ');
       const output=await AIService.generateText({messages:[{role:'user',content:request}],systemPrompt,temperature:0.15,maxTokens:900});
       const draft=parseDraft(output);
-      navigation.navigate('ExperienceBuilder',{template:draft.template,aiDraft:draft});
+      navigation.navigate('ExperienceBuilder',{template:draft.template,aiDraft:draft,source,chatId:sourceChatId});
     }catch(e){
       Alert.alert('AI Creator',e?.message||'Could not create the Experience. Connect an AI model in Settings → AI & Models.');
     }finally{setBusy(false);}
