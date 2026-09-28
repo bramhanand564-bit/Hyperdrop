@@ -16,6 +16,16 @@ export const DEFAULT_GATEWAY = {
     showProgress: true,
     showStatus: true,
     actions: ['primary', 'open'],
+    surface: {
+      enabled: true,
+      mode: 'auto',
+      maxFields: 3,
+      maxActions: 3,
+      showDescription: false,
+      showStatus: true,
+      showProgress: true,
+      allowInlineActions: true,
+    },
   },
   capabilities: ['experience.read', 'experience.state', 'events.write', 'chat.share'],
 };
@@ -24,7 +34,11 @@ export const normalizeGateway = gateway => ({
   ...DEFAULT_GATEWAY,
   ...(gateway || {}),
   entrypoints: { ...DEFAULT_GATEWAY.entrypoints, ...(gateway?.entrypoints || {}) },
-  chat: { ...DEFAULT_GATEWAY.chat, ...(gateway?.chat || {}) },
+  chat: {
+    ...DEFAULT_GATEWAY.chat,
+    ...(gateway?.chat || {}),
+    surface: { ...DEFAULT_GATEWAY.chat.surface, ...(gateway?.chat?.surface || {}) },
+  },
   capabilities: Array.isArray(gateway?.capabilities) ? gateway.capabilities.slice(0, 40) : DEFAULT_GATEWAY.capabilities,
 });
 
