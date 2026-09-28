@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import ExperienceAPI from '../api/ExperienceAPI';
 import { URLValidator } from '../security/URLValidator';
 import { DEFAULT_GATEWAY, normalizeGateway } from '../api/ExperienceGateway';
+import MessagingService from '../messaging/MessagingService';
 
 const ACTION_PRESETS = ['Accept','Start','Complete','Join','Vote','Submit','Claim','Play','Watch','Upload','Approve','Reject','Share','Pay','Book','Report'];
 const FIELD_PRESETS = ['Text','Number','Image','Date','Time','Checkbox','Rating','File'];
@@ -27,6 +28,8 @@ export default function ExperienceBuilder({ route, navigation }) {
   const aiDraft = route?.params?.aiDraft || null;
   const template = aiDraft?.template || route?.params?.template || 'custom';
   const experienceId = route?.params?.experienceId || null;
+  const sourceChatId = route?.params?.chatId || null;
+  const openedFromChat = route?.params?.source === 'chat' && !!sourceChatId;
   const initial = TEMPLATE_DEFAULTS[template] || TEMPLATE_DEFAULTS.custom;
   const initialName = aiDraft?.name || initial.name;
   const initialDescription = aiDraft?.description || initial.description;
@@ -110,10 +113,29 @@ export default function ExperienceBuilder({ route, navigation }) {
       const saved=experienceId
         ? await ExperienceAPI.update(experienceId,{name,description,icon,template,schema,gateway:schema.gateway})
         : await ExperienceAPI.create({name,description,icon,template,schema,gateway:schema.gateway});
-      Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Nax app was updated in Nax Store.':'Your Nax app is live in Nax Store and shareable.',[
-        {text:'Open',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:saved.id})},
-        {text:'Dashboard',onPress:()=>navigation.replace('ExperienceDashboard')}
-      ]);
+      if (openedFromChat && !experienceId) {
+        await MessagingService.sendMessage(sourceChatId, {
+          type: 'experience',
+          text: '⚡ ' + (saved.name || name) + ' — try this tool',
+          experienceId: saved.id,
+          experienceName: saved.name || name,
+          experienceDescription: saved.description || description,
+          experienceIcon: saved.icon || icon || '⚡',
+          experienceSchema: saved.schema || schema,
+          experienceGateway: saved.gateway || schema.gateway || null,
+          experienceGatewayId: saved.gatewayId || null,
+          experiencePackage: saved.package || null,
+        });
+        Alert.alert('Nax Tool created', 'The working mini-tool has been added to this chat.', [
+          {text:'Open Tool',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:saved.id,chatId:sourceChatId})},
+          {text:'Stay in Chat',onPress:()=>navigation.goBack()},
+        ]);
+      } else {
+        Alert.alert(experienceId?'Updated':'Published', experienceId?'Your Nax app was updated in Nax Store.':'Your Nax app is live in Nax Store and shareable.',[
+          {text:'Open',onPress:()=>navigation.replace('ExperienceRuntime',{experienceId:saved.id})},
+          {text:'Dashboard',onPress:()=>navigation.replace('ExperienceDashboard')}
+        ]);
+      }
     }catch(e){Alert.alert('Nax publish failed',e.message||'Unable to publish.')}
     finally{setPublishing(false);}
   };
