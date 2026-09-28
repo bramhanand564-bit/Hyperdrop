@@ -59,7 +59,7 @@ export default function ExperienceBuilder({ route, navigation }) {
       setFields((item.schema?.fields||initial.fields.map(([type,label],i)=>({id:`field_${i+1}`,type,label,required:['Text','Number'].includes(type)}))).map((field,i)=>({...field,id:field.id||`field_${i+1}`})));
       setRewardEnabled(Boolean(item.schema?.settings?.rewardEnabled));setRewardPoints(String(item.schema?.settings?.rewardPoints||100));setTrigger(item.schema?.settings?.trigger||(item.schema?.actions?.[0] ? (item.schema.actions[0].id || slug(item.schema.actions[0].label)) : ''));setWebUrl(item.schema?.web?.url||'');
       const gateway=normalizeGateway(item.gateway || item.schema?.gateway || DEFAULT_GATEWAY);setGatewayEnabled(gateway.enabled);setChatEnabled(gateway.chat.enabled);setChatPresentation(gateway.chat.presentation||'card');setVisibility(gateway.visibility||'public');
-      setChatSurface({...chatSurface,...(item.schema?.chatSurface||gateway.chat?.surface||{})});
+      setChatSurface(prev=>({...prev,...(item.schema?.chatSurface||gateway.chat?.surface||{})}));
     }).catch(()=>{}).finally(()=>mounted&&setLoadingExisting(false));
     return ()=>{mounted=false;};
   },[experienceId]);
