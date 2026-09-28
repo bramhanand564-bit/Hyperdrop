@@ -142,6 +142,13 @@ const ExperienceAPI = {
 
     const schema = input.schema || EMPTY_SCHEMA;
     if (JSON.stringify(schema).length > 250000) throw new Error('Experience configuration is too large.');
+    const surface = schema.chatSurface || schema.gateway?.chat?.surface;
+    if (surface) {
+      const allowedModes = ['auto', 'compact', 'standard', 'large'];
+      if (!allowedModes.includes(String(surface.mode || 'auto'))) throw new Error('Invalid Chat Surface mode.');
+      if (surface.maxFields !== undefined && (!Number.isFinite(Number(surface.maxFields)) || Number(surface.maxFields) < 0 || Number(surface.maxFields) > 8)) throw new Error('Invalid Chat Surface field limit.');
+      if (surface.maxActions !== undefined && (!Number.isFinite(Number(surface.maxActions)) || Number(surface.maxActions) < 1 || Number(surface.maxActions) > 8)) throw new Error('Invalid Chat Surface action limit.');
+    }
     if (!Array.isArray(schema.fields) || !Array.isArray(schema.actions)) throw new Error('Invalid Experience configuration.');
     const experienceRef = doc(experiencesRef);
     const payload = {
@@ -174,6 +181,13 @@ const ExperienceAPI = {
     if (input.schema !== undefined) {
       if (!input.schema || !Array.isArray(input.schema.fields) || !Array.isArray(input.schema.actions)) throw new Error('Invalid Experience configuration.');
       if (JSON.stringify(input.schema).length > 250000) throw new Error('Experience configuration is too large.');
+      const surface = input.schema.chatSurface || input.schema.gateway?.chat?.surface;
+      if (surface) {
+        const allowedModes = ['auto', 'compact', 'standard', 'large'];
+        if (!allowedModes.includes(String(surface.mode || 'auto'))) throw new Error('Invalid Chat Surface mode.');
+        if (surface.maxFields !== undefined && (!Number.isFinite(Number(surface.maxFields)) || Number(surface.maxFields) < 0 || Number(surface.maxFields) > 8)) throw new Error('Invalid Chat Surface field limit.');
+        if (surface.maxActions !== undefined && (!Number.isFinite(Number(surface.maxActions)) || Number(surface.maxActions) < 1 || Number(surface.maxActions) > 8)) throw new Error('Invalid Chat Surface action limit.');
+      }
     }
     if (input.status !== undefined && !['published', 'disabled'].includes(String(input.status))) throw new Error('Invalid Experience status.');
 
