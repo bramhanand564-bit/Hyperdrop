@@ -137,7 +137,7 @@ export default function NaxStoreScreen({ navigation }) {
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.iconBtn}><Ionicons name="search-outline" size={22} color="#FFF" /></TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn}><Ionicons name="notifications-outline" size={22} color="#FFF" /></TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('AIAppProjects')} style={styles.profileCircle}><Text style={styles.profileText}>N</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('CreatorAnalytics')} style={styles.profileCircle}><Text style={styles.profileText}>N</Text></TouchableOpacity>
           </View>
         </View>
 
