@@ -8,6 +8,7 @@ import MessagingService from '../messaging/MessagingService';
 
 export default function NaxAppSharePicker({ route, navigation }) {
   const { app } = route.params || {};
+  const surfaceType = route.params?.surfaceType || 'app';
   const { theme } = useTheme();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,7 @@ export default function NaxAppSharePicker({ route, navigation }) {
     setSending(chat.id);
     try {
       await MessagingService.sendMessage(target, {
-        type: 'app_invite',
+        type: surfaceType === 'connector' ? 'connected_app' : 'app_invite',
         text: '🚀 ' + (app.name || 'Nax App') + ' — try this app',
         appId: app.id,
         appName: app.name || app.title || 'Nax App',
@@ -38,6 +39,11 @@ export default function NaxAppSharePicker({ route, navigation }) {
         appGateway: app.gateway || null,
         appGatewayId: app.gatewayId || null,
         appPackage: app.package || null,
+        appConnector: app.connector || null,
+        sourceType: app.sourceType || 'app',
+        sourceId: app.sourceId || app.id || '',
+        botId: app.botId || '',
+        surfaceType,
       });
       Alert.alert('Sent', 'App shared to the real chat.');
       navigation.goBack();
@@ -51,8 +57,8 @@ export default function NaxAppSharePicker({ route, navigation }) {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="chevron-back" size={27} color={theme.text} /></TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[styles.title, { color: theme.text }]}>Share Nax App</Text>
-          <Text style={[styles.sub, { color: theme.sub }]} numberOfLines={1}>{app?.name || 'Nax App'} · compact Chat card</Text>
+          <Text style={[styles.title, { color: theme.text }]}{surfaceType === 'connector' ? 'Share Connected Surface' : 'Share Nax App'}</Text>
+          <Text style={[styles.sub, { color: theme.sub }]} numberOfLines={1}>{app?.name || 'Nax App'} · {surfaceType === 'connector' ? 'live Chat surface' : 'compact Chat card'}</Text>
         </View>
       </View>
       <View style={[styles.preview, { backgroundColor: theme.surface, borderColor: theme.border }]}>
