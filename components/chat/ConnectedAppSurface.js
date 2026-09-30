@@ -46,6 +46,7 @@ export default function ConnectedAppSurface({ appId, app, connector: inputConnec
 
   const run = async action => {
     if (!action || busy) return;
+    if (fields.some(field => field.required && !String(values[field.id] ?? '').trim())) { setMessage('Please fill all required fields first.'); return; }
     setBusy(action.id);
     setMessage('');
     try {
@@ -71,6 +72,12 @@ export default function ConnectedAppSurface({ appId, app, connector: inputConnec
 
   const renderField = field => {
     const v = values[field.id];
+    if (field.type === 'select' && field.options?.length) return (
+      <View key={field.id} style={styles.field}>
+        <Text style={styles.label}>{field.label}{field.required ? ' *' : ''}</Text>
+        <View style={styles.options}>{field.options.map(option => <TouchableOpacity key={option} onPress={() => setValue(field.id, option)} style={[styles.option, String(v) === String(option) && styles.optionActive]}><Text style={[styles.optionText, String(v) === String(option) && styles.optionTextActive]}>{option}</Text></TouchableOpacity>)}</View>
+      </View>
+    );
     if (field.type === 'toggle' || field.type === 'checkbox') return (
       <TouchableOpacity key={field.id} onPress={() => setValue(field.id, !Boolean(v))} style={styles.control}>
         <Ionicons name={v ? 'checkbox' : 'square-outline'} size={18} color={v ? '#087EFF' : '#8AA0B5'} />
@@ -115,7 +122,7 @@ const styles = StyleSheet.create({
   title:{fontSize:15,fontWeight:'900',color:'#142532'},
   sub:{fontSize:10,color:'#6C8494',lineHeight:14,marginTop:2},
   live:{fontSize:8,fontWeight:'900',color:'#34C759',marginTop:5},
-  field:{marginTop:9},label:{fontSize:9,fontWeight:'800',color:'#6C8494',marginBottom:4},
+  field:{marginTop:9},options:{flexDirection:'row',flexWrap:'wrap',gap:6},option:{borderWidth:1,borderColor:'rgba(8,126,255,.18)',borderRadius:10,paddingHorizontal:9,paddingVertical:7,backgroundColor:'#FFF'},optionActive:{backgroundColor:'#087EFF',borderColor:'#087EFF'},optionText:{fontSize:10,fontWeight:'800',color:'#142532'},optionTextActive:{color:'#FFF'},label:{fontSize:9,fontWeight:'800',color:'#6C8494',marginBottom:4},
   input:{minHeight:39,borderWidth:1,borderColor:'rgba(8,126,255,.15)',borderRadius:11,paddingHorizontal:10,fontSize:12,color:'#142532',backgroundColor:'#FFF'},
   control:{minHeight:39,borderWidth:1,borderColor:'rgba(8,126,255,.15)',borderRadius:11,paddingHorizontal:10,flexDirection:'row',alignItems:'center',marginTop:8},
   controlText:{fontSize:12,color:'#142532',fontWeight:'700',marginLeft:7},
