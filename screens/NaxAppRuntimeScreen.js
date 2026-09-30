@@ -1,15 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../firebaseConfig';
 import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
+import NaxConnectorAPI from '../api/NaxConnectorAPI';
+import BotAPI from '../api/BotAPI';
+import BotRuntime from '../bot-runtime/BotRuntime';
+import AIService from '../ai/AIService';
 
 export default function NaxAppRuntimeScreen({ route, navigation }) {
   const { theme } = useTheme();
   const [app, setApp] = useState(null);
   const [error, setError] = useState('');
+  const webViewRef = useRef(null);
+  const botRuntimeRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +64,41 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
     return false;
   };
 
+  const sendToWeb = payload => {
+    const script = 'window.__naxBotResponse && window.__naxBotResponse(' + JSON.stringify(payload || {}) + '); true;';
+    webViewRef.current?.injectJavaScript(script);
+  };
+
+  const handleBotInput = async text => {
+    if (!app?.botId) return;
+    try {
+      const bot = await BotAPI.getBot(app.botId);
+      if (!bot) throw new Error('Original bot is no longer available.');
+      if (bot.systemPrompt) {
+        const reply = await AIService.generateText({
+          connectionId: bot.aiConnectionId || undefined,
+          model: bot.aiModel || undefined,
+          systemPrompt: bot.systemPrompt,
+          messages: [{ role:'user', content:String(text || '').slice(0,5000) }],
+          maxTokens: 800,
+        });
+        await BotAPI.recordBotUsage(bot.id).catch(() => {});
+        sendToWeb({ text: String(reply || '').slice(0,5000), buttons: bot.buttons || [] });
+        return;
+      }
+      if (!botRuntimeRef.current || botRuntimeRef.current.bot?.id !== bot.id) {
+        botRuntimeRef.current = new BotRuntime({ bot, user:{ uid:auth.currentUser?.uid || '', name:auth.currentUser?.displayName || 'User' } });
+        const started = botRuntimeRef.current.start();
+        if (!botRuntimeRef.current.isRunning()) throw new Error(started?.response?.text || 'Bot is unavailable.');
+      }
+      const result = botRuntimeRef.current.handleMessage({ text:String(text || '').slice(0,5000) });
+      await BotAPI.recordBotUsage(bot.id).catch(() => {});
+      sendToWeb(result?.response || { text:'No response.' });
+    } catch (e) {
+      sendToWeb({ text:e?.message || 'Bot response failed.' });
+    }
+  };
+
   const handleMessage = event => {
     try {
       const payload = JSON.parse(event.nativeEvent.data || '{}');
@@ -66,6 +107,15 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
         openGatewayEntrypoint(String(payload.entrypoint || ''));
       }
       if (payload.type === 'NAX_CLOSE') navigation.goBack();
+      if (payload.type === 'NAX_BOT_INPUT') handleBotInput(payload.text || '');
+      if (payload.type === 'NAX_CONNECTOR_ACTION') {
+        NaxConnectorAPI.performAction(app?.id, payload.actionId, payload.input || {}, { surface:'full_app' })
+          .then(result => webViewRef.current?.injectJavaScript('window.__naxConnectorResult && window.__naxConnectorResult(' + JSON.stringify(result || {}) + '); true;'))
+          .catch(e => webViewRef.current?.injectJavaScript('window.__naxConnectorError && window.__naxConnectorError(' + JSON.stringify({ message:e?.message || 'Action failed.' }) + '); true;'));
+      }
+      if (payload.type === 'NAX_CONNECTOR_STATE') {
+        NaxConnectorAPI.getState(app?.id, app?.connector || {}).then(state => webViewRef.current?.injectJavaScript('window.__naxConnectorState && window.__naxConnectorState(' + JSON.stringify(state || {}) + '); true;')).catch(()=>{});
+      }
     } catch (_) {}
   };
 
@@ -85,6 +135,10 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
         openSettings:function(){this.openEntrypoint('settings');},
         openWeb:function(){this.openEntrypoint('web');},
         openDeepLink:function(){this.openEntrypoint('deepLink');},
+        connector:JSON.parse(${JSON.stringify(JSON.stringify({}))}),
+        sendBotMessage:function(text){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_BOT_INPUT',text:String(text||'')}));},
+        connectorAction:function(actionId,input){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CONNECTOR_ACTION',actionId:String(actionId||''),input:input||{}}));},
+        getConnectorState:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CONNECTOR_STATE'}));},
         close:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CLOSE'}));}
       };
     })(); true;`;
@@ -94,10 +148,10 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
   return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}>
     <View style={[styles.header,{backgroundColor:theme.surface,borderBottomColor:theme.border}]}>
       <TouchableOpacity onPress={()=>navigation.goBack()} style={styles.headerBtn}><Ionicons name="chevron-back" size={25} color={theme.text}/></TouchableOpacity>
-      <View style={{flex:1,marginHorizontal:8}}><Text style={{color:theme.text,fontWeight:'900'}} numberOfLines={1}>{app.name}</Text><Text style={{color:theme.blue,fontSize:9,fontWeight:'800'}}>NAX GATEWAY · STORE APP</Text></View>
+      <View style={{flex:1,marginHorizontal:8}}><Text style={{color:theme.text,fontWeight:'900'}} numberOfLines={1}>{app.name}</Text><Text style={{color:theme.blue,fontSize:9,fontWeight:'800'}}>NAX GATEWAY · {app.sourceType === 'bot' ? 'BOT APP' : 'STORE APP'}</Text></View>
       <TouchableOpacity onPress={()=>navigation.navigate('NaxAppSharePicker',{app})} style={styles.headerBtn}><Ionicons name="share-outline" size={21} color={theme.text}/></TouchableOpacity>
     </View>
-    <WebView originWhitelist={['*']} source={{html:app.html}} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} onMessage={handleMessage} injectedJavaScriptBeforeContentLoaded={gatewayBootstrap} />
+    <WebView ref={webViewRef} originWhitelist={['*']} source={{html:app.html}} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} onMessage={handleMessage} injectedJavaScriptBeforeContentLoaded={gatewayBootstrap} />
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({safe:{flex:1},header:{height:58,flexDirection:'row',alignItems:'center',paddingHorizontal:8,borderBottomWidth:1},headerBtn:{width:42,height:42,alignItems:'center',justifyContent:'center'},center:{flex:1,alignItems:'center',justifyContent:'center',padding:24}});
