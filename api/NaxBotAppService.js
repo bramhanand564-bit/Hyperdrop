@@ -1,5 +1,6 @@
 import { auth } from '../firebaseConfig';
 import NaxAppStoreAPI from './NaxAppStoreAPI';
+import BotAPI from './BotAPI';
 import { DEFAULT_GATEWAY } from './ExperienceGateway';
 
 const esc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -68,6 +69,7 @@ const NaxBotAppService = {
       connector,
       gateway: DEFAULT_GATEWAY,
     });
+    await BotAPI.updateValidatedBot(bot.id, { naxAppId: published.id, convertedToApp: true, convertedAt: new Date().toISOString() }).catch(() => {});
     return published;
   },
 };
