@@ -84,7 +84,7 @@ export default function BotAppSurface({ appId, botId, appName, appIcon='🤖', n
         <Text style={styles.reply}>{reply || bot?.welcomeMessage || 'Send a message.'}</Text>
       </View>
       {buttons.length ? <View style={styles.buttons}>{buttons.slice(0, 8).map((button,index) => (
-        <TouchableOpacity key={button.id || button.buttonId || index} disabled={busy} onPress={() => send(button.type === 'command' ? '/' + String(button.command || '').replace(/^\\/+/, '') : (button.text || button.label || ''))} style={styles.button}>
+        <TouchableOpacity key={button.id || button.buttonId || index} disabled={busy} onPress={() => send(button.type === 'command' ? '/' + String(button.command || '').replace(/^\/+/, '') : (button.text || button.label || ''))} style={styles.button}>
           <Text style={styles.buttonText}>{button.label || button.text || 'Option'}</Text>
         </TouchableOpacity>
       ))}</View> : null}
