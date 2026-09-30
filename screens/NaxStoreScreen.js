@@ -115,11 +115,7 @@ export default function NaxStoreScreen({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}><Ionicons name="share-outline" size={16} color={theme.text} /></TouchableOpacity>
         {app.connector?.enabled ? <TouchableOpacity onPress={() => shareConnector(app)} style={[styles.shareBtn, { borderColor: theme.border, backgroundColor:'rgba(57,226,125,.07)' }]}><Ionicons name="git-network-outline" size={16} color="#39E27D" /></TouchableOpacity> : null}
-        {/* connector-aware share remains additive; original app share is preserved */}
-        {false && <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}>
-          <Ionicons name="share-outline" size={16} color={theme.text} />
-        </TouchableOpacity>
-        </TouchableOpacity>}
+
       </View>
     </View>
   );
