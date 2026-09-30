@@ -27,6 +27,11 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
     return () => { active = false; };
   }, [route.params?.appId]);
 
+  useEffect(() => {
+    if (!app) return;
+    CreatorAnalyticsAPI.recordAppEvent(app, 'open');
+  }, [app?.id]);
+
   const openGatewayEntrypoint = async entrypoint => {
     const gateway = app?.gateway || {};
     if (gateway.enabled === false) return false;
