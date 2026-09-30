@@ -102,15 +102,9 @@ const NaxAppStoreAPI = {
     try {
       const snap = await getDoc(doc(db, PRIMARY_COLLECTION, id));
       if (snap.exists()) {
-        const normalized = normalize(snap.id, snap.data());
-        const mediaSnap = await getDocs(collection(db, PRIMARY_COLLECTION, id, 'media')).catch(() => ({ docs: [] }));
-        const media = mediaSnap.docs.map(item => item.data()).filter(item => item.kind === 'screenshot').sort((a, b) => (a.index || 0) - (b.index || 0));
-        const iconMedia = mediaSnap.docs.find(item => item.data().kind === 'icon')?.data();
-        return {
-          ...normalized,
-          screenshots: media.map(item => item.dataUrl).filter(Boolean),
-          iconUrl: normalized.iconUrl || iconMedia?.dataUrl || '',
-        };
+        // Load the app document first so a slow/unavailable media subcollection
+        // can never block the main app runtime from opening.
+        return normalize(snap.id, snap.data());
       }
     } catch (_) {}
     const compat = await getDoc(doc(db, COMPAT_COLLECTION, id));
