@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebaseConfig';
 import { useTheme } from '../context/ThemeContext';
 import MessagingService from '../messaging/MessagingService';
+import CreatorAnalyticsAPI from '../api/CreatorAnalyticsAPI';
 
 export default function NaxAppSharePicker({ route, navigation }) {
   const { app } = route.params || {};
@@ -45,6 +46,7 @@ export default function NaxAppSharePicker({ route, navigation }) {
         botId: app.botId || '',
         surfaceType,
       });
+      CreatorAnalyticsAPI.recordAppEvent(app, 'share');
       Alert.alert('Sent', 'App shared to the real chat.');
       navigation.goBack();
     } catch (e) {
