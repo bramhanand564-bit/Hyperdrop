@@ -57,7 +57,7 @@ export default function NaxAppSharePicker({ route, navigation }) {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="chevron-back" size={27} color={theme.text} /></TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[styles.title, { color: theme.text }]}{surfaceType === 'connector' ? 'Share Connected Surface' : 'Share Nax App'}</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{surfaceType === 'connector' ? 'Share Connected Surface' : 'Share Nax App'}</Text>
           <Text style={[styles.sub, { color: theme.sub }]} numberOfLines={1}>{app?.name || 'Nax App'} · {surfaceType === 'connector' ? 'live Chat surface' : 'compact Chat card'}</Text>
         </View>
       </View>
