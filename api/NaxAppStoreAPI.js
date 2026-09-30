@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 import { DEFAULT_GATEWAY, normalizeGateway, createGatewayId } from './ExperienceGateway';
+import { normalizeConnector, createDefaultConnector } from './NaxConnectorAPI';
 
 const storage = getStorage(app);
 
@@ -47,6 +48,10 @@ const normalize = (id, data = {}) => ({
   version: Number(data.version || 1),
   gateway: normalizeGateway(data.gateway),
   gatewayId: data.gatewayId || createGatewayId(id),
+  connector: normalizeConnector(data.connector, { name: data.name, description: data.description, icon: data.icon, sourceType: data.sourceType, sourceId: data.sourceId }),
+  sourceType: data.sourceType || 'app',
+  sourceId: data.sourceId || id,
+  botId: data.botId || '',
   package: data.package || { type: 'nax_app', sourceId: id, version: 1 },
   createdAt: data.createdAt || null,
   updatedAt: data.updatedAt || null,
@@ -158,6 +163,10 @@ const NaxAppStoreAPI = {
       gateway: normalizeGateway(input.gateway || DEFAULT_GATEWAY),
       gatewayId: input.gatewayId || createGatewayId(id),
       package: { type: 'nax_app', sourceId: id, version: 1 },
+      connector: normalizeConnector(input.connector || project.connector || createDefaultConnector(project), project),
+      sourceType: input.sourceType || 'app',
+      sourceId: input.sourceId || id,
+      botId: input.botId || '',
       updatedAt: serverTimestamp(),
       naxStoreVersion: 1,
       ...(input.id ? {} : { createdAt: serverTimestamp() }),
@@ -199,6 +208,41 @@ const NaxAppStoreAPI = {
         throw new Error('Nax Store publishing failed. Your account may not have permission to publish apps yet.');
       }
     }
+  },
+
+  async publishStandalone(input = {}) {
+    const uid = requireUser();
+    const html = String(input.html || '').trim();
+    if (!html) throw new Error('App HTML is required.');
+    if (sizeOf(html) > MAX_HTML_BYTES) throw new Error('This app is too large for Nax Store.');
+    const id = input.id || doc(publicRef).id;
+    const connector = normalizeConnector(input.connector || {}, input);
+    const payload = {
+      name: String(input.name || input.title || 'Nax App').trim().slice(0, 80),
+      title: String(input.title || input.name || 'Nax App').trim().slice(0, 100),
+      description: String(input.description || '').trim().slice(0, 500),
+      icon: String(input.icon || '🚀').slice(0, 8),
+      iconUrl: String(input.iconUrl || '').trim(),
+      screenshots: [],
+      category: String(input.category || 'apps').toLowerCase().slice(0, 20),
+      creatorId: uid,
+      creatorName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'Creator',
+      status: 'published',
+      html,
+      version: Number(input.version || 1),
+      gateway: normalizeGateway(input.gateway || DEFAULT_GATEWAY),
+      gatewayId: input.gatewayId || createGatewayId(id),
+      connector,
+      sourceType: input.sourceType || 'app',
+      sourceId: input.sourceId || id,
+      botId: input.botId || '',
+      package: { type: input.sourceType === 'bot' ? 'nax_bot_app' : 'nax_app', sourceId: input.sourceId || id, version: 1 },
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+      naxStoreVersion: 2,
+    };
+    await setDoc(doc(publicRef, id), payload, { merge: true });
+    return { id, ...payload, link: 'nax://app/' + id };
   },
 
   async unpublish(id) {
