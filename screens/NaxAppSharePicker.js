@@ -30,7 +30,7 @@ export default function NaxAppSharePicker({ route, navigation }) {
     setSending(chat.id);
     try {
       await MessagingService.sendMessage(target, {
-        type: surfaceType === 'connector' ? 'connected_app' : 'app_invite',
+        type: surfaceType === 'connector' ? (app.botId ? 'bot_app' : 'connected_app') : 'app_invite',
         text: '🚀 ' + (app.name || 'Nax App') + ' — try this app',
         appId: app.id,
         appName: app.name || app.title || 'Nax App',
