@@ -1,4 +1,5 @@
 import { auth, db } from '../firebaseConfig';
+import CreatorAnalyticsAPI from './CreatorAnalyticsAPI';
 import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 const STATE_COLLECTION = 'connector_state';
@@ -175,6 +176,7 @@ const performAction = async (appId, actionId, input = {}, context = {}) => {
     }, { merge: true });
     result = { status: 'updated', actionId: action.id, label: action.label, values };
   });
+  CreatorAnalyticsAPI.recordAppEvent(app, 'action');
   return result;
 };
 
