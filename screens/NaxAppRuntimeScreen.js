@@ -124,6 +124,7 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
       var APP=${JSON.stringify({ id: app?.id || '', name: app?.name || '', description: app?.description || '', icon: app?.icon || '🚀' })};
       var GATEWAY=${JSON.stringify(app?.gateway || {})};
       var USER=${JSON.stringify({ uid: auth.currentUser?.uid || '', name: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'User' })};
+      var CONNECTOR=${JSON.stringify(app?.connector || {})};
       window.Nax={
         app:APP,user:USER,gateway:GATEWAY,
         getApp:function(){return APP;},getGateway:function(){return GATEWAY;},
@@ -135,7 +136,7 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
         openSettings:function(){this.openEntrypoint('settings');},
         openWeb:function(){this.openEntrypoint('web');},
         openDeepLink:function(){this.openEntrypoint('deepLink');},
-        connector:JSON.parse(${JSON.stringify(JSON.stringify({}))}),
+        connector:CONNECTOR,
         sendBotMessage:function(text){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_BOT_INPUT',text:String(text||'')}));},
         connectorAction:function(actionId,input){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CONNECTOR_ACTION',actionId:String(actionId||''),input:input||{}}));},
         getConnectorState:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CONNECTOR_STATE'}));},
