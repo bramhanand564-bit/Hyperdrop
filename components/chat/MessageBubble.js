@@ -118,6 +118,7 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
       {surface.maxFields<fields.length||surface.maxActions<actions.length?<Text style={{color:isMe?'rgba(255,255,255,.48)':theme.sub,fontSize:8,marginTop:8}}>More controls are available in the full app.</Text>:null}
     </View>;
    })():null}
+   {item.type==='bot_app'?<BotAppSurface appId={item.appId} botId={item.botId} appName={item.appName} appIcon={item.appIcon || '🤖'} navigation={navigation}/>:null}
    {item.type==='connected_app'?<ConnectedAppSurface
       appId={item.appId}
       connector={item.appConnector || item.connector}
