@@ -8,7 +8,7 @@ const uid = () => auth?.currentUser?.uid || null;
 
 const clean = value => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
 
-const record = async ({ sourceType='app', sourceId, creatorId, event='open', actorId }) => {
+const record = async ({ sourceType='app', sourceId, creatorId, event='open', actorId, name='' }) => {
   if (!sourceId || !creatorId || !actorId || actorId !== uid()) return false;
   const collectionRef = sourceType === 'bot' ? botRef(creatorId) : creatorRef(creatorId);
   const summaryRef = doc(collectionRef, clean(sourceId));
@@ -24,6 +24,7 @@ const record = async ({ sourceType='app', sourceId, creatorId, event='open', act
       creatorId,
       sourceId,
       sourceType,
+      name: String(name || '').slice(0, 100),
       [field]: increment(1),
       updatedAt: serverTimestamp(),
     };
@@ -42,13 +43,13 @@ const recordAppEvent = (app, event='open') => {
   const creatorId = app?.creatorId;
   const sourceId = app?.id || app?.sourceId;
   if (!creatorId || !sourceId) return Promise.resolve(false);
-  return record({ sourceType:'app', sourceId, creatorId, event, actorId:uid() }).catch(() => false);
+  return record({ sourceType:'app', sourceId, creatorId, event, actorId:uid(), name:app?.name || app?.title || 'Nax App' }).catch(() => false);
 };
 
 const recordBotEvent = (bot, event='session') => {
   const creatorId = bot?.developerId || bot?.ownerId || bot?.creatorId;
   if (!creatorId || !bot?.id) return Promise.resolve(false);
-  return record({ sourceType:'bot', sourceId:bot.id, creatorId, event, actorId:uid() }).catch(() => false);
+  return record({ sourceType:'bot', sourceId:bot.id, creatorId, event, actorId:uid(), name:bot?.name || 'Bot' }).catch(() => false);
 };
 
 const getCreatorAnalytics = async creatorId => {
