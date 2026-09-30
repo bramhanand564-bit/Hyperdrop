@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import AIService from '../ai/AIService';
 import NaxAppStoreAPI from './NaxAppStoreAPI';
+import { normalizeConnector, createDefaultConnector } from './NaxConnectorAPI';
 
 const PROJECTS_KEY = 'nax.ai-app-builder.projects.v2';
 const CURRENT_KEY = 'nax.ai-app-builder.current.v2';
@@ -45,6 +46,7 @@ function memoryObject(project) {
     features: [],
     pending: [],
     importantFiles: project.target === 'SINGLE_HTML' ? ['index.html'] : ['README.md', 'MEMORY.md'],
+    connector: createDefaultConnector(project),
     history: [],
   };
 }
@@ -432,13 +434,14 @@ const AIAppBuilderService = {
   async saveProject(project, { action = 'save', createVersion = false } = {}) {
     const root = await projectRoot(project.id);
     let files = validateProjectFiles(project.files || {}, project.target);
-    const memory = { ...(project.memory || {}), importantFiles: project.target === 'SINGLE_HTML' ? ['index.html'] : (project.filePaths || []) };
+    const connector = normalizeConnector(project.connector || project.memory?.connector || {}, project);
+    const memory = { ...(project.memory || {}), connector, importantFiles: project.target === 'SINGLE_HTML' ? ['index.html'] : (project.filePaths || []) };
     if (project.target === 'SINGLE_HTML' && files['index.html']) {
       files['index.html'] = embedMemory(validateSingleHtml(files['index.html']), memory);
       files = validateProjectFiles(files, project.target);
     }
     await writeProjectFiles(root, files);
-    const next = { ...project, filePaths: Object.keys(files), memory, updatedAt: Date.now() };
+    const next = { ...project, connector, filePaths: Object.keys(files), memory, updatedAt: Date.now() };
     delete next.html;
     delete next.files;
     if (createVersion) {
@@ -495,8 +498,8 @@ Use SINGLE_HTML when the feature can reliably run as one self-contained HTML fil
 Use ADVANCED_PROJECT when native Android/platform APIs, native modules, multi-file architecture, C/C++/JNI, background services, or other capabilities make one HTML file unreliable.
 Current automatic route: ${route.target}.
 
-For SINGLE_HTML BUILD return:
-{"mode":"BUILD","target":"SINGLE_HTML","name":"...","summary":"...","status":"working|partial|blocked","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
+For every BUILD, also return a connector object that defines the safe subset of the app that can run inside Nax Chat. It is a live connected surface, never a screenshot. Prefer deterministic safe actions such as set, increment, decrement, toggle, vote, append, reset, open and submit. Never expose secrets or arbitrary Firestore/API access through the connector.\n\nFor SINGLE_HTML BUILD return:
+{"mode":"BUILD","target":"SINGLE_HTML","name":"...","summary":"...","status":"working|partial|blocked","progress":"...","remaining":["..."],"nextSteps":["..."],"suggestedReplies":["..."],"connector":{"enabled":true,"title":"...","description":"...","icon":"⚡","mode":"compact","fields":[],"actions":[],"permissions":{"read":true,"write":true,"share":true},"capabilities":["state","share","open"],"initialState":{},"chat":{"presentation":"card","showDescription":true,"showStatus":true,"allowInlineActions":true,"maxFields":3,"maxActions":3}},"html":"<!doctype html>...","memory":{"features":[],"pending":[],"decisions":[]}}
 Requirements: complete working app; inline CSS and JavaScript; no external script/CSS dependencies; responsive; accessible; functional; keep it compact.
 
 For ADVANCED_PROJECT BUILD return:
@@ -543,9 +546,11 @@ Conversation behavior: act like a real coding agent. Do the requested work direc
       if (!files['src/index.html'] && files['index.html']) files['src/index.html'] = files['index.html'];
     }
     const nextVersion = (project.versions?.[project.versions.length - 1]?.version || 0) + 1;
+    const connector = normalizeConnector(draft.connector || project.connector || {}, { ...project, name: draft.name || project.name });
     const memory = {
       ...(project.memory || memoryObject(project)),
       ...(draft.memory || {}),
+      connector,
       version: nextVersion,
       name: draft.name || project.name,
       target,
@@ -554,6 +559,7 @@ Conversation behavior: act like a real coding agent. Do the requested work direc
     files['MEMORY.md'] = memoryMarkdown(memory);
     const next = {
       ...project,
+      connector,
       name: draft.name || project.name,
       status: draft.status || 'done',
       progress: draft.progress || draft.summary || 'Build updated.',
@@ -691,6 +697,7 @@ jobs:
     const generatedId = source.id || ('app_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
     const project = {
       id: generatedId,
+      connector: normalizeConnector(source.connector || {}, source),
       name: String(source.name || 'Imported Nax App').slice(0, 80),
       target,
       html: target === 'SINGLE_HTML' ? html : undefined,
@@ -719,9 +726,15 @@ jobs:
 
   async publishToNaxStore(project, options = {}) {
     if (!project) throw new Error('No app selected.');
-    const published = await NaxAppStoreAPI.publish(project, { ...options, id: options.id || project.naxStoreId });
+    const published = await NaxAppStoreAPI.publish(project, { ...options, id: options.id || project.naxStoreId, connector: project.connector || createDefaultConnector(project) });
     const next = { ...project, naxStoreId: published.id, naxStoreStatus: 'published', naxStoreVersion: published.version, updatedAt: Date.now() };
     return project.id ? this.saveProject(next, { action: 'published to Nax Store', createVersion: false }) : next;
+  },
+
+  async updateConnector(project, connector, { createVersion = true } = {}) {
+    if (!project?.id) throw new Error('No app selected.');
+    const nextConnector = normalizeConnector(connector, project);
+    return this.saveProject({ ...project, connector: nextConnector }, { action: 'updated connected app surface', createVersion });
   },
 
   async saveChat(project, messages) {
