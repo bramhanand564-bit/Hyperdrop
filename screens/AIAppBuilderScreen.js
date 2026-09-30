@@ -5,6 +5,7 @@ import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import AIAppBuilderService from '../api/AIAppBuilderService';
 import AISettingsService from '../ai/AISettingsService';
+import ConnectedAppSurface from '../components/chat/ConnectedAppSurface';
 
 function previewSource(project) {
   if (!project) return '<html><body style="font-family:system-ui;padding:30px"><h2>Start building</h2><p>Describe an app below.</p></body></html>';
@@ -202,6 +203,31 @@ export default function AIAppBuilderScreen({ navigation, route }) {
     }
   };
 
+  const shareConnector = async () => {
+    if (!project) return;
+    try {
+      let current = project;
+      if (!current.naxStoreId) {
+        current = await AIAppBuilderService.publishToNaxStore(current);
+        setProject(current);
+      }
+      navigation.navigate('NaxAppSharePicker', {
+        app: {
+          id: current.naxStoreId,
+          name: current.name,
+          description: current.memory?.summary || 'Creator-built Nax app.',
+          icon: current.icon || '⚡',
+          connector: current.connector,
+          sourceType: 'app',
+          sourceId: current.id,
+        },
+        surfaceType: 'connector',
+      });
+    } catch (e) {
+      Alert.alert('Share failed', e?.message || 'Publish the app before sharing its connected surface.');
+    }
+  };
+
   const prepareAndroid = async () => {
     if (!project) return;
     try {
@@ -253,6 +279,7 @@ export default function AIAppBuilderScreen({ navigation, route }) {
         <View style={[styles.tabs, { borderBottomColor: theme.border }]}>
           {[
             ['preview', 'eye-outline', 'Preview'],
+            ['connector', 'git-network-outline', 'Connector'],
             ['code', 'code-slash-outline', 'Code'],
             ['files', 'folder-open-outline', 'Files'],
             ['chat', 'chatbubble-ellipses-outline', 'Chat'],
@@ -288,6 +315,37 @@ export default function AIAppBuilderScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
           </View>
+        ) : tab === 'connector' ? (
+          <ScrollView style={styles.connectorPane} contentContainerStyle={styles.connectorContent}>
+            <View style={[styles.connectorHeaderCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View style={[styles.connectorHeaderIcon, { backgroundColor: 'rgba(8,126,255,.10)' }]}>
+                <Ionicons name="git-network-outline" size={24} color={theme.blue} />
+              </View>
+              <View style={{ flex:1 }}>
+                <Text style={[styles.connectorTitle, { color: theme.text }]}>Connected Mini / Chat Surface</Text>
+                <Text style={[styles.connectorSub, { color: theme.sub }]}>
+                  Ye full app ka live controlled surface hai — separate fake preview nahi. Shared state aur safe actions isi app se connected rahenge.
+                </Text>
+              </View>
+            </View>
+            <ConnectedAppSurface
+              connector={project?.connector}
+              navigation={navigation}
+              preview
+              onShare={project ? shareConnector : undefined}
+            />
+            <View style={[styles.connectorInfo, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.actionTitle, { color: theme.text }]}>Connector contract</Text>
+              <Text style={[styles.actionText, { color: theme.sub }]}>Fields: {(project?.connector?.fields || []).length} · Actions: {(project?.connector?.actions || []).length}</Text>
+              <Text style={[styles.actionText, { color: theme.sub }]}>Capabilities: {(project?.connector?.capabilities || ['state','share','open']).join(' · ')}</Text>
+              <Text style={[styles.actionText, { color: theme.sub }]}>Permissions: read {project?.connector?.permissions?.read === false ? 'off' : 'on'} · write {project?.connector?.permissions?.write === false ? 'off' : 'on'} · share {project?.connector?.permissions?.share === false ? 'off' : 'on'}</Text>
+              <TouchableOpacity onPress={shareConnector} disabled={!project} style={[styles.actionBtn, { backgroundColor: theme.blue, marginTop: 10, opacity: project ? 1 : .4 }]}>
+                <Ionicons name="share-social-outline" size={15} color="#FFF" />
+                <Text style={styles.actionBtnText}>Use this Surface in Chat</Text>
+              </TouchableOpacity>
+            </View>
+            {!project ? <Text style={[styles.help, { color: theme.sub }]}>Build an app first. The connector will be generated from the app’s real capabilities.</Text> : null}
+          </ScrollView>
         ) : tab === 'preview' ? (
           <View style={styles.preview}><WebView originWhitelist={['*']} source={{ html: previewHtml }} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} /></View>
         ) : tab === 'code' ? (
@@ -380,5 +438,5 @@ export default function AIAppBuilderScreen({ navigation, route }) {
 }
 
 const styles=StyleSheet.create({
-  safe:{flex:1},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},historyRow:{flexDirection:'row',alignItems:'center',paddingVertical:7},historyVersion:{fontSize:11,fontWeight:'900',width:36},historyAction:{fontSize:10,flex:1},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},fullChat:{flex:1},publishBtn:{width:40,height:40,borderRadius:13,alignItems:'center',justifyContent:'center'},chatHeader:{minHeight:58,paddingHorizontal:14,paddingVertical:9,borderBottomWidth:1,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},chatTitle:{fontSize:16,fontWeight:'900'},chatSub:{fontSize:10,marginTop:2},livePill:{borderWidth:1,borderRadius:14,paddingHorizontal:9,paddingVertical:5,flexDirection:'row',alignItems:'center',gap:5},liveDot:{width:6,height:6,borderRadius:3},liveText:{fontSize:8,fontWeight:'900',letterSpacing:1},chatHistory:{flex:1},fullComposer:{minHeight:62,maxHeight:115,padding:8,borderTopWidth:1,flexDirection:'row',alignItems:'center',gap:7},chat:{minHeight:205,maxHeight:300,padding:11,borderTopWidth:1},progressCard:{borderWidth:1,borderRadius:12,padding:8,marginBottom:6},progressHeader:{flexDirection:'row',alignItems:'center',gap:5},progressLabel:{fontSize:8,fontWeight:'900',letterSpacing:1},progressText:{fontSize:10,fontWeight:'800',lineHeight:14,marginTop:3},remainingText:{fontSize:9,lineHeight:13,marginTop:2},log:{flex:1},messageBubble:{borderWidth:1,borderRadius:12,paddingHorizontal:9,paddingVertical:6,marginBottom:5,maxWidth:'94%'},messageRole:{fontSize:9,fontWeight:'900',marginBottom:2},msg:{fontSize:11,lineHeight:16,marginBottom:1},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
+  safe:{flex:1},connectorPane:{flex:1},connectorContent:{padding:14,paddingBottom:170,gap:10},connectorHeaderCard:{borderWidth:1,borderRadius:20,padding:13,flexDirection:'row',alignItems:'center'},connectorHeaderIcon:{width:46,height:46,borderRadius:14,alignItems:'center',justifyContent:'center',marginRight:10},connectorTitle:{fontSize:16,fontWeight:'900'},connectorSub:{fontSize:11,lineHeight:16,marginTop:3},connectorInfo:{borderWidth:1,borderRadius:18,padding:14,marginTop:4},header:{height:62,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:9},back:{width:38,alignItems:'center'},title:{fontSize:16,fontWeight:'900'},statusRow:{flexDirection:'row',alignItems:'center',marginTop:2},dot:{width:6,height:6,borderRadius:3,marginRight:5},sub:{fontSize:10},icon:{width:37,height:37,borderRadius:12,borderWidth:1,alignItems:'center',justifyContent:'center'},tabs:{height:43,borderBottomWidth:1,flexDirection:'row'},tab:{flex:1,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6,borderBottomWidth:2,borderBottomColor:'transparent'},tabText:{fontSize:11,fontWeight:'900'},preview:{flex:1,backgroundColor:'#fff'},codeHead:{height:47,borderBottomWidth:1,flexDirection:'row',alignItems:'center',paddingHorizontal:12},fileName:{flex:1,fontSize:12,fontWeight:'800'},save:{height:34,minWidth:58,borderRadius:10,alignItems:'center',justifyContent:'center'},saveText:{color:'#fff',fontWeight:'900',fontSize:11},editor:{flex:1,padding:14,fontFamily:Platform.OS==='ios'?'Menlo':'monospace',fontSize:12,lineHeight:18},filesWrap:{padding:14,paddingBottom:160},fileTitle:{fontSize:18,fontWeight:'900',marginBottom:10},fileRow:{minHeight:48,borderWidth:1,borderRadius:14,paddingHorizontal:13,flexDirection:'row',alignItems:'center',marginBottom:8},filePath:{flex:1,fontSize:12,fontWeight:'800',marginLeft:10},help:{fontSize:12,lineHeight:18,marginTop:12,textAlign:'center'},actionCard:{borderWidth:1,borderRadius:18,padding:14,marginTop:10},actionTitle:{fontSize:15,fontWeight:'900'},actionText:{fontSize:11,lineHeight:17,marginTop:4},historyRow:{flexDirection:'row',alignItems:'center',paddingVertical:7},historyVersion:{fontSize:11,fontWeight:'900',width:36},historyAction:{fontSize:10,flex:1},actionRow:{flexDirection:'row',gap:8,marginTop:12},actionBtn:{height:40,flex:1,borderRadius:12,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:6},actionBtnText:{color:'#FFF',fontSize:11,fontWeight:'900'},fullChat:{flex:1},publishBtn:{width:40,height:40,borderRadius:13,alignItems:'center',justifyContent:'center'},chatHeader:{minHeight:58,paddingHorizontal:14,paddingVertical:9,borderBottomWidth:1,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},chatTitle:{fontSize:16,fontWeight:'900'},chatSub:{fontSize:10,marginTop:2},livePill:{borderWidth:1,borderRadius:14,paddingHorizontal:9,paddingVertical:5,flexDirection:'row',alignItems:'center',gap:5},liveDot:{width:6,height:6,borderRadius:3},liveText:{fontSize:8,fontWeight:'900',letterSpacing:1},chatHistory:{flex:1},fullComposer:{minHeight:62,maxHeight:115,padding:8,borderTopWidth:1,flexDirection:'row',alignItems:'center',gap:7},chat:{minHeight:205,maxHeight:300,padding:11,borderTopWidth:1},progressCard:{borderWidth:1,borderRadius:12,padding:8,marginBottom:6},progressHeader:{flexDirection:'row',alignItems:'center',gap:5},progressLabel:{fontSize:8,fontWeight:'900',letterSpacing:1},progressText:{fontSize:10,fontWeight:'800',lineHeight:14,marginTop:3},remainingText:{fontSize:9,lineHeight:13,marginTop:2},log:{flex:1},messageBubble:{borderWidth:1,borderRadius:12,paddingHorizontal:9,paddingVertical:6,marginBottom:5,maxWidth:'94%'},messageRole:{fontSize:9,fontWeight:'900',marginBottom:2},msg:{fontSize:11,lineHeight:16,marginBottom:1},tip:{fontSize:11,lineHeight:16},inputRow:{minHeight:54,maxHeight:105,borderWidth:1,borderRadius:16,flexDirection:'row',alignItems:'center',paddingLeft:12,paddingRight:5},input:{flex:1,maxHeight:92,fontSize:13,paddingTop:10,paddingBottom:10},send:{width:42,height:42,borderRadius:14,alignItems:'center',justifyContent:'center'}
 });
