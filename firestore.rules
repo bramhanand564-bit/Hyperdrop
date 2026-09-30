@@ -431,7 +431,6 @@ service cloud.firestore {
       match /apps/{appId} {
         allow read: if request.auth != null && request.auth.uid == creatorId;
         allow create, update: if request.auth != null
-          && request.auth.uid == creatorId
           && get(/databases/$(database)/documents/nax_apps/$(appId)).data.creatorId == creatorId;
         allow delete: if request.auth != null && request.auth.uid == creatorId;
 
@@ -447,7 +446,6 @@ service cloud.firestore {
       match /bots/{botId} {
         allow read: if request.auth != null && request.auth.uid == creatorId;
         allow create, update: if request.auth != null
-          && request.auth.uid == creatorId
           && get(/databases/$(database)/documents/bots/$(botId)).data.developerId == creatorId;
         allow delete: if request.auth != null && request.auth.uid == creatorId;
 
