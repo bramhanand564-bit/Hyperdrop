@@ -6,6 +6,7 @@ import { WebView } from 'react-native-webview';
 import { useTheme } from '../context/ThemeContext';
 import NaxAppStoreAPI from '../api/NaxAppStoreAPI';
 import NaxConnectorAPI from '../api/NaxConnectorAPI';
+import CreatorAnalyticsAPI from '../api/CreatorAnalyticsAPI';
 import BotAPI from '../api/BotAPI';
 import BotRuntime from '../bot-runtime/BotRuntime';
 import AIService from '../ai/AIService';
