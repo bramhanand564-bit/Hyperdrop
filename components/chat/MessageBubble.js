@@ -118,6 +118,13 @@ function MessageBubble({item,isMe,isGlobal,chatId,onReply,onForward,navigation})
       {surface.maxFields<fields.length||surface.maxActions<actions.length?<Text style={{color:isMe?'rgba(255,255,255,.48)':theme.sub,fontSize:8,marginTop:8}}>More controls are available in the full app.</Text>:null}
     </View>;
    })():null}
+   {item.type==='connected_app'?<ConnectedAppSurface
+      appId={item.appId}
+      connector={item.appConnector || item.connector}
+      navigation={navigation}
+      compact
+      onShare={()=>navigation?.navigate('NaxAppSharePicker',{app:{id:item.appId,name:item.appName,description:item.appDescription,icon:item.appIcon,connector:item.appConnector,sourceType:item.sourceType,botId:item.botId}})}
+    />:null}
    {item.type==='app_invite'?<View style={[s.appInvite,{backgroundColor:isMe?'rgba(255,255,255,.12)':theme.surface,borderColor:theme.border}]}>
     <View style={s.inviteHead}><View style={[s.inviteIcon,{backgroundColor:'rgba(8,126,255,.12)'}]}><Ionicons name={item.appIcon||'game-controller'} size={25} color={theme.blue}/></View><View style={{flex:1,marginLeft:10}}><Text style={{color:isMe?'#FFF':theme.text,fontSize:15,fontWeight:'900'}} numberOfLines={1}>{item.appName||'Nax App'}</Text><Text style={{color:isMe?'rgba(255,255,255,.75)':theme.sub,fontSize:11,marginTop:3}} numberOfLines={2}>{item.appDescription||'Open this Nax app invite.'}</Text></View></View>
     {item.appGateway?.enabled!==false?<Text style={{color:isMe?'rgba(255,255,255,.58)':theme.sub,fontSize:9,marginTop:8}}>Gateway · {item.appGateway?.chat?.presentation||'card'} · same Nax Store app</Text>:null}
