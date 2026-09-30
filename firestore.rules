@@ -403,5 +403,28 @@ service cloud.firestore {
 
 
 
+    match /connector_state/{stateId} {
+      allow read: if request.auth != null
+                    && (
+                      get(/databases/$(database)/documents/nax_apps/$(appId)).data.status == 'published'
+                      || get(/databases/$(database)/documents/nax_apps/$(appId)).data.creatorId == request.auth.uid
+                    );
+
+      allow create: if request.auth != null
+                     && get(/databases/$(database)/documents/nax_apps/$(appId)).data.status == 'published'
+                     && request.resource.data.updatedBy == request.auth.uid
+                     && request.resource.data.keys().hasOnly(['values','updatedBy','lastActionId','surface','updatedAt'])
+                     && request.resource.data.values is map;
+
+      allow update: if request.auth != null
+                     && get(/databases/$(database)/documents/nax_apps/$(appId)).data.status == 'published'
+                     && request.resource.data.updatedBy == request.auth.uid
+                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['values','updatedBy','lastActionId','surface','updatedAt'])
+                     && request.resource.data.values is map;
+
+      allow delete: if request.auth != null
+                     && get(/databases/$(database)/documents/nax_apps/$(appId)).data.creatorId == request.auth.uid;
+    }
+
   }
 }
