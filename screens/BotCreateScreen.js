@@ -77,11 +77,12 @@ export default function BotCreateScreen({ navigation }) {
       };
 
       // 4. Save to Firestore
-      await BotService.createBot(currentUser.uid, botData);
+      const createdBot = await BotService.createBot(currentUser.uid, botData);
       
       // 5. Success Action
       Alert.alert('Success! 🎉', `Your bot @${username.toLowerCase()} is ready.`, [
-        { text: 'OK', onPress: () => navigation.goBack() }
+        { text: 'Open Bot', onPress: () => navigation.navigate('BotChat', { botData: createdBot }) },
+        { text: 'Done', onPress: () => navigation.goBack() }
       ]);
 
     } catch (error) {
