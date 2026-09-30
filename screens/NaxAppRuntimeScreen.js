@@ -15,15 +15,33 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
   const { theme } = useTheme();
   const [app, setApp] = useState(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const webViewRef = useRef(null);
   const botRuntimeRef = useRef(null);
   const botHistoryRef = useRef([]);
 
   useEffect(() => {
     let active = true;
-    NaxAppStoreAPI.get(route.params?.appId).then(value => {
-      if (active) setApp(value);
-    }).catch(e => active && setError(e?.message || 'Could not load app.'));
+    setLoading(true);
+    setError('');
+    const appId = route.params?.appId;
+    if (!appId) {
+      setLoading(false);
+      setError('No app ID was provided.');
+      return () => { active = false; };
+    }
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('App loading timed out. Please check your connection and make sure the app is published to Nax Store.')), 8000));
+    Promise.race([NaxAppStoreAPI.get(appId), timeout])
+      .then(value => {
+        if (!active) return;
+        if (!value) {
+          setError('This app was not found in Nax Store. Publish it first, then open it again.');
+          return;
+        }
+        setApp(value);
+      })
+      .catch(e => active && setError(e?.message || 'Could not load app.'))
+      .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [route.params?.appId]);
 
@@ -162,7 +180,8 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
     })(); true;`;
 
   if (error) return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}><View style={styles.center}><Text style={{color:theme.text}}>{error}</Text></View></SafeAreaView>;
-  if (!app) return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}><View style={styles.center}><ActivityIndicator color={theme.blue}/><Text style={{color:theme.sub,marginTop:10}}>Opening Nax App…</Text></View></SafeAreaView>;
+  if (loading) return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}><View style={styles.center}><ActivityIndicator color={theme.blue}/><Text style={{color:theme.sub,marginTop:10}}>Opening Nax App…</Text></View></SafeAreaView>;
+  if (!app) return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}><View style={styles.center}><Ionicons name="alert-circle-outline" size={34} color={theme.sub}/><Text style={{color:theme.text,marginTop:10,textAlign:'center'}}>{error || 'App unavailable.'}</Text><TouchableOpacity onPress={()=>navigation.goBack()} style={{marginTop:14,paddingHorizontal:16,paddingVertical:10,borderRadius:10,backgroundColor:theme.blue}}><Text style={{color:'#FFF',fontWeight:'900'}}>Go Back</Text></TouchableOpacity></View></SafeAreaView>;
   return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}>
     <View style={[styles.header,{backgroundColor:theme.surface,borderBottomColor:theme.border}]}>
       <TouchableOpacity onPress={()=>navigation.goBack()} style={styles.headerBtn}><Ionicons name="chevron-back" size={25} color={theme.text}/></TouchableOpacity>
