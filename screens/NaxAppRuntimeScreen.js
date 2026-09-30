@@ -16,6 +16,7 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
   const [error, setError] = useState('');
   const webViewRef = useRef(null);
   const botRuntimeRef = useRef(null);
+  const botHistoryRef = useRef([]);
 
   useEffect(() => {
     let active = true;
@@ -79,10 +80,11 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
           connectionId: bot.aiConnectionId || undefined,
           model: bot.aiModel || undefined,
           systemPrompt: bot.systemPrompt,
-          messages: [{ role:'user', content:String(text || '').slice(0,5000) }],
+          messages: [...botHistoryRef.current.slice(-20), { role:'user', content:String(text || '').slice(0,5000) }],
           maxTokens: 800,
         });
         await BotAPI.recordBotUsage(bot.id).catch(() => {});
+        botHistoryRef.current = [...botHistoryRef.current, { role:'user', content:String(text || '').slice(0,5000) }, { role:'assistant', content:String(reply || '').slice(0,5000) }].slice(-40);
         sendToWeb({ text: String(reply || '').slice(0,5000), buttons: bot.buttons || [] });
         return;
       }
@@ -91,8 +93,10 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
         const started = botRuntimeRef.current.start();
         if (!botRuntimeRef.current.isRunning()) throw new Error(started?.response?.text || 'Bot is unavailable.');
       }
-      const result = botRuntimeRef.current.handleMessage({ text:String(text || '').slice(0,5000) });
+      const cleanText = String(text || '').slice(0,5000);
+      const result = botRuntimeRef.current.handleMessage({ text:cleanText });
       await BotAPI.recordBotUsage(bot.id).catch(() => {});
+      botHistoryRef.current = [...botHistoryRef.current, { role:'user', content:cleanText }, { role:'assistant', content:result?.response?.text || '' }].slice(-40);
       sendToWeb(result?.response || { text:'No response.' });
     } catch (e) {
       sendToWeb({ text:e?.message || 'Bot response failed.' });
