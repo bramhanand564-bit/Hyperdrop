@@ -82,6 +82,7 @@ export default function NaxStoreScreen({ navigation }) {
   }).slice(0, 6);
 
   const shareApp = app => navigation.navigate('NaxAppSharePicker', { app });
+  const shareConnector = app => navigation.navigate('NaxAppSharePicker', { app, surfaceType: 'connector' });
   const openApp = app => navigation.navigate('NaxAppRuntime', { appId: app.id });
 
   const AppIcon = ({ app, small = false }) => (
@@ -94,7 +95,7 @@ export default function NaxStoreScreen({ navigation }) {
     <TouchableOpacity activeOpacity={0.85} onPress={() => openApp(app)} style={[styles.popularCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       <AppIcon app={app} small />
       <Text style={[styles.popularName, { color: theme.text }]} numberOfLines={1}>{app.name}</Text>
-      <Text style={[styles.popularCategory, { color: theme.sub }]} numberOfLines={1}>{getCategory(app)}</Text>
+      <Text style={[styles.popularCategory, { color: theme.sub }]} numberOfLines={1}>{getCategory(app)}{app.connector?.enabled ? ' · Live' : ''}</Text>
       <Text style={[styles.creator, { color: theme.sub }]} numberOfLines={1}>by {app.creatorName || 'Creator'}</Text>
     </TouchableOpacity>
   );
@@ -106,14 +107,19 @@ export default function NaxStoreScreen({ navigation }) {
         <Text style={[styles.featureName, { color: theme.text }]} numberOfLines={1}>{app.name}</Text>
         <Text style={[styles.featureDesc, { color: theme.sub }]} numberOfLines={2}>{app.description || 'Creator-built app on Nax Store.'}</Text>
         <Text style={[styles.meta, { color: theme.sub }]}>{getCategory(app)} · {app.creatorName || 'Creator'}</Text>
+        {app.connector?.enabled ? <View style={styles.connectedBadge}><Ionicons name="git-network-outline" size={10} color="#39E27D" /><Text style={styles.connectedBadgeText}>Connected surface</Text></View> : null}
       </View>
       <View style={styles.featureActions}>
         <TouchableOpacity onPress={() => openApp(app)} style={[styles.installBtn, { backgroundColor: theme.blue }]}>
           <Text style={styles.installText}>Use</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}>
+        <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}><Ionicons name="share-outline" size={16} color={theme.text} /></TouchableOpacity>
+        {app.connector?.enabled ? <TouchableOpacity onPress={() => shareConnector(app)} style={[styles.shareBtn, { borderColor: theme.border, backgroundColor:'rgba(57,226,125,.07)' }]}><Ionicons name="git-network-outline" size={16} color="#39E27D" /></TouchableOpacity> : null}
+        {/* connector-aware share remains additive; original app share is preserved */}
+        {false && <TouchableOpacity onPress={() => shareApp(app)} style={[styles.shareBtn, { borderColor: theme.border }]}>
           <Ionicons name="share-outline" size={16} color={theme.text} />
         </TouchableOpacity>
+        </TouchableOpacity>}
       </View>
     </View>
   );
@@ -324,6 +330,7 @@ const styles = StyleSheet.create({
   featureActions:{flexDirection:'row',alignItems:'center',marginTop:7,gap:6},
   installBtn:{height:31,paddingHorizontal:13,borderRadius:9,alignItems:'center',justifyContent:'center'},
   installText:{fontSize:10,fontWeight:'900',color:'#FFF'},
+  connectedBadge:{alignSelf:'flex-start',marginTop:6,paddingHorizontal:7,paddingVertical:4,borderRadius:9,backgroundColor:'rgba(57,226,125,.08)',flexDirection:'row',alignItems:'center',gap:4},connectedBadgeText:{fontSize:8,fontWeight:'900',color:'#39E27D'},
   shareBtn:{width:31,height:31,borderRadius:9,borderWidth:1,alignItems:'center',justifyContent:'center'},
   empty:{borderRadius:18,borderWidth:1,borderColor:'#1E2C46',backgroundColor:'#0A1324',padding:30,alignItems:'center',marginTop:20},
   emptyTitle:{fontSize:16,fontWeight:'900',color:'#FFF',marginTop:8},
