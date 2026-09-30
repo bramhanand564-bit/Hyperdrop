@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import BotAPI from '../api/BotAPI';
 import AIService from '../ai/AIService';
 import { auth } from '../firebaseConfig';
+import NaxBotAppService from '../api/NaxBotAppService';
 
 export default function BotChatScreen({ route, navigation }) {
   const { isDark } = useTheme();
@@ -51,6 +52,7 @@ export default function BotChatScreen({ route, navigation }) {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [activeAI, setActiveAI] = useState(null);
+  const [converting, setConverting] = useState(false);
   const scrollViewRef = useRef();
   const messagesLoadedRef = useRef(false);
   const storageKey = `nax:bot-chat:${auth.currentUser?.uid || 'guest'}:${botData.id || botData.botId || 'default'}`;
@@ -96,6 +98,18 @@ export default function BotChatScreen({ route, navigation }) {
     if (!messagesLoadedRef.current) return;
     AsyncStorage.setItem(storageKey, JSON.stringify(messages.slice(-50))).catch(() => {});
   }, [messages, storageKey]);
+
+  const isOwner = !!auth.currentUser?.uid && (botData.developerId === auth.currentUser.uid || botData.ownerId === auth.currentUser.uid || botData.creatorId === auth.currentUser.uid);
+
+  const convertToApp = async () => {
+    if (converting) return;
+    setConverting(true);
+    try {
+      const app = await NaxBotAppService.convertBotToApp(botData);
+      Alert.alert('Bot → App', 'Your bot is now available as a Nax Store app.', [{ text:'Open App', onPress:()=>navigation.navigate('NaxAppRuntime',{appId:app.id}) }]);
+    } catch (e) { Alert.alert('Conversion failed', e?.message || 'Could not convert this bot.'); }
+    finally { setConverting(false); }
+  };
 
   const botAvatar = `https://ui-avatars.com/api/?name=${botName?.replace(' ', '+')}&background=random&color=fff`;
 
@@ -188,6 +202,9 @@ export default function BotChatScreen({ route, navigation }) {
               )}
             </View>
           </View>
+          {isOwner ? <TouchableOpacity style={styles.menuBtn} onPress={convertToApp} disabled={converting}>
+            {converting ? <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : '#1C1C1E'} /> : <Ionicons name="phone-portrait-outline" size={22} color={textMain} />}
+          </TouchableOpacity> : null}
           <TouchableOpacity style={styles.menuBtn} onPress={() => Alert.alert('Chat options', 'Clear this conversation?',[{text:'Cancel',style:'cancel'},{text:'Clear',style:'destructive',onPress:async()=>{const welcome={id:'1',text:`Hi! I am ${botName} 🤖\\nCreated by @${creatorName}.\\nSay hello to start!`,sender:'bot'};setMessages([welcome]);await AsyncStorage.removeItem(storageKey).catch(()=>{});}}])}>
             <Ionicons name="ellipsis-horizontal" size={24} color={textMain} />
           </TouchableOpacity>
