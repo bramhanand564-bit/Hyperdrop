@@ -5,6 +5,7 @@ import { auth } from '../../firebaseConfig';
 import BotAPI from '../../api/BotAPI';
 import BotRuntime from '../../bot-runtime/BotRuntime';
 import AIService from '../../ai/AIService';
+import CreatorAnalyticsAPI from '../../api/CreatorAnalyticsAPI';
 
 export default function BotAppSurface({ appId, botId, appName, appIcon='🤖', navigation }) {
   const [bot, setBot] = useState(null);
@@ -22,6 +23,7 @@ export default function BotAppSurface({ appId, botId, appName, appIcon='🤖', n
       if (!alive) return;
       if (!value) { setReply('This bot is no longer available.'); setLoading(false); return; }
       setBot(value);
+      CreatorAnalyticsAPI.recordBotEvent(value, 'session');
       setButtons(Array.isArray(value.buttons) ? value.buttons.slice(0, 8) : []);
       const runtime = new BotRuntime({
         bot: value,
@@ -59,6 +61,7 @@ export default function BotAppSurface({ appId, botId, appName, appIcon='🤖', n
         setButtons(result?.response?.buttons || bot.buttons || []);
       }
       await BotAPI.recordBotUsage(bot.id).catch(() => {});
+      CreatorAnalyticsAPI.recordBotEvent(bot, 'action');
     } catch (e) {
       setReply(e?.message || 'Bot response failed.');
     } finally {
