@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import NaxConnectorAPI, { normalizeConnector } from '../../api/NaxConnectorAPI';
+import CreatorAnalyticsAPI from '../../api/CreatorAnalyticsAPI';
 
 export default function ConnectedAppSurface({ appId, app, connector: inputConnector, navigation, preview = false, compact = false, onShare }) {
   const [loadedApp, setLoadedApp] = useState(app || null);
@@ -59,6 +60,7 @@ export default function ConnectedAppSurface({ appId, app, connector: inputConnec
       } else {
         const result = await NaxConnectorAPI.performAction(appId, action.id, { value: values[action.fieldId], fieldId: action.fieldId }, { surface: 'chat' });
         setValues(result.values || {});
+        CreatorAnalyticsAPI.recordAppEvent(loadedApp || { id: appId }, 'action');
         setMessage('✓ ' + (result.label || action.label) + ' updated');
       }
     } catch (e) {
