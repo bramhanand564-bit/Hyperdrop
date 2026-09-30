@@ -413,6 +413,7 @@ const AIAppBuilderService = {
     const id = 'app_' + now + '_' + Math.random().toString(36).slice(2, 8);
     const project = {
       id, name, target: route, filePaths: [],
+      connector: createDefaultConnector({ id, name }),
       memory: null, versions: [], redo: [], chat: [], createdAt: now, updatedAt: now,
     };
     project.memory = memoryObject(project);
