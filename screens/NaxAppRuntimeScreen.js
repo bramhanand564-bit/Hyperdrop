@@ -152,7 +152,7 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
       window.__naxConnectorState=function(state){window.Nax&&window.Nax.__applyConnectorState(state||{});};
       window.__naxConnectorResult=function(result){window.Nax&&window.Nax.__applyConnectorState(result||{});};
       window.__naxConnectorError=function(error){if(window.Nax&&typeof window.Nax.onConnectorError==='function')try{window.Nax.onConnectorError(error||{});}catch(e){}};
-      };
+
     })(); true;`;
 
   if (error) return <SafeAreaView style={[styles.safe,{backgroundColor:theme.bg}]}><View style={styles.center}><Text style={{color:theme.text}}>{error}</Text></View></SafeAreaView>;
