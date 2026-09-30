@@ -424,6 +424,42 @@ service cloud.firestore {
     }
     }
 
+    match /creator_analytics/{creatorId} {
+      allow read: if request.auth != null && request.auth.uid == creatorId;
+      allow create, update, delete: if request.auth != null && request.auth.uid == creatorId;
+
+      match /apps/{appId} {
+        allow read: if request.auth != null && request.auth.uid == creatorId;
+        allow create, update: if request.auth != null
+          && request.auth.uid == creatorId
+          && get(/databases/$(database)/documents/nax_apps/$(appId)).data.creatorId == creatorId;
+        allow delete: if request.auth != null && request.auth.uid == creatorId;
+
+        match /users/{userId} {
+          allow read: if request.auth != null && request.auth.uid == creatorId;
+          allow create, update: if request.auth != null
+            && request.auth.uid == userId
+            && get(/databases/$(database)/documents/nax_apps/$(appId)).data.creatorId == creatorId;
+          allow delete: if request.auth != null && request.auth.uid == creatorId;
+        }
+      }
+
+      match /bots/{botId} {
+        allow read: if request.auth != null && request.auth.uid == creatorId;
+        allow create, update: if request.auth != null
+          && request.auth.uid == creatorId
+          && get(/databases/$(database)/documents/bots/$(botId)).data.developerId == creatorId;
+        allow delete: if request.auth != null && request.auth.uid == creatorId;
+
+        match /users/{userId} {
+          allow read: if request.auth != null && request.auth.uid == creatorId;
+          allow create, update: if request.auth != null
+            && request.auth.uid == userId
+            && get(/databases/$(database)/documents/bots/$(botId)).data.developerId == creatorId;
+          allow delete: if request.auth != null && request.auth.uid == creatorId;
+        }
+      }
+    }
 
   }
 }
