@@ -292,7 +292,7 @@ function FeedCard({
         <Pressable onPress={doubleTap} onLongPress={onOpenMedia ? () => onOpenMedia(item) : undefined}>
           <View style={styles.mediaWrap}>
             {item.isVideo ? (
-              <Pressable style={styles.videoPressArea} onPress={() => openMediaViewer(item)}>
+              <Pressable style={styles.videoPressArea} onPress={() => onOpenMedia?.(item)}>
                 <Video
                   source={{ uri: item.media }}
                   style={styles.feedMedia}
