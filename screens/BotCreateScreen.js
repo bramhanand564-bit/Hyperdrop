@@ -16,6 +16,7 @@ export default function BotCreateScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [description, setDescription] = useState('');
   const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [visibility, setVisibility] = useState('private');
   
   const [loading, setLoading] = useState(false);
   const [usernameError, setUsernameError] = useState('');
@@ -70,7 +71,9 @@ export default function BotCreateScreen({ navigation }) {
         name: name.trim(),
         username: username.trim(),
         description: description.trim(),
-        welcomeMessage: welcomeMessage.trim()
+        welcomeMessage: welcomeMessage.trim(),
+        visibility,
+        isPublic: visibility === 'public'
       };
 
       // 4. Save to Firestore
@@ -173,6 +176,17 @@ export default function BotCreateScreen({ navigation }) {
             />
 
           </View>
+
+          <Text style={[styles.label, { color: textSub, marginTop: 15 }]}>Visibility</Text>
+          <View style={[styles.visibilityRow, { borderColor: border, backgroundColor: inputBg }]}>
+            {['private','public'].map(option => (
+              <TouchableOpacity key={option} onPress={() => setVisibility(option)} style={[styles.visibilityOption, visibility === option && { backgroundColor: blue }]}>
+                <Ionicons name={option === 'public' ? 'globe-outline' : 'lock-closed-outline'} size={16} color={visibility === option ? '#FFF' : textSub} />
+                <Text style={{ color: visibility === option ? '#FFF' : textMain, fontWeight:'800', marginLeft:6, textTransform:'capitalize' }}>{option}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={[styles.helperText, { color: textSub }]}>Public bots can be discovered and converted into Nax Store apps. Private bots stay creator-only.</Text>
         </ScrollView>
 
         {/* CREATE BUTTON */}
@@ -212,6 +226,7 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', height: 50, borderRadius: 12, borderWidth: 1, paddingHorizontal: 15, marginBottom: 5 },
   inputFlex: { flex: 1, fontSize: 16, height: '100%' },
   textArea: { height: 80, paddingTop: 12, textAlignVertical: 'top' },
+  visibilityRow:{height:52,borderRadius:12,borderWidth:1,padding:4,flexDirection:'row',gap:5},visibilityOption:{flex:1,borderRadius:9,alignItems:'center',justifyContent:'center',flexDirection:'row'},helperText:{fontSize:11,lineHeight:16,marginTop:7,marginBottom:8},
   errorText: { fontSize: 12, fontWeight: '500', marginBottom: 15, marginLeft: 5 },
   footer: { padding: 15, paddingBottom: Platform.OS === 'ios' ? 25 : 15, borderTopWidth: 1 },
   createBtn: { height: 54, borderRadius: 27, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', elevation: 2 },
