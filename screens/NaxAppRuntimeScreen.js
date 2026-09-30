@@ -143,8 +143,15 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
         connector:CONNECTOR,
         sendBotMessage:function(text){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_BOT_INPUT',text:String(text||'')}));},
         connectorAction:function(actionId,input){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CONNECTOR_ACTION',actionId:String(actionId||''),input:input||{}}));},
+        connectorState:{},
+        onConnectorUpdate:null,
         getConnectorState:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CONNECTOR_STATE'}));},
+        __applyConnectorState:function(state){this.connectorState=(state&&state.values)||{};if(typeof this.onConnectorUpdate==='function')try{this.onConnectorUpdate(this.connectorState,state||{});}catch(e){}},
         close:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'NAX_CLOSE'}));}
+      };
+      window.__naxConnectorState=function(state){window.Nax&&window.Nax.__applyConnectorState(state||{});};
+      window.__naxConnectorResult=function(result){window.Nax&&window.Nax.__applyConnectorState(result||{});};
+      window.__naxConnectorError=function(error){if(window.Nax&&typeof window.Nax.onConnectorError==='function')try{window.Nax.onConnectorError(error||{});}catch(e){}};
       };
     })(); true;`;
 
@@ -156,7 +163,7 @@ export default function NaxAppRuntimeScreen({ route, navigation }) {
       <View style={{flex:1,marginHorizontal:8}}><Text style={{color:theme.text,fontWeight:'900'}} numberOfLines={1}>{app.name}</Text><Text style={{color:theme.blue,fontSize:9,fontWeight:'800'}}>NAX GATEWAY · {app.sourceType === 'bot' ? 'BOT APP' : 'STORE APP'}</Text></View>
       <TouchableOpacity onPress={()=>navigation.navigate('NaxAppSharePicker',{app})} style={styles.headerBtn}><Ionicons name="share-outline" size={21} color={theme.text}/></TouchableOpacity>
     </View>
-    <WebView ref={webViewRef} originWhitelist={['*']} source={{html:app.html}} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} onMessage={handleMessage} injectedJavaScriptBeforeContentLoaded={gatewayBootstrap} />
+    <WebView ref={webViewRef} originWhitelist={['*']} source={{html:app.html}} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} onMessage={handleMessage} onLoadEnd={() => webViewRef.current?.injectJavaScript('window.Nax&&window.Nax.getConnectorState(); true;')} injectedJavaScriptBeforeContentLoaded={gatewayBootstrap} />
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({safe:{flex:1},header:{height:58,flexDirection:'row',alignItems:'center',paddingHorizontal:8,borderBottomWidth:1},headerBtn:{width:42,height:42,alignItems:'center',justifyContent:'center'},center:{flex:1,alignItems:'center',justifyContent:'center',padding:24}});
