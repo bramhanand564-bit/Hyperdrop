@@ -1,5 +1,5 @@
 import { auth, db } from '../firebaseConfig';
-import { collection, doc, getDocs, increment, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, increment, runTransaction, serverTimestamp, query, where } from 'firebase/firestore';
 
 const creatorRef = creatorId => collection(db, 'creator_analytics', creatorId, 'apps');
 const botRef = creatorId => collection(db, 'creator_analytics', creatorId, 'bots');
@@ -55,9 +55,16 @@ const recordBotEvent = (bot, event='session') => {
 const getCreatorAnalytics = async creatorId => {
   const id = creatorId || uid();
   if (!id || id !== uid()) throw new Error('Creator authentication required.');
-  const [appsSnap, botsSnap] = await Promise.all([getDocs(creatorRef(id)), getDocs(botRef(id))]);
-  const apps = appsSnap.docs.map(d => ({ id:d.id, ...d.data(), sourceType:'app' }));
-  const bots = botsSnap.docs.map(d => ({ id:d.id, ...d.data(), sourceType:'bot' }));
+  const [appsSnap, botsSnap, createdAppsSnap, createdBotsSnap] = await Promise.all([
+    getDocs(creatorRef(id)),
+    getDocs(botRef(id)),
+    getDocs(query(collection(db, 'nax_apps'), where('creatorId', '==', id))),
+    getDocs(query(collection(db, 'bots'), where('developerId', '==', id))),
+  ]);
+  const appAnalytics = Object.fromEntries(appsSnap.docs.map(d => [d.id, { id:d.id, ...d.data(), sourceType:'app' }]));
+  const botAnalytics = Object.fromEntries(botsSnap.docs.map(d => [d.id, { id:d.id, ...d.data(), sourceType:'bot' }]));
+  const apps = createdAppsSnap.docs.map(d => ({ ...(appAnalytics[d.id] || {}), id:d.id, name:d.data().name || d.data().title || 'Nax App', creatorId:id, sourceType:'app' }));
+  const bots = createdBotsSnap.docs.map(d => ({ ...(botAnalytics[d.id] || {}), id:d.id, name:d.data().name || 'Bot', developerId:id, sourceType:'bot' }));
   const all = [...apps, ...bots];
   const total = key => all.reduce((sum,item) => sum + Number(item[key] || 0), 0);
   return {
