@@ -1,2 +1,0 @@
-export const Scheduler = { set(fn, delayMs){ return setTimeout(fn,delayMs); }, every(fn, intervalMs){ return setInterval(fn,intervalMs); }, cancel(id){ clearTimeout(id); clearInterval(id); } };
-export default Scheduler;
